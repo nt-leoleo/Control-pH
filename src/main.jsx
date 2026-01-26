@@ -7,6 +7,7 @@ import Header from './Header.jsx';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Header />
+    <h1>hola</h1>
     {/* <main>
       <ShowpH />
     </main> */}
