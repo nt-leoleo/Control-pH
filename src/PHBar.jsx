@@ -28,9 +28,24 @@ const PHBar = ({ph}) => {
     return (
         <div className="barContainer">
             <div className="barLabels">
-                <span className="label">{minRangePH.toFixed(1)}</span>
-                <span className="label ideal">{phTolerance.toFixed(1)}</span>
-                <span className="label">{maxRangePH.toFixed(1)}</span>
+                <span 
+                    className="label" 
+                    style={{left: `0`}}
+                >
+                    {minRangePH.toFixed(1)}
+                </span>
+                <span 
+                    className="label ideal" 
+                    style={{left: `${((phTolerance - minPH) / (maxPH - minPH)) * 100}%`}}
+                >
+                    {phTolerance.toFixed(1)}
+                </span>
+                <span 
+                    className="label" 
+                    style={{right: `0`}}
+                >
+                    {maxRangePH.toFixed(1)}
+                </span>
             </div>
             <div className="bar">
                 <div className="gradientBg" style={gradientStyle} />

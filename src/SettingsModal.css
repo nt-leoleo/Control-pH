@@ -16,8 +16,8 @@
     border: 1px solid rgba(255, 255, 255, 0.158);
     border-radius: 1em;
     box-shadow: rgba(0, 0, 0, 0.493) 0.4em 0.4em 2em;
-    min-width: 300px;
-    max-width: 500px;
+    width: min(500px, 90vw);
+    min-width: 260px;
     animation: slideIn 0.3s ease;
 }
 

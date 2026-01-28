@@ -8,10 +8,36 @@
     box-shadow: rgba(0, 0, 0, 0.493) 0.4em 0.4em 2em;
 }
 
+.chartHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+}
+
 .chartContainer h3 {
     color: whitesmoke;
-    margin-top: 0;
-    margin-bottom: 1em;
+    margin: 0;
     text-align: center;
     font-size: 1.2em;
+    flex: 1;
 }
+
+.warningBadge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2em;
+    height: 2em;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }

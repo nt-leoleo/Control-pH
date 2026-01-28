@@ -28,17 +28,18 @@ export const validateTolerance = (value) => {
 };
 
 export const validateToleranceRange = (optimal, tolerance) => {
-    const min = optimal - tolerance;
-    const max = optimal + tolerance;
-    
+    let min = optimal - tolerance;
+    let max = optimal + tolerance;
+
+    // Allow configuration outside 6-8 but warn the developer.
     if (min < 6) {
-        throw new Error(`El límite mínimo (${min.toFixed(1)}) no puede ser menor a 6`);
+        console.warn(`validateToleranceRange: computed min ${min.toFixed(1)} is below 6. Allowing configuration but values may be out of display range.`);
     }
-    
+
     if (max > 8) {
-        throw new Error(`El límite máximo (${max.toFixed(1)}) no puede ser mayor a 8`);
+        console.warn(`validateToleranceRange: computed max ${max.toFixed(1)} is above 8. Allowing configuration but values may be out of display range.`);
     }
-    
+
     return { min, max };
 };
 

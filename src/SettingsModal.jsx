@@ -61,8 +61,8 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         <input 
                             id="phTolerance"
                             type="range" 
-                            min="6.4" 
-                            max="8.4" 
+                            min="6"
+                            max="8"
                             step="0.1" 
                             value={tempTolerance}
                             onChange={(e) => setTempTolerance(parseFloat(e.target.value))}
