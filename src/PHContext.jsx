@@ -5,7 +5,7 @@ export const PHContext = createContext(null);
 
 export const PHProvider = ({ children }) => {
     const [ph, setPH] = useState(7);
-    const [phTolerance, setPhTolerance] = useState(7);
+    const [phTolerance, setPhTolerance] = useState(7.4); // pH ideal para piscinas
     const [phToleranceRange, setPhToleranceRange] = useState(0.5);
     const [phHistory, setPhHistory] = useState([
         { hour: '00:00', value: 7.0 },
