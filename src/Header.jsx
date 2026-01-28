@@ -1,18 +1,13 @@
 import { ConfigButton, GoBack} from './Buttons'
-// import HandleAdmin from './HandleAdmin.jsx'
 import './header.css'
 
-const Header = () => {
+const Header = ({ onConfigClick }) => {
     return (
         <>
         <header>
             <GoBack />
             <span>Control pH</span>
-            <ConfigButton />
-            {/* <SettingsPanel /> */}
-            {/*    Header
-            <     Control pH     +
-            */}
+            <ConfigButton onClick={onConfigClick} />
         </header>
         <hr />
         </>

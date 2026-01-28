@@ -4,6 +4,8 @@ export const PHContext = createContext(null);
 
 export const PHProvider = ({ children }) => {
     const [ph, setPH] = useState(7);
+    const [phTolerance, setPhTolerance] = useState(7);
+    const [phToleranceRange, setPhToleranceRange] = useState(0.5);
     const [phHistory, setPhHistory] = useState([
         { hour: '00:00', value: 7.0 },
         { hour: '01:00', value: 7.1 },
@@ -22,12 +24,12 @@ export const PHProvider = ({ children }) => {
         
         setPhHistory(prev => {
             const newHistory = [...prev, { hour: timeString, value: ph }];
-            return newHistory.slice(-24); // Guardar máximo 24 registros
+            return newHistory.slice(-24);
         });
     }, [ph]);
     
     return (
-        <PHContext.Provider value={{ ph, setPH, phHistory }}>
+        <PHContext.Provider value={{ ph, setPH, phTolerance, setPhTolerance, phToleranceRange, setPhToleranceRange, phHistory }}>
             {children}
         </PHContext.Provider>
     );

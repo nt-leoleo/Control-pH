@@ -1,17 +1,19 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import Header from "./Header";
 import ShowpH from "./ShowpH";
 import HandleAdmin from "./HandleAdmin";
 import PHBar from "./PHBar";
 import PHChart from "./PHChart";
+import SettingsModal from "./SettingsModal";
 import { PHContext } from "./PHContext";
 
 export default function App() {
   const { ph, setPH } = useContext(PHContext);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <>
-      <Header />
+      <Header onConfigClick={() => setSettingsOpen(true)} />
       <main>
         <ShowpH />
         <HandleAdmin />
@@ -35,6 +37,7 @@ export default function App() {
           }}
         />
       </main>
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }
