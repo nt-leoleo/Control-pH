@@ -172,3 +172,53 @@
 .btnCancel:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
+.numberInput {
+    width: 100%;
+    padding: 0.6em;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5em;
+    background-color: rgba(127, 255, 212, 0.1);
+    color: whitesmoke;
+    font-size: 0.95em;
+    text-align: center;
+}
+
+.numberInput:focus {
+    outline: none;
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.15);
+}
+
+.selectContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7em;
+    margin-bottom: 1.5em;
+}
+
+.selectContainer label {
+    color: whitesmoke;
+    font-size: 1em;
+    font-weight: 500;
+}
+
+.selectInput {
+    padding: 0.7em;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5em;
+    background-color: rgb(30, 18, 50);
+    color: whitesmoke;
+    font-size: 0.95em;
+    cursor: pointer;
+}
+
+.selectInput:focus {
+    outline: none;
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.1);
+}
+
+.selectInput option {
+    background-color: rgb(41, 25, 66);
+    color: whitesmoke;
+}

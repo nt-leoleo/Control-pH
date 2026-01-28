@@ -1,0 +1,173 @@
+.manualDosingContainer {
+    width: 90%;
+    margin: 2em auto;
+    padding: 1.5em;
+    border-radius: 1em;
+    border: 1px solid rgba(255, 255, 255, 0.158);
+    background-color: rgb(41, 25, 66);
+    box-shadow: rgba(0, 0, 0, 0.493) 0.4em 0.4em 2em;
+}
+
+.manualDosingContainer h3 {
+    color: whitesmoke;
+    margin-top: 0;
+    margin-bottom: 1.5em;
+    text-align: center;
+    font-size: 1.2em;
+}
+
+.dosingSection {
+    margin-bottom: 1.5em;
+}
+
+.dosingSection label {
+    display: block;
+    color: whitesmoke;
+    font-size: 1em;
+    font-weight: 500;
+    margin-bottom: 0.7em;
+}
+
+.productButtons {
+    display: flex;
+    gap: 1em;
+    justify-content: center;
+}
+
+.productBtn {
+    padding: 0.8em 1.5em;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5em;
+    background-color: transparent;
+    color: whitesmoke;
+    font-size: 0.95em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.productBtn:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.productBtn.active {
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.productBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.productBtn.small {
+    padding: 0.6em 1em;
+    font-size: 0.85em;
+}
+
+.timeInputs {
+    display: flex;
+    gap: 1em;
+    justify-content: center;
+}
+
+.timeGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.timeGroup input {
+    width: 80px;
+    padding: 0.6em;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5em;
+    background-color: rgba(127, 255, 212, 0.1);
+    color: whitesmoke;
+    font-size: 1em;
+    text-align: center;
+}
+
+.timeGroup input:focus {
+    outline: none;
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.15);
+}
+
+.timeGroup span {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9em;
+}
+
+.litersInput {
+    width: 100%;
+    max-width: 200px;
+    display: block;
+    margin: 0 auto;
+    padding: 0.8em;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5em;
+    background-color: rgba(127, 255, 212, 0.1);
+    color: whitesmoke;
+    font-size: 1em;
+    text-align: center;
+}
+
+.litersInput:focus {
+    outline: none;
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.15);
+}
+
+.dosifyBtn {
+    display: block;
+    margin: 2em auto 0 auto;
+    padding: 1em 2.5em;
+    border: none;
+    border-radius: 0.5em;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: rgb(22, 13, 36);
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.dosifyBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(34, 197, 94, 0.5);
+}
+
+.dosifyBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.dosifyBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+@media (max-width: 600px) {
+    .manualDosingContainer {
+        width: 95vw;
+        padding: 1em;
+    }
+
+    .productButtons {
+        flex-direction: column;
+    }
+
+    .timeInputs {
+        flex-direction: column;
+    }
+
+    .timeGroup input {
+        width: 100%;
+    }
+}

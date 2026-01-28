@@ -4,13 +4,20 @@ import ShowpH from "./ShowpH";
 import HandleAdmin from "./HandleAdmin";
 import PHBar from "./PHBar";
 import PHChart from "./PHChart";
+import ManualDosing from "./ManualDosing";
+import Onboarding from "./Onboarding";
 import SettingsModal from "./SettingsModal";
 import ErrorNotification from "./ErrorNotification";
 import { PHContext } from "./PHContext";
 
 export default function App() {
-  const { ph, setPH, phTolerance, phToleranceRange, error, setError } = useContext(PHContext);
+  const { ph, setPH, phTolerance, phToleranceRange, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Si no está configurado, mostrar onboarding
+  if (!isConfigured) {
+    return <Onboarding />;
+  }
 
   const handlePHChange = (e) => {
     try {
@@ -45,6 +52,31 @@ export default function App() {
             color: 'whitesmoke'
           }}
         />
+        
+        {dosingMode === 'manual' && <ManualDosing />}
+
+        <div style={{
+          width: '90%',
+          margin: '2em auto 1em auto',
+          textAlign: 'center'
+        }}>
+          <button 
+            onClick={() => setDosingMode(dosingMode === 'automatic' ? 'manual' : 'automatic')}
+            style={{
+              padding: '0.8em 1.5em',
+              fontSize: '0.95em',
+              fontWeight: '600',
+              border: 'none',
+              borderRadius: '0.5em',
+              backgroundColor: dosingMode === 'automatic' ? '#3b82f6' : '#f59e0b',
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            Modo: {dosingMode === 'automatic' ? 'AUTOMÁTICO' : 'MANUAL'} → Cambiar a {dosingMode === 'automatic' ? 'MANUAL' : 'AUTOMÁTICO'}
+          </button>
+        </div>
       </main>
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {error && (

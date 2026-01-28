@@ -4,7 +4,13 @@ import { validatePHValue, validateTolerance, validateToleranceRange, logError, E
 export const PHContext = createContext(null);
 
 export const PHProvider = ({ children }) => {
-    const [ph, setPH] = useState(7.4); // pH inicial y ideal para piscinas
+    const [isConfigured, setIsConfigured] = useState(false); // Nueva: si pasó onboarding
+    const [poolVolume, setPoolVolume] = useState(null); // Litros de la piscina
+    const [alkalinity, setAlkalinity] = useState(100); // ppm (80-120 ideal)
+    const [chlorineType, setChlorineType] = useState('sodium-hypochlorite'); // Tipo de cloro
+    const [acidType, setAcidType] = useState('muriatic'); // Tipo de ácido para bajar pH
+    
+    const [ph, setPH] = useState(7.4);
     const [phTolerance, setPhTolerance] = useState(7.4); // pH ideal para piscinas
     const [phToleranceRange, setPhToleranceRange] = useState(0.5);
     const [phHistory, setPhHistory] = useState([
@@ -17,6 +23,14 @@ export const PHProvider = ({ children }) => {
         { hour: '06:00', value: 7.1 },
     ]);
     const [error, setError] = useState(null);
+    const [dosingMode, setDosingMode] = useState('automatic'); // 'automatic' | 'manual'
+    const [manualDosingConfig, setManualDosingConfig] = useState({
+        product: 'sodium-hypochlorite', // Por defecto
+        minutes: 2,
+        seconds: 30,
+        liters: 5,
+    });
+    const [dosingHistory, setDosingHistory] = useState([]);
 
     // Wrapper para setPH con validación
     const safePHSet = (value) => {
@@ -77,6 +91,16 @@ export const PHProvider = ({ children }) => {
     
     return (
         <PHContext.Provider value={{ 
+            isConfigured,
+            setIsConfigured,
+            poolVolume,
+            setPoolVolume,
+            alkalinity,
+            setAlkalinity,
+            chlorineType,
+            setChlorineType,
+            acidType,
+            setAcidType,
             ph, 
             setPH: safePHSet, 
             phTolerance, 
@@ -85,7 +109,13 @@ export const PHProvider = ({ children }) => {
             setPhToleranceRange: safeToleranceRangeSet, 
             phHistory,
             error,
-            setError 
+            setError,
+            dosingMode,
+            setDosingMode,
+            manualDosingConfig,
+            setManualDosingConfig,
+            dosingHistory,
+            setDosingHistory
         }}>
             {children}
         </PHContext.Provider>
