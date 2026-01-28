@@ -7,4 +7,22 @@ export default defineConfig({
     react(),
     svgr(),
   ],
+  base: '/',
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ['recharts'],
+        },
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    strictPort: false,
+  },
 })
+
+
