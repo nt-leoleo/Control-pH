@@ -4,7 +4,7 @@ import { validatePHValue, validateTolerance, validateToleranceRange, logError, E
 export const PHContext = createContext(null);
 
 export const PHProvider = ({ children }) => {
-    const [ph, setPH] = useState(7);
+    const [ph, setPH] = useState(7.4); // pH inicial y ideal para piscinas
     const [phTolerance, setPhTolerance] = useState(7.4); // pH ideal para piscinas
     const [phToleranceRange, setPhToleranceRange] = useState(0.5);
     const [phHistory, setPhHistory] = useState([
