@@ -5,11 +5,20 @@ import HandleAdmin from "./HandleAdmin";
 import PHBar from "./PHBar";
 import PHChart from "./PHChart";
 import SettingsModal from "./SettingsModal";
+import ErrorNotification from "./ErrorNotification";
 import { PHContext } from "./PHContext";
 
 export default function App() {
-  const { ph, setPH } = useContext(PHContext);
+  const { ph, setPH, phTolerance, phToleranceRange, error, setError } = useContext(PHContext);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const handlePHChange = (e) => {
+    try {
+      setPH(parseFloat(e.target.value));
+    } catch (err) {
+      setError({ type: 'error', message: err.message });
+    }
+  };
 
   return (
     <>
@@ -22,7 +31,7 @@ export default function App() {
         <input 
           type="number" 
           value={ph} 
-          onChange={(e) => setPH(parseFloat(e.target.value))}
+          onChange={handlePHChange}
           min="6"
           max="8"
           step="0.1"
@@ -38,6 +47,13 @@ export default function App() {
         />
       </main>
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {error && (
+        <ErrorNotification 
+          message={error.message} 
+          type={error.type || 'error'} 
+          duration={5000}
+        />
+      )}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
+import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
 
 export const PHContext = createContext(null);
 
@@ -15,21 +16,77 @@ export const PHProvider = ({ children }) => {
         { hour: '05:00', value: 7.3 },
         { hour: '06:00', value: 7.1 },
     ]);
+    const [error, setError] = useState(null);
+
+    // Wrapper para setPH con validación
+    const safePHSet = (value) => {
+        try {
+            const validatedValue = validatePHValue(value);
+            setPH(validatedValue);
+            setError(null);
+        } catch (err) {
+            logError('PH_VALIDATION_ERROR', err.message, { value });
+            setError({ type: 'error', message: err.message });
+        }
+    };
+
+    // Wrapper para setPhTolerance con validación
+    const safeToleranceSet = (value) => {
+        try {
+            const validatedValue = parseFloat(value);
+            if (isNaN(validatedValue)) {
+                throw new Error(ErrorMessages.INVALID_INPUT);
+            }
+            validateToleranceRange(validatedValue, phToleranceRange);
+            setPhTolerance(validatedValue);
+            setError(null);
+        } catch (err) {
+            logError('TOLERANCE_VALIDATION_ERROR', err.message, { value });
+            setError({ type: 'error', message: err.message });
+        }
+    };
+
+    // Wrapper para setPhToleranceRange con validación
+    const safeToleranceRangeSet = (value) => {
+        try {
+            const validatedValue = validateTolerance(value);
+            validateToleranceRange(phTolerance, validatedValue);
+            setPhToleranceRange(validatedValue);
+            setError(null);
+        } catch (err) {
+            logError('TOLERANCE_RANGE_VALIDATION_ERROR', err.message, { value });
+            setError({ type: 'error', message: err.message });
+        }
+    };
 
     useEffect(() => {
-        const now = new Date();
-        const hour = now.getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const timeString = `${hour}:${minutes}`;
-        
-        setPhHistory(prev => {
-            const newHistory = [...prev, { hour: timeString, value: ph }];
-            return newHistory.slice(-24);
-        });
+        try {
+            const now = new Date();
+            const hour = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const timeString = `${hour}:${minutes}`;
+            
+            setPhHistory(prev => {
+                const newHistory = [...prev, { hour: timeString, value: ph }];
+                return newHistory.slice(-24);
+            });
+        } catch (err) {
+            logError('HISTORY_UPDATE_ERROR', err.message, { ph });
+        }
     }, [ph]);
     
     return (
-        <PHContext.Provider value={{ ph, setPH, phTolerance, setPhTolerance, phToleranceRange, setPhToleranceRange, phHistory }}>
+        <PHContext.Provider value={{ 
+            ph, 
+            setPH: safePHSet, 
+            phTolerance, 
+            setPhTolerance: safeToleranceSet, 
+            phToleranceRange, 
+            setPhToleranceRange: safeToleranceRangeSet, 
+            phHistory,
+            error,
+            setError 
+        }}>
             {children}
         </PHContext.Provider>
     );

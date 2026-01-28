@@ -1,16 +1,44 @@
 import './PHBar.css'
+import { useContext } from 'react';
+import { PHContext } from './PHContext';
 
 const PHBar = ({ph}) => {
+    const { phTolerance, phToleranceRange } = useContext(PHContext);
     const minPH = 6;
     const maxPH = 8;
     const cursorPosition = () => ((ph - minPH) / (maxPH - minPH)) * 100
+    const minRangePH = phTolerance - phToleranceRange;
+    const maxRangePH = phTolerance + phToleranceRange;
+    const minRangePosition = ((minRangePH - minPH) / (maxPH - minPH)) * 100;
+    const maxRangePosition = ((maxRangePH - minPH) / (maxPH - minPH)) * 100;
+
+    // Generar gradiente dinámico basado en la configuración
+    const gradientStyle = {
+        background: `linear-gradient(
+            to right,
+            #ef4444 0%,
+            #ef4444 ${Math.max(0, minRangePosition)}%,
+            #22c55e ${Math.max(0, minRangePosition)}%,
+            #22c55e ${Math.min(100, maxRangePosition)}%,
+            #f59e0b ${Math.min(100, maxRangePosition)}%,
+            #f59e0b 100%
+        )`
+    };
+
     return (
-        <div className="bar">
-            <div className="gradientBg" />
-            <div 
-                className="indicatorCursor" 
-                style={{left: `${cursorPosition()}%`}}
-            />
+        <div className="barContainer">
+            <div className="barLabels">
+                <span className="label">{minRangePH.toFixed(1)}</span>
+                <span className="label ideal">{phTolerance.toFixed(1)}</span>
+                <span className="label">{maxRangePH.toFixed(1)}</span>
+            </div>
+            <div className="bar">
+                <div className="gradientBg" style={gradientStyle} />
+                <div 
+                    className="indicatorCursor" 
+                    style={{left: `${cursorPosition()}%`}}
+                />
+            </div>
         </div>
     );
 }
