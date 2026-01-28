@@ -4,23 +4,26 @@
     align-items: center;
     max-width: min-content;
     
-    gap: 1em;
-    padding: 1em 5em;
+    gap: 0em;
+    padding: 1em 4.5em;
     
-    border-radius: 1em;
-    border: 1px solid greenyellow;
+    border-radius: 3em;
+    border: 1px solid rgba(255, 255, 255, 0.158); 
+    background-color: rgb(41, 25, 66);
+    box-shadow: rgba(0, 0, 0, 0.493) 0.4em 0.4em 2em;
 
     margin: auto;
+    margin-bottom: 3em;
 }
 .ph {
-    font-size: 2em;
+    font-size: 1.5em;
     color: whitesmoke;
 }
-b {
-    font-size: 3em;
+.numpH {
+    font-size: 5em;
     color: greenyellow;
 }
 .state {
-    font-size: 1em;
+    font-size: 1.5em;
     text-align: center;
 }

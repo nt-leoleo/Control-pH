@@ -1,4 +1,4 @@
-// import SettingsIcon from '../assets/settings.svg?react'
+import './ConfigButton.css'
 export const SettingsIcon = (props) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 

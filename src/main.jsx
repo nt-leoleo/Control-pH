@@ -1,14 +1,13 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './index.css';
-import Header from './Header.jsx';
-import ShowpH from './ShowpH.jsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./app";
+import { PHProvider } from "./PHContext";
+import "./index.css";
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <Header />
-    <main>
-      <ShowpH />
-    </main>
-  </StrictMode>,
-)
+    <PHProvider>
+      <App />
+    </PHProvider>
+  </StrictMode>
+);

@@ -4,15 +4,18 @@ import './header.css'
 
 const Header = () => {
     return (
+        <>
         <header>
             <GoBack />
             <span>Control pH</span>
             <ConfigButton />
             {/* <SettingsPanel /> */}
-        {/* Header
-        <     Control pH     +
-        */}
+            {/*    Header
+            <     Control pH     +
+            */}
         </header>
+        <hr />
+        </>
     );
 }
 

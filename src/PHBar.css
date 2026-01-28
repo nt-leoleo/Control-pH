@@ -1,0 +1,29 @@
+.bar {
+    position: relative;
+    width: 90%;
+    height: 1em;
+    border-radius: 100em;
+    overflow: hidden;
+    margin: auto;
+}
+
+.gradientBg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to right,
+        #ef4444 0%,    /* rojo */
+        #22c55e 40%,   /* verde */
+        #22c55e 60%,   /* verde */
+        #f59e0b 100%   /* naranja */
+    );
+}
+
+.indicatorCursor {
+    position: absolute;
+    top: -6px;
+    width: 2px;
+    height: 24px;
+    background: white;
+    transition: left 0.3s ease;
+}

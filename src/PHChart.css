@@ -1,0 +1,17 @@
+.chartContainer {
+    width: 90%;
+    margin: 2em auto;
+    padding: 1.5em;
+    border-radius: 1em;
+    border: 1px solid rgba(255, 255, 255, 0.158);
+    background-color: rgb(41, 25, 66);
+    box-shadow: rgba(0, 0, 0, 0.493) 0.4em 0.4em 2em;
+}
+
+.chartContainer h3 {
+    color: whitesmoke;
+    margin-top: 0;
+    margin-bottom: 1em;
+    text-align: center;
+    font-size: 1.2em;
+}
