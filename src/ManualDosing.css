@@ -171,3 +171,99 @@
         width: 100%;
     }
 }
+/* Estilos para el estimado de pH */
+.phEstimateSection {
+    margin: 1.5em 0;
+    padding: 1em;
+    border-radius: 0.8em;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.estimateHeader {
+    text-align: center;
+    margin-bottom: 1em;
+    color: #22c55e;
+    font-weight: 600;
+    font-size: 1em;
+}
+
+.phEstimate {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+}
+
+.estimateRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5em 0;
+    color: whitesmoke;
+}
+
+.estimateRow.final {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 1em;
+    margin-top: 0.5em;
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.currentPh {
+    color: #60a5fa;
+    font-weight: 600;
+}
+
+.phChange.positive {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.phChange.negative {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.finalPh.valid {
+    color: #22c55e;
+    font-weight: 700;
+    font-size: 1.2em;
+}
+
+.finalPh.invalid {
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 1.2em;
+}
+
+.phEstimate.warning {
+    border-color: rgba(239, 68, 68, 0.3);
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.warningText {
+    text-align: center;
+    color: #ef4444;
+    font-weight: 600;
+    font-size: 0.9em;
+    margin-top: 0.5em;
+    padding: 0.5em;
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: 0.5em;
+}
+
+@media (max-width: 600px) {
+    .estimateRow {
+        font-size: 0.9em;
+    }
+    
+    .estimateRow.final {
+        font-size: 1em;
+    }
+    
+    .finalPh.valid,
+    .finalPh.invalid {
+        font-size: 1.1em;
+    }
+}

@@ -7,6 +7,29 @@ const ManualDosing = () => {
     const { manualDosingConfig, setManualDosingConfig, dosingHistory, setDosingHistory, setError, ph, setPH, poolVolume, alkalinity } = useContext(PHContext);
     const [isAnimating, setIsAnimating] = useState(false);
 
+    // Calcular el pH estimado después de la dosificación
+    const calculateEstimatedPH = () => {
+        const { product, liters } = manualDosingConfig;
+        
+        if (!poolVolume || liters <= 0) {
+            return null;
+        }
+
+        try {
+            const phChange = calculatePHChange(product, liters, poolVolume, alkalinity || 100);
+            const estimatedPH = ph + phChange;
+            return {
+                change: phChange,
+                final: estimatedPH,
+                isValid: estimatedPH >= 6.0 && estimatedPH <= 8.5
+            };
+        } catch (error) {
+            return null;
+        }
+    };
+
+    const phEstimate = calculateEstimatedPH();
+
     const handleProductChange = (product) => {
         setManualDosingConfig(prev => ({
             ...prev,
@@ -187,6 +210,38 @@ const ManualDosing = () => {
                     className="litersInput"
                 />
             </div>
+
+            {/* Estimado de pH final */}
+            {phEstimate && (
+                <div className="phEstimateSection">
+                    <div className="estimateHeader">
+                        <span>📊 Estimado después de dosificar:</span>
+                    </div>
+                    <div className={`phEstimate ${phEstimate.isValid ? 'valid' : 'warning'}`}>
+                        <div className="estimateRow">
+                            <span>pH actual:</span>
+                            <span className="currentPh">{ph.toFixed(2)}</span>
+                        </div>
+                        <div className="estimateRow">
+                            <span>Cambio esperado:</span>
+                            <span className={`phChange ${phEstimate.change >= 0 ? 'positive' : 'negative'}`}>
+                                {phEstimate.change >= 0 ? '+' : ''}{phEstimate.change.toFixed(2)}
+                            </span>
+                        </div>
+                        <div className="estimateRow final">
+                            <span>pH final estimado:</span>
+                            <span className={`finalPh ${phEstimate.isValid ? 'valid' : 'invalid'}`}>
+                                {phEstimate.final.toFixed(2)}
+                            </span>
+                        </div>
+                        {!phEstimate.isValid && (
+                            <div className="warningText">
+                                ⚠️ pH fuera del rango seguro (6.0 - 8.5)
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <button 
                 className="dosifyBtn" 

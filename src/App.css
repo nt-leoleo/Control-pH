@@ -1,0 +1,58 @@
+.ph-input {
+  margin: 2em auto;
+  padding: 0.5em;
+  fontSize: 1em;
+  border-radius: 0.5em;
+  border: 2px solid transparent;
+  background-color: rgba(127, 255, 212, 0.2);
+  color: whitesmoke;
+  transition: all 0.3s ease;
+}
+
+.ph-input:focus {
+  outline: none;
+  background-color: rgba(127, 255, 212, 0.3);
+}
+
+.ph-input--out-of-range {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.ph-input--in-range {
+  border-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.mode-toggle-container {
+  width: 90%;
+  margin: 2em auto 1em auto;
+  text-align: center;
+}
+
+.mode-toggle-button {
+  padding: 0.8em 1.5em;
+  font-size: 0.95em;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.5em;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-toggle-button--automatic {
+  background-color: #3b82f6;
+}
+
+.mode-toggle-button--automatic:hover {
+  background-color: #2563eb;
+}
+
+.mode-toggle-button--manual {
+  background-color: #f59e0b;
+}
+
+.mode-toggle-button--manual:hover {
+  background-color: #d97706;
+}

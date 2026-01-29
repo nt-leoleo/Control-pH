@@ -9,6 +9,7 @@ import Onboarding from "./Onboarding";
 import SettingsModal from "./SettingsModal";
 import ErrorNotification from "./ErrorNotification";
 import { PHContext } from "./PHContext";
+import "./App.css";
 
 export default function App() {
   const { ph, setPH, phTolerance, phToleranceRange, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
@@ -27,6 +28,9 @@ export default function App() {
     }
   };
 
+  // Validación visual para el input de pH
+  const isOutOfRange = Math.abs(ph - phTolerance) > phToleranceRange;
+
   return (
     <>
       <Header onConfigClick={() => setSettingsOpen(true)} />
@@ -42,37 +46,16 @@ export default function App() {
           min="6"
           max="8"
           step="0.1"
-          style={{
-            margin: '2em auto',
-            padding: '0.5em',
-            fontSize: '1em',
-            borderRadius: '0.5em',
-            border: 'none',
-            backgroundColor: 'rgba(127, 255, 212, 0.2)',
-            color: 'whitesmoke'
-          }}
+          className={`ph-input ${isOutOfRange ? 'ph-input--out-of-range' : 'ph-input--in-range'}`}
+          title={isOutOfRange ? `pH fuera del rango ideal (${phTolerance} ± ${phToleranceRange})` : 'pH dentro del rango ideal'}
         />
         
         {dosingMode === 'manual' && <ManualDosing />}
 
-        <div style={{
-          width: '90%',
-          margin: '2em auto 1em auto',
-          textAlign: 'center'
-        }}>
+        <div className="mode-toggle-container">
           <button 
             onClick={() => setDosingMode(dosingMode === 'automatic' ? 'manual' : 'automatic')}
-            style={{
-              padding: '0.8em 1.5em',
-              fontSize: '0.95em',
-              fontWeight: '600',
-              border: 'none',
-              borderRadius: '0.5em',
-              backgroundColor: dosingMode === 'automatic' ? '#3b82f6' : '#f59e0b',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
+            className={`mode-toggle-button ${dosingMode === 'automatic' ? 'mode-toggle-button--automatic' : 'mode-toggle-button--manual'}`}
           >
             Modo: {dosingMode === 'automatic' ? 'AUTOMÁTICO' : 'MANUAL'} → Cambiar a {dosingMode === 'automatic' ? 'MANUAL' : 'AUTOMÁTICO'}
           </button>

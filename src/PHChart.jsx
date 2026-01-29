@@ -22,6 +22,28 @@ const WarningIcon = () => (
 const PHChart = () => {
     const { phHistory, ph, phTolerance, phToleranceRange } = useContext(PHContext);
 
+    // Calcular el rango dinámico del eje Y basado en los datos
+    const calculateYAxisDomain = () => {
+        if (!phHistory || phHistory.length === 0) {
+            return [6, 8]; // Valores por defecto si no hay datos
+        }
+
+        const values = phHistory.map(item => item.value);
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+        
+        // Agregar un margen del 10% para mejor visualización
+        const range = maxValue - minValue;
+        const margin = Math.max(range * 0.1, 0.2); // Mínimo margen de 0.2
+        
+        const yMin = Math.max(minValue - margin, 6.0); // No bajar de 6.0
+        const yMax = Math.min(maxValue + margin, 8.5); // No subir de 8.5
+        
+        return [yMin, yMax];
+    };
+
+    const yAxisDomain = calculateYAxisDomain();
+
     const getStatus = () => {
         if (ph < phTolerance - phToleranceRange) {
             return { color: '#ef4444', label: 'Bajo' };
@@ -54,9 +76,10 @@ const PHChart = () => {
                         tick={{ fontSize: 12 }}
                     />
                     <YAxis 
-                        domain={[6, 8]} 
+                        domain={yAxisDomain} 
                         stroke="rgba(255, 255, 255, 0.6)"
                         tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => value.toFixed(1)}
                     />
                     <Tooltip 
                         contentStyle={{
