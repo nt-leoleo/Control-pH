@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sistema Remoto - Control Pileta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .ph-display {
+            font-size: 2em;
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            border: 3px solid #2196F3;
+            border-radius: 10px;
+            color: #2196F3;
+        }
+        button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #1976D2;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Sistema Remoto - Control Pileta</h1>
+        <p>Esta página prueba la conectividad con el sistema remoto de monitoreo de pH.</p>
+        
+        <div class="test-result info">
+            <strong>Estado:</strong> <span id="status">Iniciando...</span>
+        </div>
+        
+        <div class="ph-display" id="phDisplay">
+            -- pH
+        </div>
+        
+        <div>
+            <button onclick="testConnection()">🔍 Probar Conexión</button>
+            <button onclick="getPHData()">🧪 Obtener Datos pH</button>
+            <button onclick="startMonitoring()">▶️ Iniciar Monitoreo</button>
+            <button onclick="stopMonitoring()">⏹️ Detener Monitoreo</button>
+            <button onclick="clearLog()">🗑️ Limpiar Log</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>📊 Información del Sensor</h3>
+        <div id="sensorInfo">
+            <div class="test-result info">Esperando datos...</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>📝 Log de Actividad</h3>
+        <div id="log" class="log">Iniciando test del sistema remoto...\n</div>
+    </div>
+
+    <script>
+        // Configuración de la API remota
+        const ESP32_CONFIG = {
+            CLOUD_API: 'https://api.jsonbin.io/v3/b/6756a1e5ad19ca34f8c8f123/latest',
+            API_KEY: '$2a$10$8VnzQzKvV.Hn8fGkGkGkGu8VnzQzKvV.Hn8fGkGkGu8VnzQzKvV.H',
+            MAX_DATA_AGE: 300000 // 5 minutos
+        };
+
+        let monitoringInterval = null;
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('log');
+            logElement.textContent += `${timestamp} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.parentElement.className = `test-result ${type}`;
+        }
+
+        function updatePHDisplay(ph) {
+            const phElement = document.getElementById('phDisplay');
+            if (ph !== null && ph !== undefined) {
+                phElement.textContent = `${ph.toFixed(2)} pH`;
+                phElement.style.color = ph < 6.5 ? '#FF5722' : ph > 7.5 ? '#9C27B0' : '#4CAF50';
+            } else {
+                phElement.textContent = '-- pH';
+                phElement.style.color = '#2196F3';
+            }
+        }
+
+        function updateSensorInfo(data) {
+            const infoElement = document.getElementById('sensorInfo');
+            if (data) {
+                const dataAge = Math.round((Date.now() - data.timestamp) / 1000);
+                infoElement.innerHTML = `
+                    <div class="test-result success">
+                        <strong>Device ID:</strong> ${data.device_id || 'N/A'}<br>
+                        <strong>Ubicación:</strong> ${data.location || 'N/A'}<br>
+                        <strong>Voltaje:</strong> ${data.voltage ? data.voltage.toFixed(3) + 'V' : 'N/A'}<br>
+                        <strong>WiFi RSSI:</strong> ${data.wifi_rssi || 'N/A'} dBm<br>
+                        <strong>Estado:</strong> ${data.status || 'N/A'}<br>
+                        <strong>Edad de datos:</strong> ${dataAge}s<br>
+                        <strong>Uptime:</strong> ${data.uptime || 'N/A'}s
+                    </div>
+                `;
+            } else {
+                infoElement.innerHTML = '<div class="test-result error">Sin datos del sensor</div>';
+            }
+        }
+
+        async function testConnection() {
+            log('🔍 Probando conexión con la nube...');
+            updateStatus('Probando conexión...', 'info');
+            
+            try {
+                const response = await fetch(ESP32_CONFIG.CLOUD_API, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': ESP32_CONFIG.API_KEY,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Conexión exitosa con la nube');
+                    log(`📡 Datos recibidos: ${JSON.stringify(data.record, null, 2)}`);
+                    
+                    const sensorData = data.record;
+                    const dataAge = Date.now() - sensorData.timestamp;
+                    
+                    if (dataAge < ESP32_CONFIG.MAX_DATA_AGE) {
+                        updateStatus('Conectado - Datos recientes', 'success');
+                        log(`✅ Datos recientes (${Math.round(dataAge/1000)}s de antigüedad)`);
+                    } else {
+                        updateStatus('Conectado - Datos obsoletos', 'warning');
+                        log(`⚠️ Datos obsoletos (${Math.round(dataAge/1000)}s de antigüedad)`);
+                    }
+                    
+                    updateSensorInfo(sensorData);
+                    updatePHDisplay(sensorData.ph);
+                    
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error de conexión: ${error.message}`);
+                updateStatus('Error de conexión', 'error');
+                updateSensorInfo(null);
+            }
+        }
+
+        async function getPHData() {
+            log('🧪 Obteniendo datos de pH...');
+            
+            try {
+                const response = await fetch(ESP32_CONFIG.CLOUD_API, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': ESP32_CONFIG.API_KEY,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const sensorData = data.record;
+                    
+                    log(`✅ pH obtenido: ${sensorData.ph}`);
+                    log(`📊 Voltaje: ${sensorData.voltage}V`);
+                    log(`📡 WiFi: ${sensorData.wifi_rssi} dBm`);
+                    
+                    updatePHDisplay(sensorData.ph);
+                    updateSensorInfo(sensorData);
+                    
+                    const dataAge = Date.now() - sensorData.timestamp;
+                    if (dataAge < ESP32_CONFIG.MAX_DATA_AGE) {
+                        updateStatus(`pH: ${sensorData.ph.toFixed(2)} (Datos recientes)`, 'success');
+                    } else {
+                        updateStatus(`pH: ${sensorData.ph.toFixed(2)} (Datos obsoletos)`, 'warning');
+                    }
+                    
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error obteniendo pH: ${error.message}`);
+                updateStatus('Error obteniendo datos', 'error');
+            }
+        }
+
+        function startMonitoring() {
+            if (monitoringInterval) {
+                log('⚠️ El monitoreo ya está activo');
+                return;
+            }
+            
+            log('▶️ Iniciando monitoreo automático (cada 30s)...');
+            updateStatus('Monitoreando...', 'info');
+            
+            // Primera lectura inmediata
+            getPHData();
+            
+            // Lecturas periódicas cada 30 segundos
+            monitoringInterval = setInterval(() => {
+                log('🔄 Verificación automática...');
+                getPHData();
+            }, 30000);
+        }
+
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                log('⏹️ Monitoreo detenido');
+                updateStatus('Monitoreo detenido', 'info');
+            } else {
+                log('⚠️ El monitoreo no estaba activo');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = 'Log limpiado...\n';
+        }
+
+        // Inicialización automática
+        window.onload = function() {
+            log('🚀 Sistema de test remoto iniciado');
+            log('🌐 API: ' + ESP32_CONFIG.CLOUD_API);
+            log('⏰ Timeout de datos: ' + (ESP32_CONFIG.MAX_DATA_AGE / 1000) + 's');
+            
+            // Test inicial automático
+            setTimeout(testConnection, 1000);
+        };
+    </script>
+</body>
+</html>

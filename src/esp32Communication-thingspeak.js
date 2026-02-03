@@ -1,9 +1,9 @@
 // Comunicación con ESP32 remoto - Datos desde ThingSpeak
 export const ESP32_CONFIG = {
-    // API de ThingSpeak - TU CANAL PERSONAL
-    CHANNEL_ID: '3249157',
+    // API de ThingSpeak - Canal público de prueba
+    CHANNEL_ID: '2739863',
     READ_API_KEY: '', // No necesario para canales públicos
-    THINGSPEAK_API: 'https://api.thingspeak.com/channels/3249157/feeds/last.json',
+    THINGSPEAK_API: 'https://api.thingspeak.com/channels/2739863/feeds/last.json',
     TIMEOUT: 10000,
     RETRY_INTERVAL: 30000, // Verificar cada 30 segundos
     MAX_DATA_AGE: 300000   // 5 minutos - considerar datos obsoletos después de este tiempo
@@ -166,4 +166,53 @@ export const useESP32Connection = (onDataReceived, onConnectionChange) => {
     };
     
     return { startConnection, stopConnection };
+};
+
+// Función para obtener estadísticas del sensor remoto
+export const getRemoteStats = async () => {
+    try {
+        const response = await fetch(ESP32_CONFIG.THINGSPEAK_API);
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            return {
+                channel_id: ESP32_CONFIG.CHANNEL_ID,
+                entry_id: data.entry_id,
+                location: 'piscina_principal',
+                wifi_signal: data.field3 + ' dBm',
+                last_update: new Date(data.created_at).toLocaleString(),
+                uptime: data.field4 + 's',
+                source: 'ThingSpeak'
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error obteniendo estadísticas:', error);
+        return null;
+    }
+};
+
+// Función para obtener el historial de datos (últimas 100 entradas)
+export const getPHHistory = async (results = 100) => {
+    try {
+        const url = `https://api.thingspeak.com/channels/${ESP32_CONFIG.CHANNEL_ID}/feeds.json?results=${results}`;
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            const data = await response.json();
+            return data.feeds.map(feed => ({
+                timestamp: new Date(feed.created_at),
+                ph: parseFloat(feed.field1),
+                voltage: parseFloat(feed.field2),
+                wifi_rssi: parseInt(feed.field3),
+                uptime: parseInt(feed.field4),
+                entry_id: feed.entry_id
+            }));
+        }
+        return [];
+    } catch (error) {
+        console.error('Error obteniendo historial:', error);
+        return [];
+    }
 };
