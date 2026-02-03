@@ -1,5 +1,6 @@
 import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
+import WiFiConfig from './WiFiConfig';
 import './SettingsModal.css';
 import { logError } from './errorUtils';
 
@@ -10,6 +11,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
     const [tempAlkalinity, setTempAlkalinity] = useState(alkalinity);
     const [tempChlorineType, setTempChlorineType] = useState(chlorineType);
     const [tempAcidType, setTempAcidType] = useState(acidType);
+    const [wifiConfigOpen, setWifiConfigOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -53,11 +55,17 @@ const SettingsModal = ({ isOpen, onClose }) => {
             setTempAlkalinity(alkalinity);
             setTempChlorineType(chlorineType);
             setTempAcidType(acidType);
+            setWifiConfigOpen(false); // Cerrar también el WiFi config
             onClose();
         } catch (err) {
             logError('SETTINGS_CANCEL_ERROR', err.message);
             setError({ type: 'error', message: 'Error al cancelar la configuración' });
         }
+    };
+
+    const handleWifiConfigSuccess = () => {
+        setWifiConfigOpen(false);
+        setError({ type: 'success', message: 'WiFi configurado correctamente. El ESP32 se reiniciará.' });
     };
 
     if (!isOpen) return null;
@@ -142,6 +150,17 @@ const SettingsModal = ({ isOpen, onClose }) => {
                             <option value="bisulfate">Bisulfato de Sodio</option>
                         </select>
                     </div>
+
+                    <div className="esp32ConfigSection">
+                        <h3>🔧 Configuración del ESP32</h3>
+                        <p>Configura la conexión WiFi del dispositivo ESP32</p>
+                        <button 
+                            className="esp32ConfigButton"
+                            onClick={() => setWifiConfigOpen(true)}
+                        >
+                            📡 Configuración de ESP32
+                        </button>
+                    </div>
                 </div>
 
                 <div className="modalFooter">
@@ -149,6 +168,13 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     <button className="btnSave" onClick={handleSave}>Guardar</button>
                 </div>
             </div>
+            
+            {/* Componente de configuración WiFi */}
+            <WiFiConfig 
+                isOpen={wifiConfigOpen}
+                onClose={() => setWifiConfigOpen(false)}
+                onSuccess={handleWifiConfigSuccess}
+            />
         </div>
     );
 };

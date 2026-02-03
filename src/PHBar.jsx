@@ -4,8 +4,8 @@ import { PHContext } from './PHContext';
 
 const PHBar = ({ph}) => {
     const { phTolerance, phToleranceRange } = useContext(PHContext);
-    const minPH = 6;
-    const maxPH = 8;
+    const minPH = 0;  // Rango completo de pH
+    const maxPH = 14; // Rango completo de pH
     const cursorPosition = () => ((ph - minPH) / (maxPH - minPH)) * 100
     const minRangePH = phTolerance - phToleranceRange;
     const maxRangePH = phTolerance + phToleranceRange;
@@ -32,19 +32,25 @@ const PHBar = ({ph}) => {
                     className="label" 
                     style={{left: `0`}}
                 >
-                    {minRangePH.toFixed(1)}
+                    0
+                </span>
+                <span 
+                    className="label" 
+                    style={{left: `${(7 / 14) * 100}%`}}
+                >
+                    7 (Neutro)
                 </span>
                 <span 
                     className="label ideal" 
                     style={{left: `${((phTolerance - minPH) / (maxPH - minPH)) * 100}%`}}
                 >
-                    {phTolerance.toFixed(1)}
+                    {phTolerance.toFixed(1)} (Ideal)
                 </span>
                 <span 
                     className="label" 
                     style={{right: `0`}}
                 >
-                    {maxRangePH.toFixed(1)}
+                    14
                 </span>
             </div>
             <div className="bar">

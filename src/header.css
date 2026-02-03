@@ -7,6 +7,12 @@ header {
     margin: 0;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .icon {
     width: 1.5em;
     height: 1.5em;
@@ -31,4 +37,19 @@ hr {
     border: 1px solid rgba(255, 255, 255, 0.158); 
     margin: 0 1em 2em 1em;
     width: calc(100% - 2em);
+}
+
+/* Responsive para el header */
+@media (max-width: 768px) {
+    header {
+        padding: 0.8em;
+    }
+    
+    .header-right {
+        gap: 8px;
+    }
+    
+    span {
+        font-size: 1.3em;
+    }
 }

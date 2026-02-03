@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect } from 'react';
 import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
+import { useESP32Connection, checkESP32Connection } from './esp32Communication';
 
 export const PHContext = createContext(null);
 
@@ -9,6 +10,10 @@ export const PHProvider = ({ children }) => {
     const [alkalinity, setAlkalinity] = useState(100); // ppm (80-120 ideal)
     const [chlorineType, setChlorineType] = useState('sodium-hypochlorite'); // Tipo de cloro
     const [acidType, setAcidType] = useState('muriatic'); // Tipo de ácido para bajar pH
+    
+    // Estado de conexión ESP32
+    const [esp32Connected, setEsp32Connected] = useState(false);
+    const [lastDataReceived, setLastDataReceived] = useState(null);
     
     const [ph, setPH] = useState(7.4);
     const [phTolerance, setPhTolerance] = useState(7.4); // pH ideal para piscinas
@@ -73,6 +78,34 @@ export const PHProvider = ({ children }) => {
         }
     };
 
+    // Comunicación con ESP32
+    const handleDataReceived = (phData) => {
+        try {
+            safePHSet(phData.ph);
+            setLastDataReceived(phData.timestamp);
+        } catch (error) {
+            logError('ESP32_DATA_ERROR', error.message, phData);
+        }
+    };
+
+    const handleConnectionChange = (isConnected) => {
+        setEsp32Connected(isConnected);
+        if (isConnected) {
+            setLastDataReceived(new Date());
+        }
+    };
+
+    const { startConnection, stopConnection } = useESP32Connection(
+        handleDataReceived,
+        handleConnectionChange
+    );
+
+    // Iniciar conexión ESP32
+    useEffect(() => {
+        startConnection();
+        return () => stopConnection();
+    }, []);
+
     useEffect(() => {
         try {
             const now = new Date();
@@ -101,6 +134,10 @@ export const PHProvider = ({ children }) => {
             setChlorineType,
             acidType,
             setAcidType,
+            esp32Connected,
+            setEsp32Connected,
+            lastDataReceived,
+            setLastDataReceived,
             ph, 
             setPH: safePHSet, 
             phTolerance, 

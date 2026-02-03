@@ -21,7 +21,7 @@ const ManualDosing = () => {
             return {
                 change: phChange,
                 final: estimatedPH,
-                isValid: estimatedPH >= 6.0 && estimatedPH <= 8.5
+                isValid: estimatedPH >= 0 && estimatedPH <= 14 // Permitir rango completo de pH
             };
         } catch (error) {
             return null;

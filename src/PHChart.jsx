@@ -25,7 +25,7 @@ const PHChart = () => {
     // Calcular el rango dinámico del eje Y basado en los datos
     const calculateYAxisDomain = () => {
         if (!phHistory || phHistory.length === 0) {
-            return [6, 8]; // Valores por defecto si no hay datos
+            return [0, 14]; // Rango completo de pH si no hay datos
         }
 
         const values = phHistory.map(item => item.value);
@@ -34,10 +34,10 @@ const PHChart = () => {
         
         // Agregar un margen del 10% para mejor visualización
         const range = maxValue - minValue;
-        const margin = Math.max(range * 0.1, 0.2); // Mínimo margen de 0.2
+        const margin = Math.max(range * 0.1, 0.5); // Mínimo margen de 0.5
         
-        const yMin = Math.max(minValue - margin, 6.0); // No bajar de 6.0
-        const yMax = Math.min(maxValue + margin, 8.5); // No subir de 8.5
+        const yMin = Math.max(minValue - margin, 0); // No bajar de 0
+        const yMax = Math.min(maxValue + margin, 14); // No subir de 14
         
         return [yMin, yMax];
     };

@@ -1,0 +1,51 @@
+import { useContext } from 'react';
+import { PHContext } from './PHContext';
+import { getESP32IP } from './esp32Communication';
+import './ConnectionStatus.css';
+
+const ConnectionStatus = () => {
+    const { esp32Connected, lastDataReceived } = useContext(PHContext);
+    
+    // Debug logging
+    console.log('🔍 [ConnectionStatus] Estado actual:', {
+        esp32Connected,
+        lastDataReceived,
+        timestamp: new Date().toISOString()
+    });
+    
+    const getStatusText = () => {
+        const esp32IP = getESP32IP();
+        if (esp32Connected) {
+            return `ESP32 (${esp32IP})`;
+        }
+        return 'ESP32 Desconectado';
+    };
+
+    const getTimeAgo = () => {
+        if (!lastDataReceived) return '';
+        
+        const now = new Date();
+        const diff = now - lastDataReceived;
+        const minutes = Math.floor(diff / 60000);
+        
+        if (minutes < 1) return 'Ahora';
+        if (minutes === 1) return 'Hace 1 minuto';
+        return `Hace ${minutes} minutos`;
+    };
+
+    return (
+        <div className={`connection-status ${esp32Connected ? 'connected' : 'disconnected'}`}>
+            <div className="connection-indicator">
+                <div className={`status-dot ${esp32Connected ? 'online' : 'offline'}`}></div>
+                <span className="status-text">{getStatusText()}</span>
+            </div>
+            {lastDataReceived && (
+                <div className="last-update">
+                    <span className="update-time">{getTimeAgo()}</span>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default ConnectionStatus;

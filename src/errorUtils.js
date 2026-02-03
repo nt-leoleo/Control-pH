@@ -6,8 +6,9 @@ export const validatePHValue = (value) => {
         throw new Error('El valor de pH debe ser un número válido');
     }
     
-    if (num < 6 || num > 8) {
-        throw new Error('El pH debe estar entre 6 y 8');
+    // Permitir cualquier valor de pH (0-14 es el rango teórico completo)
+    if (num < 0 || num > 14) {
+        throw new Error('El pH debe estar entre 0 y 14');
     }
     
     return num;
@@ -31,13 +32,16 @@ export const validateToleranceRange = (optimal, tolerance) => {
     let min = optimal - tolerance;
     let max = optimal + tolerance;
 
-    // Allow configuration outside 6-8 but warn the developer.
-    if (min < 6) {
-        console.warn(`validateToleranceRange: computed min ${min.toFixed(1)} is below 6. Allowing configuration but values may be out of display range.`);
+    // Permitir cualquier rango de pH sin warnings
+    // El rango completo de pH es 0-14
+    if (min < 0) {
+        console.warn(`validateToleranceRange: computed min ${min.toFixed(1)} is below 0. Clamping to 0.`);
+        min = 0;
     }
 
-    if (max > 8) {
-        console.warn(`validateToleranceRange: computed max ${max.toFixed(1)} is above 8. Allowing configuration but values may be out of display range.`);
+    if (max > 14) {
+        console.warn(`validateToleranceRange: computed max ${max.toFixed(1)} is above 14. Clamping to 14.`);
+        max = 14;
     }
 
     return { min, max };

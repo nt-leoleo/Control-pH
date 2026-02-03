@@ -1,0 +1,294 @@
+/* Estilos para el modal de configuración WiFi */
+.wifi-config-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1100; /* Mayor que el modal de configuración */
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.wifi-config-modal {
+    background-color: rgb(30, 18, 50);
+    border: 1px solid rgba(127, 255, 212, 0.3);
+    border-radius: 1em;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    width: min(600px, 95vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideInUp 0.4s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.wifi-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5em;
+    border-bottom: 1px solid rgba(127, 255, 212, 0.2);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(127, 255, 212, 0.05));
+}
+
+.wifi-config-header h2 {
+    margin: 0;
+    color: #22c55e;
+    font-size: 1.4em;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #22c55e;
+    font-size: 1.8em;
+    cursor: pointer;
+    padding: 0;
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5em;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background-color: rgba(34, 197, 94, 0.1);
+    transform: scale(1.1);
+}
+
+.wifi-config-content {
+    padding: 1.5em;
+}
+
+.error-message {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.6em;
+    padding: 1em;
+    margin-bottom: 1.5em;
+    color: #fca5a5;
+    font-size: 0.9em;
+}
+
+.connection-info {
+    background-color: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 0.6em;
+    padding: 1.2em;
+    margin-bottom: 1.5em;
+}
+
+.connection-info p {
+    margin: 0 0 0.8em 0;
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+.connection-info ol {
+    margin: 0;
+    padding-left: 1.2em;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.connection-info li {
+    margin-bottom: 0.4em;
+    line-height: 1.4;
+}
+
+.scan-section {
+    margin-bottom: 1.5em;
+}
+
+.scan-btn {
+    width: 100%;
+    padding: 0.8em 1.2em;
+    border: none;
+    border-radius: 0.6em;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.scan-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.scan-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.networks-list {
+    margin-bottom: 1.5em;
+}
+
+.networks-list h3 {
+    margin: 0 0 1em 0;
+    color: #22c55e;
+    font-size: 1.1em;
+}
+
+.network-option {
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+    padding: 0.8em;
+    margin-bottom: 0.5em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5em;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.network-option:hover {
+    border-color: rgba(34, 197, 94, 0.4);
+    background-color: rgba(34, 197, 94, 0.05);
+}
+
+.network-option input[type="radio"] {
+    margin: 0;
+    accent-color: #22c55e;
+}
+
+.network-name {
+    color: whitesmoke;
+    font-size: 0.95em;
+}
+
+.custom-network {
+    margin-bottom: 1.5em;
+}
+
+.custom-ssid-input {
+    width: 100%;
+    padding: 0.7em;
+    margin-top: 0.5em;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5em;
+    background-color: rgba(127, 255, 212, 0.1);
+    color: whitesmoke;
+    font-size: 0.95em;
+}
+
+.custom-ssid-input:focus {
+    outline: none;
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.15);
+}
+
+.password-section {
+    margin-bottom: 1.5em;
+}
+
+.password-section label {
+    display: block;
+    margin-bottom: 0.5em;
+    color: whitesmoke;
+    font-weight: 500;
+}
+
+.password-input {
+    width: 100%;
+    padding: 0.8em;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5em;
+    background-color: rgba(127, 255, 212, 0.1);
+    color: whitesmoke;
+    font-size: 0.95em;
+}
+
+.password-input:focus {
+    outline: none;
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.15);
+}
+
+.config-actions {
+    margin-bottom: 1.5em;
+}
+
+.configure-btn {
+    width: 100%;
+    padding: 1em 1.2em;
+    border: none;
+    border-radius: 0.6em;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(34, 197, 94, 0.3);
+}
+
+.configure-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+    transform: translateY(-2px);
+}
+
+.configure-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.connecting-message {
+    text-align: center;
+    padding: 1.5em;
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 0.6em;
+    color: #22c55e;
+}
+
+.connecting-message p {
+    margin: 0.5em 0;
+    line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .wifi-config-modal {
+        width: 95vw;
+        margin: 1em;
+    }
+    
+    .wifi-config-header,
+    .wifi-config-content {
+        padding: 1em;
+    }
+    
+    .wifi-config-header h2 {
+        font-size: 1.2em;
+    }
+}
