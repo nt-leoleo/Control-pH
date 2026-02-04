@@ -1,19 +1,19 @@
-/* ===== COMPONENTE SHOWPH MODERNO ===== */
+/* ===== COMPONENTE SHOWPH REDISEÑADO ===== */
 .body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: min(400px, 95vw);
-    gap: 0.5rem;
-    padding: 2rem 1.5rem;
-    border-radius: 2rem;
+    width: min(380px, 90vw);
+    gap: 1rem;
+    padding: 3rem 2rem;
+    border-radius: 2.5rem;
     border: 1px solid var(--border-color);
     background: var(--bg-card);
-    box-shadow: var(--shadow-lg);
-    margin: 1.5rem auto 2rem auto;
+    box-shadow: var(--shadow-xl);
+    margin: 2rem auto;
     position: relative;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.4s ease;
 }
 
 .body::before {
@@ -22,57 +22,62 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
+    height: 6px;
     background: var(--gradient-primary);
-    border-radius: 2rem 2rem 0 0;
+    border-radius: 2.5rem 2.5rem 0 0;
 }
 
 .body:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-xl), 0 0 40px rgba(99, 102, 241, 0.15);
 }
 
 .ph {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.15em;
     margin-bottom: 0.5rem;
 }
 
 .numpH {
-    font-size: clamp(4rem, 12vw, 6rem);
-    font-weight: 700;
+    font-size: clamp(4.5rem, 15vw, 7rem);
+    font-weight: 800;
     background: var(--gradient-success);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    line-height: 1;
-    margin: 0.5rem 0;
+    line-height: 0.9;
+    margin: 1rem 0;
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    animation: pulse 2s ease-in-out infinite;
+    animation: gentlePulse 3s ease-in-out infinite;
 }
 
 .state {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     text-align: center;
-    padding: 0.75rem 1.5rem;
+    padding: 1rem 2rem;
     border-radius: 2rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    margin-top: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    margin-top: 1rem;
     transition: all 0.3s ease;
+    min-width: 200px;
 }
 
-/* ===== ESTADOS DE pH CON COLORES DINÁMICOS ===== */
+/* ===== ESTADOS DE pH CON COLORES MEJORADOS ===== */
 .body[data-ph-status="low"] .numpH {
     background: var(--gradient-danger);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+.body[data-ph-status="low"]::before {
+    background: var(--gradient-danger);
 }
 
 .body[data-ph-status="high"] .numpH {
@@ -82,6 +87,10 @@
     background-clip: text;
 }
 
+.body[data-ph-status="high"]::before {
+    background: var(--gradient-warning);
+}
+
 .body[data-ph-status="ok"] .numpH {
     background: var(--gradient-success);
     -webkit-background-clip: text;
@@ -89,45 +98,51 @@
     background-clip: text;
 }
 
-/* ===== RESPONSIVE DESIGN ===== */
+.body[data-ph-status="ok"]::before {
+    background: var(--gradient-success);
+}
+
+/* ===== RESPONSIVE DESIGN MEJORADO ===== */
 @media (max-width: 768px) {
     .body {
-        width: min(350px, 92vw);
-        padding: 1.75rem 1.25rem;
-        margin: 1.25rem auto 1.75rem auto;
+        width: min(340px, 88vw);
+        padding: 2.5rem 1.75rem;
+        margin: 1.5rem auto;
     }
     
     .ph {
-        font-size: 1.1rem;
+        font-size: 0.9rem;
     }
     
     .state {
-        font-size: 1rem;
-        padding: 0.625rem 1.25rem;
+        font-size: 0.95rem;
+        padding: 0.875rem 1.5rem;
+        min-width: 180px;
     }
 }
 
 @media (max-width: 480px) {
     .body {
-        width: min(320px, 90vw);
-        padding: 1.5rem 1rem;
-        margin: 1rem auto 1.5rem auto;
-        border-radius: 1.5rem;
+        width: min(300px, 85vw);
+        padding: 2rem 1.5rem;
+        margin: 1.25rem auto;
+        border-radius: 2rem;
     }
     
     .ph {
-        font-size: 1rem;
+        font-size: 0.85rem;
         margin-bottom: 0.25rem;
     }
     
     .state {
-        font-size: 0.95rem;
-        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        padding: 0.75rem 1.25rem;
+        min-width: 160px;
     }
 }
 
-/* ===== ANIMACIONES ===== */
-@keyframes pulse {
+/* ===== ANIMACIONES MEJORADAS ===== */
+@keyframes gentlePulse {
     0%, 100% {
         transform: scale(1);
     }
@@ -136,17 +151,17 @@
     }
 }
 
-@keyframes glow {
+@keyframes subtleGlow {
     0%, 100% {
-        box-shadow: var(--shadow-lg);
+        box-shadow: var(--shadow-xl);
     }
     50% {
-        box-shadow: var(--shadow-lg), 0 0 30px rgba(59, 130, 246, 0.3);
+        box-shadow: var(--shadow-xl), 0 0 40px rgba(99, 102, 241, 0.2);
     }
 }
 
 .body:hover {
-    animation: glow 2s ease-in-out infinite;
+    animation: subtleGlow 2s ease-in-out infinite;
 }
 
 /* ===== MODO ACCESIBILIDAD ===== */
@@ -157,6 +172,19 @@
     
     .body:hover {
         animation: none;
-        transform: none;
+        transform: translateY(-4px);
     }
+}
+
+/* ===== EFECTOS ADICIONALES ===== */
+.body::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary-light), transparent);
+    opacity: 0.6;
 }

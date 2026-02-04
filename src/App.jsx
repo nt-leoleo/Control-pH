@@ -6,14 +6,14 @@ import PHBar from "./PHBar";
 import PHChart from "./PHChart";
 import ManualDosing from "./ManualDosing";
 import Onboarding from "./Onboarding";
-import SettingsModal from "./SettingsModal";
+import SettingsPage from "./SettingsPage";
 import ErrorNotification from "./ErrorNotification";
 import { PHContext } from "./PHContext";
 import "./App.css";
 
 export default function App() {
   const { ph, setPH, phTolerance, phToleranceRange, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [currentView, setCurrentView] = useState('main'); // 'main' o 'settings'
   const [theme, setTheme] = useState('dark'); // Modo nocturno por defecto
 
   // Cargar tema guardado al iniciar
@@ -47,6 +47,22 @@ export default function App() {
     );
   }
 
+  // Si está en vista de configuración, mostrar página de configuración
+  if (currentView === 'settings') {
+    return (
+      <>
+        <SettingsPage onBack={() => setCurrentView('main')} />
+        <button 
+          className="theme-toggle" 
+          onClick={toggleTheme}
+          title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </>
+    );
+  }
+
   const handlePHChange = (e) => {
     try {
       setPH(parseFloat(e.target.value));
@@ -60,7 +76,7 @@ export default function App() {
 
   return (
     <>
-      <Header onConfigClick={() => setSettingsOpen(true)} />
+      <Header onConfigClick={() => setCurrentView('settings')} />
       <main className="fade-in">
         <ShowpH />
         <HandleAdmin />
@@ -79,7 +95,7 @@ export default function App() {
         />
         
         {dosingMode === 'manual' && (
-          <div className="slide-in">
+          <div className="scale-in">
             <ManualDosing />
           </div>
         )}
@@ -90,7 +106,6 @@ export default function App() {
             className={`mode-toggle-button ${dosingMode === 'automatic' ? 'mode-toggle-button--automatic' : 'mode-toggle-button--manual'}`}
           >
             <span>🔧 Modo: {dosingMode === 'automatic' ? 'AUTOMÁTICO' : 'MANUAL'}</span>
-            <br />
             <small>Toca para cambiar a {dosingMode === 'automatic' ? 'MANUAL' : 'AUTOMÁTICO'}</small>
           </button>
         </div>
@@ -105,7 +120,6 @@ export default function App() {
         {theme === 'dark' ? '☀️' : '🌙'}
       </button>
 
-      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {error && (
         <ErrorNotification 
           message={error.message} 
