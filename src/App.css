@@ -1,58 +1,294 @@
+/* ===== ESTILOS PRINCIPALES DE LA APP ===== */
+
 .ph-input {
-  margin: 2em auto;
-  padding: 0.5em;
-  fontSize: 1em;
-  border-radius: 0.5em;
-  border: 2px solid transparent;
-  background-color: rgba(127, 255, 212, 0.2);
-  color: whitesmoke;
+  width: 100%;
+  max-width: 300px;
+  margin: 2rem auto;
+  padding: 1rem 1.5rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  border-radius: 1rem;
+  border: 2px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  text-align: center;
   transition: all 0.3s ease;
+  box-shadow: var(--shadow);
 }
 
 .ph-input:focus {
   outline: none;
-  background-color: rgba(127, 255, 212, 0.3);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
 }
 
 .ph-input--out-of-range {
-  border-color: #ef4444;
-  background-color: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger-color);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(239, 68, 68, 0.05) 100%);
+}
+
+.ph-input--out-of-range:focus {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
 .ph-input--in-range {
-  border-color: #10b981;
-  background-color: rgba(16, 185, 129, 0.1);
+  border-color: var(--success-color);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(16, 185, 129, 0.05) 100%);
 }
 
+.ph-input--in-range:focus {
+  border-color: var(--success-color);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* ===== CONTENEDOR DE TOGGLE DE MODO ===== */
 .mode-toggle-container {
-  width: 90%;
-  margin: 2em auto 1em auto;
+  width: 100%;
+  max-width: 400px;
+  margin: 2rem auto 1rem auto;
   text-align: center;
+  padding: 0 1rem;
 }
 
 .mode-toggle-button {
-  padding: 0.8em 1.5em;
-  font-size: 0.95em;
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1rem;
   font-weight: 600;
   border: none;
-  border-radius: 0.5em;
+  border-radius: 1rem;
   color: white;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.mode-toggle-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.mode-toggle-button:hover::before {
+  left: 100%;
 }
 
 .mode-toggle-button--automatic {
-  background-color: #3b82f6;
+  background: var(--gradient-primary);
 }
 
 .mode-toggle-button--automatic:hover {
-  background-color: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .mode-toggle-button--manual {
-  background-color: #f59e0b;
+  background: var(--gradient-warning);
 }
 
 .mode-toggle-button--manual:hover {
-  background-color: #d97706;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.mode-toggle-button:active {
+  transform: translateY(0);
+}
+
+/* ===== ESTILOS PARA CARDS GENERALES ===== */
+.card {
+  background: var(--bg-card);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  margin: 1rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-content {
+  color: var(--text-secondary);
+}
+
+/* ===== BOTONES MEJORADOS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.btn-success {
+  background: var(--gradient-success);
+  color: white;
+}
+
+.btn-danger {
+  background: var(--gradient-danger);
+  color: white;
+}
+
+.btn-warning {
+  background: var(--gradient-warning);
+  color: white;
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .ph-input {
+    margin: 1.5rem auto;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+  }
+  
+  .mode-toggle-container {
+    margin: 1.5rem auto 0.75rem auto;
+    padding: 0 0.75rem;
+  }
+  
+  .mode-toggle-button {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+  }
+  
+  .card {
+    margin: 0.75rem;
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+  }
+  
+  .btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ph-input {
+    margin: 1rem auto;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    max-width: 280px;
+  }
+  
+  .mode-toggle-container {
+    margin: 1rem auto 0.5rem auto;
+    padding: 0 0.5rem;
+  }
+  
+  .mode-toggle-button {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    border-radius: 0.875rem;
+  }
+  
+  .card {
+    margin: 0.5rem;
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+  
+  .card-title {
+    font-size: 1.1rem;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 0.625rem;
+  }
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
 }

@@ -54,42 +54,42 @@
         </div>
 
         <div class="test-section info">
-            <h3>🎯 Configuración de Test</h3>
+            <h3>🎯 Configuración de Test - Sistema Remoto</h3>
             <div>
-                <label>IP ESP32:</label>
-                <input type="text" id="esp32IP" value="192.168.100.134">
-                <button onclick="updateIP()">🔄 Actualizar IP</button>
+                <label>Canal ThingSpeak:</label>
+                <input type="text" id="channelID" value="3249157" readonly>
+                <label>API URL:</label>
+                <input type="text" id="apiURL" value="https://api.thingspeak.com/channels/3249157/feeds/last.json" readonly>
             </div>
         </div>
 
         <div class="controls">
-            <button onclick="testDirectURL()">🌐 URL Directa</button>
-            <button onclick="testBasicPing()">🏓 Ping Básico</button>
-            <button onclick="testCORSOptions()">🔧 CORS OPTIONS</button>
-            <button onclick="testCORSGet()">📡 CORS GET</button>
-            <button onclick="testProxy()">🔄 Test Proxy</button>
-            <button onclick="testAlternative()">🔀 Método Alternativo</button>
-            <button onclick="testPHData()">🧪 Test pH</button>
-            <button onclick="testDosing()">💊 Test Dosing</button>
+            <button onclick="testThingSpeakAPI()">🌐 Test ThingSpeak API</button>
+            <button onclick="testConnectionStatus()">📡 Test Conexión</button>
+            <button onclick="testPHData()">🧪 Test Datos pH</button>
+            <button onclick="testHistoryData()">📈 Test Historial</button>
+            <button onclick="testSystemInfo()">ℹ️ Info Sistema</button>
+            <button onclick="testDosingCommand()">💊 Test Dosificación</button>
+            <button onclick="testWebApp()">📱 Test App Web</button>
             <button onclick="testAll()">🚀 Test Completo</button>
             <button onclick="clearResults()">🧹 Limpiar</button>
         </div>
 
         <div class="test-section warning">
-            <h3>📋 Instrucciones:</h3>
+            <h3>📋 Instrucciones - Sistema Remoto:</h3>
             <ol>
-                <li><strong>URL Directa:</strong> Abre el ESP32 en nueva pestaña</li>
-                <li><strong>Ping Básico:</strong> Test de conectividad sin CORS</li>
-                <li><strong>CORS OPTIONS:</strong> Verifica preflight CORS</li>
-                <li><strong>CORS GET:</strong> Test completo con CORS</li>
-                <li><strong>Test Proxy:</strong> Usa proxy de Vite (requiere <code>npm run dev</code>)</li>
-                <li><strong>Método Alternativo:</strong> Evita CORS usando técnicas alternativas</li>
-                <li><strong>Test pH:</strong> Prueba directo y proxy automáticamente</li>
+                <li><strong>Test ThingSpeak API:</strong> Verifica conectividad con ThingSpeak</li>
+                <li><strong>Test Conexión:</strong> Verifica estado del ESP32 remoto</li>
+                <li><strong>Test Datos pH:</strong> Obtiene datos actuales de pH</li>
+                <li><strong>Test Historial:</strong> Obtiene historial de datos</li>
+                <li><strong>Info Sistema:</strong> Información completa del sistema</li>
+                <li><strong>Test Dosificación:</strong> Prueba comandos de dosificación</li>
+                <li><strong>Test App Web:</strong> Verifica integración con app React</li>
                 <li><strong>Test Completo:</strong> Ejecuta todos los tests automáticamente</li>
             </ol>
-            <div style="background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 5px;">
-                <strong>💡 Solución Implementada:</strong> He implementado un método alternativo que evita CORS completamente. 
-                Si el "Método Alternativo" funciona, tu app React se conectará automáticamente sin problemas de CORS.
+            <div style="background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 5px; color: #333;">
+                <strong>🌐 Sistema Remoto:</strong> Ahora el sistema funciona completamente remoto usando ThingSpeak. 
+                El ESP32 envía datos a la nube y la app web los lee desde allí. No hay problemas de CORS ni IP local.
             </div>
         </div>
 
@@ -98,8 +98,14 @@
 
     <script>
         const results = document.getElementById('results');
-        let esp32IP = '192.168.100.134';
         let testStats = { passed: 0, failed: 0, responseTimes: [] };
+        
+        // Configuración del sistema remoto
+        const THINGSPEAK_CONFIG = {
+            CHANNEL_ID: '3249157',
+            API_URL: 'https://api.thingspeak.com/channels/3249157/feeds/last.json',
+            HISTORY_URL: 'https://api.thingspeak.com/channels/3249157/feeds.json'
+        };
 
         function updateStats() {
             document.getElementById('testsPassed').textContent = testStats.passed;
@@ -136,308 +142,244 @@
             updateStats();
         }
 
-        function updateIP() {
-            esp32IP = document.getElementById('esp32IP').value.trim();
-            addResult(`🔄 IP actualizada a: ${esp32IP}`, 'info');
-        }
-
-        function testDirectURL() {
-            addResult('🌐 Abriendo URL directa en nueva pestaña...', 'info');
-            addResult('Si se abre correctamente y muestra JSON, el ESP32 funciona', 'warning');
-            window.open(`http://${esp32IP}/status`, '_blank');
-        }
-
-        async function testBasicPing() {
-            addResult('🏓 Probando conectividad básica (no-cors)...', 'info');
+        async function testThingSpeakAPI() {
+            addResult('🌐 Probando conectividad con ThingSpeak API...', 'info');
             const startTime = Date.now();
             
             try {
-                const response = await fetch(`http://${esp32IP}/`, {
-                    method: 'GET',
-                    mode: 'no-cors'
-                });
-                
-                const responseTime = Date.now() - startTime;
-                addResult('✅ Conectividad básica OK - ESP32 responde', 'success', responseTime);
-                
-            } catch (error) {
-                const responseTime = Date.now() - startTime;
-                addResult(`❌ Error conectividad básica: ${error.message}`, 'error', responseTime);
-            }
-        }
-
-        async function testCORSOptions() {
-            addResult('🔧 Probando CORS OPTIONS (preflight)...', 'info');
-            const startTime = Date.now();
-            
-            try {
-                const response = await fetch(`http://${esp32IP}/status`, {
-                    method: 'OPTIONS',
-                    headers: {
-                        'Access-Control-Request-Method': 'GET',
-                        'Access-Control-Request-Headers': 'content-type',
-                        'Origin': window.location.origin
-                    }
-                });
-                
-                const responseTime = Date.now() - startTime;
-                console.log('OPTIONS Response:', response);
-                console.log('OPTIONS Headers:', [...response.headers.entries()]);
-                
-                const corsHeaders = {
-                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
-                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
-                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers'),
-                };
-                
-                if (response.ok) {
-                    addResult(`✅ CORS OPTIONS funciona!<br>Status: ${response.status}<br>Headers:<br><pre>${JSON.stringify(corsHeaders, null, 2)}</pre>`, 'success', responseTime);
-                } else {
-                    addResult(`❌ CORS OPTIONS falló: ${response.status}<br>Headers:<br><pre>${JSON.stringify(corsHeaders, null, 2)}</pre>`, 'error', responseTime);
-                }
-                
-            } catch (error) {
-                const responseTime = Date.now() - startTime;
-                addResult(`❌ Error CORS OPTIONS: ${error.message}`, 'error', responseTime);
-            }
-        }
-
-        async function testCORSGet() {
-            addResult('📡 Probando CORS GET /status...', 'info');
-            const startTime = Date.now();
-            
-            try {
-                const response = await fetch(`http://${esp32IP}/status`, {
+                const response = await fetch(THINGSPEAK_CONFIG.API_URL, {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const responseTime = Date.now() - startTime;
-                console.log('GET Response:', response);
-                console.log('GET Headers:', [...response.headers.entries()]);
-                
-                if (response.ok) {
-                    const text = await response.text();
-                    let data;
-                    try {
-                        data = JSON.parse(text);
-                        addResult(`✅ CORS GET funciona perfectamente!<br>Status: ${response.status}<br>Data:<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success', responseTime);
-                    } catch (e) {
-                        addResult(`✅ CORS GET responde pero no es JSON:<br><pre>${text}</pre>`, 'success', responseTime);
-                    }
-                } else {
-                    addResult(`❌ CORS GET falló: ${response.status} ${response.statusText}`, 'error', responseTime);
-                }
-                
-            } catch (error) {
-                const responseTime = Date.now() - startTime;
-                addResult(`❌ Error CORS GET: ${error.message}`, 'error', responseTime);
-                
-                if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
-                    addResult('🔧 Posibles soluciones:<br>1. Verificar firewall/antivirus<br>2. Probar en modo incógnito<br>3. Usar proxy de Vite', 'debug');
-                }
-            }
-        }
-
-        async function testProxy() {
-            addResult('🔄 Probando conexión via proxy de Vite...', 'info');
-            const startTime = Date.now();
-            
-            try {
-                const response = await fetch('/api/esp32/status', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'Cache-Control': 'no-cache'
                     }
                 });
                 
                 const responseTime = Date.now() - startTime;
-                console.log('Proxy Response:', response);
-                console.log('Proxy Headers:', [...response.headers.entries()]);
                 
                 if (response.ok) {
-                    const text = await response.text();
-                    console.log('Proxy Text:', text);
-                    
-                    try {
-                        const data = JSON.parse(text);
-                        addResult(`✅ PROXY FUNCIONA PERFECTAMENTE!<br>Status: ${response.status}<br>Data:<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success', responseTime);
-                    } catch (e) {
-                        // Puede ser HTML del ESP32
-                        if (text.includes('ESP32') || text.includes('status') || text.includes('Funcionando')) {
-                            addResult(`✅ PROXY FUNCIONA (respuesta HTML del ESP32):<br><pre>${text.substring(0, 300)}...</pre>`, 'success', responseTime);
-                        } else {
-                            addResult(`⚠️ Proxy responde pero formato inesperado:<br><pre>${text.substring(0, 200)}...</pre>`, 'error', responseTime);
-                        }
-                    }
+                    const data = await response.json();
+                    addResult(`✅ ThingSpeak API funciona perfectamente!<br>Status: ${response.status}<br>Canal: ${data.channel_id}<br>Última entrada: ${data.entry_id}`, 'success', responseTime);
                 } else {
-                    addResult(`❌ Proxy falló: ${response.status} ${response.statusText}`, 'error', responseTime);
+                    addResult(`❌ Error ThingSpeak API: ${response.status} ${response.statusText}`, 'error', responseTime);
                 }
                 
             } catch (error) {
                 const responseTime = Date.now() - startTime;
-                addResult(`❌ Error proxy: ${error.message}<br>💡 Asegúrate de reiniciar el servidor: <code>npm run dev</code>`, 'error', responseTime);
+                addResult(`❌ Error conectando con ThingSpeak: ${error.message}`, 'error', responseTime);
             }
         }
 
-        async function testAlternative() {
-            addResult('🔀 Probando método alternativo (sin CORS)...', 'info');
+        async function testConnectionStatus() {
+            addResult('📡 Verificando estado de conexión del ESP32...', 'info');
             const startTime = Date.now();
             
             try {
-                // Test 1: Conectividad con imagen
-                addResult('📷 Verificando conectividad con imagen...', 'info');
-                const img = new Image();
-                const imgPromise = new Promise((resolve) => {
-                    const timeout = setTimeout(() => resolve(false), 3000);
-                    img.onload = () => { clearTimeout(timeout); resolve(true); };
-                    img.onerror = () => { clearTimeout(timeout); resolve(false); };
-                    img.src = `http://${esp32IP}/favicon.ico?t=${Date.now()}`;
-                });
-                
-                const imgResult = await imgPromise;
-                if (imgResult) {
-                    addResult('✅ Conectividad con imagen OK', 'success');
-                } else {
-                    addResult('❌ Conectividad con imagen falló (normal)', 'info');
-                }
-                
-                // Test 2: Fetch no-cors
-                addResult('🚫 Probando fetch no-cors...', 'info');
-                let fetchWorks = false;
-                try {
-                    const response = await fetch(`http://${esp32IP}/status`, {
-                        method: 'GET',
-                        mode: 'no-cors',
-                        cache: 'no-cache'
-                    });
-                    fetchWorks = true;
-                    addResult('✅ Fetch no-cors exitoso', 'success');
-                } catch (error) {
-                    addResult('❌ Fetch no-cors falló (problema de navegador)', 'info');
-                }
-                
+                const response = await fetch(THINGSPEAK_CONFIG.API_URL);
                 const responseTime = Date.now() - startTime;
                 
-                // Conclusión basada en evidencia previa
-                addResult('📊 ANÁLISIS: Sabemos que el ESP32 funciona porque:', 'info');
-                addResult('✅ ping 192.168.100.134 funciona<br>✅ curl funciona<br>✅ Monitor serie muestra actividad', 'success');
-                addResult('🎯 SOLUCIÓN: La app usará datos simulados y asumirá conexión exitosa', 'success', responseTime);
-                addResult('🎉 MÉTODO ALTERNATIVO IMPLEMENTADO - La app React funcionará correctamente', 'success');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Verificar si los datos son recientes (menos de 5 minutos)
+                    const dataTimestamp = new Date(data.created_at).getTime();
+                    const now = Date.now();
+                    const dataAge = now - dataTimestamp;
+                    const isRecent = dataAge < 300000; // 5 minutos
+                    
+                    const ageMinutes = Math.round(dataAge / 60000);
+                    
+                    if (isRecent) {
+                        addResult(`✅ ESP32 CONECTADO y funcionando!<br>Última actualización: hace ${ageMinutes} minutos<br>Entry ID: ${data.entry_id}`, 'success', responseTime);
+                    } else {
+                        addResult(`⚠️ ESP32 posiblemente desconectado<br>Última actualización: hace ${ageMinutes} minutos<br>Datos obsoletos`, 'warning', responseTime);
+                    }
+                } else {
+                    addResult(`❌ Error verificando conexión: ${response.status}`, 'error', responseTime);
+                }
                 
             } catch (error) {
                 const responseTime = Date.now() - startTime;
-                addResult(`❌ Error método alternativo: ${error.message}`, 'error', responseTime);
+                addResult(`❌ Error verificando conexión: ${error.message}`, 'error', responseTime);
             }
         }
 
         async function testPHData() {
-            addResult('🧪 Probando datos de pH...', 'info');
+            addResult('🧪 Obteniendo datos de pH del ESP32...', 'info');
             const startTime = Date.now();
             
-            // Primero probar directo, luego proxy
             try {
-                addResult('🔍 Intentando pH directo...', 'info');
-                const response = await fetch(`http://${esp32IP}/ph`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
+                const response = await fetch(THINGSPEAK_CONFIG.API_URL);
                 const responseTime = Date.now() - startTime;
                 
                 if (response.ok) {
                     const data = await response.json();
-                    addResult(`✅ pH directo OK!<br>pH: ${data.ph}`, 'success', responseTime);
-                    return;
+                    
+                    const ph = parseFloat(data.field1);
+                    const voltage = parseFloat(data.field2);
+                    const wifiRSSI = parseInt(data.field3);
+                    const uptime = parseInt(data.field4);
+                    
+                    let phStatus = 'Neutro';
+                    if (ph < 6.5) phStatus = 'Ácido (necesita pH+)';
+                    else if (ph > 7.5) phStatus = 'Básico (necesita pH-)';
+                    
+                    addResult(`✅ Datos de pH obtenidos exitosamente!<br>
+                        <strong>pH:</strong> ${ph.toFixed(2)} (${phStatus})<br>
+                        <strong>Voltaje:</strong> ${voltage.toFixed(3)}V<br>
+                        <strong>WiFi:</strong> ${wifiRSSI} dBm<br>
+                        <strong>Uptime:</strong> ${uptime}s<br>
+                        <strong>Timestamp:</strong> ${new Date(data.created_at).toLocaleString()}`, 'success', responseTime);
                 } else {
-                    addResult(`❌ pH directo falló: ${response.status}`, 'error', responseTime);
-                }
-                
-            } catch (error) {
-                addResult(`❌ pH directo error: ${error.message}`, 'error');
-            }
-            
-            // Si falla directo, probar proxy
-            try {
-                addResult('🔄 Intentando pH via proxy...', 'info');
-                const startTimeProxy = Date.now();
-                
-                const response = await fetch('/api/esp32/ph', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache'
-                    }
-                });
-                
-                const responseTimeProxy = Date.now() - startTimeProxy;
-                
-                if (response.ok) {
-                    const text = await response.text();
-                    try {
-                        const data = JSON.parse(text);
-                        addResult(`✅ pH via proxy OK!<br>pH: ${data.ph}`, 'success', responseTimeProxy);
-                    } catch (e) {
-                        addResult(`✅ pH proxy responde:<br><pre>${text}</pre>`, 'success', responseTimeProxy);
-                    }
-                } else {
-                    addResult(`❌ pH proxy falló: ${response.status}`, 'error', responseTimeProxy);
+                    addResult(`❌ Error obteniendo datos pH: ${response.status}`, 'error', responseTime);
                 }
                 
             } catch (error) {
                 const responseTime = Date.now() - startTime;
-                addResult(`❌ Error pH proxy: ${error.message}`, 'error', responseTime);
+                addResult(`❌ Error obteniendo datos pH: ${error.message}`, 'error', responseTime);
             }
         }
 
-        async function testDosing() {
-            addResult('💊 Probando comando de dosificación...', 'info');
+        async function testHistoryData() {
+            addResult('📈 Obteniendo historial de datos...', 'info');
             const startTime = Date.now();
             
             try {
-                const response = await fetch(`http://${esp32IP}/dosing`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        product: 'acid',
-                        duration: 1
-                    })
-                });
-                
+                const response = await fetch(`${THINGSPEAK_CONFIG.HISTORY_URL}?results=10`);
                 const responseTime = Date.now() - startTime;
                 
                 if (response.ok) {
                     const data = await response.json();
-                    addResult(`✅ Dosing OK!<br>Response: ${JSON.stringify(data)}`, 'success', responseTime);
+                    const feeds = data.feeds.filter(feed => feed.field1);
+                    
+                    addResult(`✅ Historial obtenido exitosamente!<br>
+                        <strong>Entradas:</strong> ${feeds.length}<br>
+                        <strong>Canal:</strong> ${data.channel.name}<br>
+                        <strong>Descripción:</strong> ${data.channel.description}<br>
+                        <strong>Última entrada:</strong> ${feeds[feeds.length - 1]?.created_at}`, 'success', responseTime);
+                        
+                    // Mostrar últimas 3 lecturas
+                    const recent = feeds.slice(-3);
+                    let historyHTML = '<br><strong>Últimas 3 lecturas:</strong><br>';
+                    recent.forEach(feed => {
+                        const ph = parseFloat(feed.field1);
+                        const time = new Date(feed.created_at).toLocaleTimeString();
+                        historyHTML += `${time}: pH ${ph.toFixed(2)}<br>`;
+                    });
+                    
+                    addResult(historyHTML, 'info');
                 } else {
-                    addResult(`❌ Error dosing: ${response.status}`, 'error', responseTime);
+                    addResult(`❌ Error obteniendo historial: ${response.status}`, 'error', responseTime);
                 }
                 
             } catch (error) {
                 const responseTime = Date.now() - startTime;
-                addResult(`❌ Error dosing: ${error.message}`, 'error', responseTime);
+                addResult(`❌ Error obteniendo historial: ${error.message}`, 'error', responseTime);
+            }
+        }
+
+        async function testSystemInfo() {
+            addResult('ℹ️ Obteniendo información completa del sistema...', 'info');
+            
+            try {
+                // Importar el módulo de comunicación
+                const { getSystemInfo } = await import('./src/esp32Communication.js');
+                const systemInfo = await getSystemInfo();
+                
+                if (systemInfo) {
+                    addResult(`✅ Información del sistema obtenida!<br>
+                        <strong>Conectado:</strong> ${systemInfo.connected ? 'Sí' : 'No'}<br>
+                        <strong>Fuente:</strong> ${systemInfo.source}<br>
+                        <strong>Canal ID:</strong> ${systemInfo.channel_id}<br>
+                        <strong>API URL:</strong> ${systemInfo.api_url}<br>
+                        <strong>Timeout:</strong> ${systemInfo.config.timeout}ms`, 'success');
+                } else {
+                    addResult('❌ No se pudo obtener información del sistema', 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ Error obteniendo info del sistema: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDosingCommand() {
+            addResult('💊 Probando comando de dosificación...', 'info');
+            
+            try {
+                // Importar el módulo de comunicación
+                const { sendDosingCommand } = await import('./src/esp32Communication.js');
+                
+                const dosingConfig = {
+                    product: 'acid',
+                    duration: 1,
+                    intensity: 'low'
+                };
+                
+                const result = await sendDosingCommand(dosingConfig);
+                
+                if (result.success) {
+                    addResult(`✅ Comando de dosificación enviado!<br>
+                        <strong>Mensaje:</strong> ${result.message}<br>
+                        <strong>Timestamp:</strong> ${result.timestamp}<br>
+                        <strong>Config:</strong> ${JSON.stringify(result.config)}`, 'success');
+                } else {
+                    addResult(`❌ Error enviando comando: ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ Error en comando de dosificación: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWebApp() {
+            addResult('📱 Probando integración con app web React...', 'info');
+            
+            try {
+                // Importar funciones del módulo
+                const { checkESP32Connection, getPHDataFromESP32 } = await import('./src/esp32Communication.js');
+                
+                // Test 1: Verificar conexión
+                addResult('🔍 Verificando conexión...', 'info');
+                const isConnected = await checkESP32Connection();
+                
+                if (isConnected) {
+                    addResult('✅ Conexión verificada exitosamente', 'success');
+                    
+                    // Test 2: Obtener datos
+                    addResult('📊 Obteniendo datos de pH...', 'info');
+                    const phData = await getPHDataFromESP32();
+                    
+                    if (phData) {
+                        addResult(`✅ Datos obtenidos exitosamente!<br>
+                            <strong>pH:</strong> ${phData.ph}<br>
+                            <strong>Estado:</strong> ${phData.phStatus.label}<br>
+                            <strong>Dispositivo:</strong> ${phData.device_id}<br>
+                            <strong>Fuente:</strong> ${phData.source}<br>
+                            <strong>Datos recientes:</strong> ${phData.isRecent ? 'Sí' : 'No'}`, 'success');
+                    } else {
+                        addResult('❌ No se pudieron obtener datos de pH', 'error');
+                    }
+                } else {
+                    addResult('❌ Conexión fallida', 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ Error en integración web app: ${error.message}`, 'error');
             }
         }
 
         async function testAll() {
-            addResult('🚀 Iniciando test completo automático...', 'info');
+            addResult('🚀 Iniciando test completo del sistema remoto...', 'info');
             clearResults();
             
             const tests = [
-                { name: 'Ping Básico', func: testBasicPing },
-                { name: 'CORS OPTIONS', func: testCORSOptions },
-                { name: 'CORS GET', func: testCORSGet },
-                { name: 'Proxy', func: testProxy },
-                { name: 'Método Alternativo', func: testAlternative },
-                { name: 'pH Data', func: testPHData },
-                { name: 'Dosing', func: testDosing }
+                { name: 'ThingSpeak API', func: testThingSpeakAPI },
+                { name: 'Estado Conexión', func: testConnectionStatus },
+                { name: 'Datos pH', func: testPHData },
+                { name: 'Historial', func: testHistoryData },
+                { name: 'Info Sistema', func: testSystemInfo },
+                { name: 'Dosificación', func: testDosingCommand },
+                { name: 'App Web', func: testWebApp }
             ];
             
             for (let i = 0; i < tests.length; i++) {
@@ -447,7 +389,7 @@
                 
                 // Pausa entre tests
                 if (i < tests.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                 }
             }
             
@@ -456,14 +398,18 @@
             // Resumen final
             const total = testStats.passed + testStats.failed;
             const successRate = total > 0 ? Math.round((testStats.passed / total) * 100) : 0;
-            addResult(`📊 RESUMEN: ${testStats.passed}/${total} tests exitosos (${successRate}%)`, 
-                successRate > 50 ? 'success' : 'error');
+            addResult(`📊 RESUMEN FINAL: ${testStats.passed}/${total} tests exitosos (${successRate}%)<br>
+                ${successRate >= 80 ? '🎉 Sistema funcionando correctamente!' : 
+                  successRate >= 50 ? '⚠️ Sistema parcialmente funcional' : 
+                  '❌ Sistema con problemas'}`, 
+                successRate >= 80 ? 'success' : successRate >= 50 ? 'warning' : 'error');
         }
 
-        // Test inicial
+        // Inicialización
         window.onload = () => {
-            addResult('🚀 Test completo ESP32 iniciado', 'info');
-            addResult(`📍 IP configurada: ${esp32IP}`, 'info');
+            addResult('🚀 Test completo ESP32 - Sistema Remoto iniciado', 'info');
+            addResult(`📍 Canal ThingSpeak: ${THINGSPEAK_CONFIG.CHANNEL_ID}`, 'info');
+            addResult(`🌐 API URL: ${THINGSPEAK_CONFIG.API_URL}`, 'info');
             addResult('💡 Usa "Test Completo" para ejecutar todos los tests automáticamente', 'warning');
         };
     </script>

@@ -1,25 +1,162 @@
+/* ===== COMPONENTE SHOWPH MODERNO ===== */
 .body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: min(600px, 95vw);
-    gap: 0em;
-    padding: 1em 1.5rem;
-    border-radius: 1.2em;
-    border: 1px solid rgba(255, 255, 255, 0.158);
-    background-color: rgb(41, 25, 66);
-    box-shadow: rgba(0, 0, 0, 0.493) 0.2em 0.2em 1.2em;
-    margin: 1em auto 3em auto;
+    width: min(400px, 95vw);
+    gap: 0.5rem;
+    padding: 2rem 1.5rem;
+    border-radius: 2rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-lg);
+    margin: 1.5rem auto 2rem auto;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
 }
+
+.body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    border-radius: 2rem 2rem 0 0;
+}
+
+.body:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
 .ph {
-    font-size: 1.5em;
-    color: whitesmoke;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
 }
+
 .numpH {
-    font-size: 5em;
-    color: greenyellow;
+    font-size: clamp(4rem, 12vw, 6rem);
+    font-weight: 700;
+    background: var(--gradient-success);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin: 0.5rem 0;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    animation: pulse 2s ease-in-out infinite;
 }
+
 .state {
-    font-size: 1.5em;
+    font-size: 1.1rem;
+    font-weight: 600;
     text-align: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+/* ===== ESTADOS DE pH CON COLORES DINÁMICOS ===== */
+.body[data-ph-status="low"] .numpH {
+    background: var(--gradient-danger);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.body[data-ph-status="high"] .numpH {
+    background: var(--gradient-warning);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.body[data-ph-status="ok"] .numpH {
+    background: var(--gradient-success);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .body {
+        width: min(350px, 92vw);
+        padding: 1.75rem 1.25rem;
+        margin: 1.25rem auto 1.75rem auto;
+    }
+    
+    .ph {
+        font-size: 1.1rem;
+    }
+    
+    .state {
+        font-size: 1rem;
+        padding: 0.625rem 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .body {
+        width: min(320px, 90vw);
+        padding: 1.5rem 1rem;
+        margin: 1rem auto 1.5rem auto;
+        border-radius: 1.5rem;
+    }
+    
+    .ph {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .state {
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: var(--shadow-lg);
+    }
+    50% {
+        box-shadow: var(--shadow-lg), 0 0 30px rgba(59, 130, 246, 0.3);
+    }
+}
+
+.body:hover {
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* ===== MODO ACCESIBILIDAD ===== */
+@media (prefers-reduced-motion: reduce) {
+    .numpH {
+        animation: none;
+    }
+    
+    .body:hover {
+        animation: none;
+        transform: none;
+    }
 }

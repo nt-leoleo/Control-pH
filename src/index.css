@@ -16,15 +16,13 @@ body {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: rgb(22, 13, 36);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow-x: hidden;
+  transition: all 0.3s ease;
 }
 
 #root {
@@ -40,35 +38,116 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0;
+  padding: 0 1rem 6rem 1rem; /* Espacio para el botón de tema */
 }
 
+/* ===== VARIABLES DE TEMA ===== */
 :root {
-  --primary-color: #22c55e;
+  /* Colores principales */
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --success-color: #10b981;
+  --success-hover: #059669;
   --danger-color: #ef4444;
+  --danger-hover: #dc2626;
   --warning-color: #f59e0b;
-  --bg-dark: rgb(22, 13, 36);
-  --bg-card: rgb(41, 25, 66);
+  --warning-hover: #d97706;
+  
+  /* Modo oscuro (por defecto) */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #334155;
+  --bg-card-hover: #475569;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-color: #475569;
+  --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  
+  /* Gradientes */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
+/* Modo claro */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+}
+
+/* Aplicar tema al body */
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ===== BOTÓN DE CAMBIO DE TEMA ===== */
+.theme-toggle {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.theme-toggle:active {
+  transform: translateY(0);
+}
+
+/* ===== ESTILOS GENERALES MEJORADOS ===== */
 a {
   font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #535bf2;
+  color: var(--primary-hover);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 h1 {
-  font-size: 3.2em;
+  font-size: clamp(2rem, 5vw, 3.2rem);
   line-height: 1.1;
 }
 
 header {
   width: 100%;
-  padding: 0 1em;
+  padding: 0 1rem;
 }
 
 button {
@@ -76,15 +155,35 @@ button {
   border: none;
   outline: none;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  main {
+    padding: 0 0.75rem 6rem 0.75rem;
   }
-  a:hover {
-    color: #747bff;
+  
+  .theme-toggle {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 0 0.5rem 6rem 0.5rem;
+  }
+  
+  .theme-toggle {
+    bottom: 1rem;
+    right: 1rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.1rem;
   }
 }
 
