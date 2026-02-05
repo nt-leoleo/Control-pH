@@ -290,6 +290,10 @@
   color: var(--success-color);
 }
 
+.status-offline {
+  color: var(--danger-color);
+}
+
 /* ===== ACCIONES ===== */
 .action-buttons {
   display: flex;

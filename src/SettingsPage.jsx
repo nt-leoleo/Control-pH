@@ -10,10 +10,15 @@ const SettingsPage = ({ onBack }) => {
     phToleranceRange, 
     setPhToleranceRange,
     dosingMode,
-    setDosingMode
+    setDosingMode,
+    esp32Connected,
+    lastDataReceived,
+    fetchPHData,
+    checkConnection
   } = useContext(PHContext);
   
   const [showWiFiConfig, setShowWiFiConfig] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   const handleToleranceChange = (e) => {
     const value = parseFloat(e.target.value);
@@ -26,6 +31,20 @@ const SettingsPage = ({ onBack }) => {
     const value = parseFloat(e.target.value);
     if (value >= 0.1 && value <= 1) {
       setPhToleranceRange(value);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    try {
+      console.log('🧪 [Settings] Probando conexión manual...');
+      await checkConnection();
+      await fetchPHData();
+      console.log('✅ [Settings] Test de conexión completado');
+    } catch (error) {
+      console.error('❌ [Settings] Error en test de conexión:', error);
+    } finally {
+      setIsTestingConnection(false);
     }
   };
 
@@ -165,8 +184,16 @@ const SettingsPage = ({ onBack }) => {
             </div>
             <div className="info-item">
               <span className="info-label">Estado:</span>
-              <span className="info-value status-online">🟢 En línea</span>
+              <span className={`info-value ${esp32Connected ? 'status-online' : 'status-offline'}`}>
+                {esp32Connected ? '🟢 En línea' : '🔴 Desconectado'}
+              </span>
             </div>
+            {lastDataReceived && (
+              <div className="info-item">
+                <span className="info-label">Última lectura:</span>
+                <span className="info-value">{new Date(lastDataReceived).toLocaleString()}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -175,6 +202,14 @@ const SettingsPage = ({ onBack }) => {
           <h3>🔧 Acciones</h3>
           
           <div className="action-buttons">
+            <button 
+              className="action-btn btn-secondary"
+              onClick={handleTestConnection}
+              disabled={isTestingConnection}
+            >
+              <span>{isTestingConnection ? '🔄' : '🧪'}</span>
+              {isTestingConnection ? 'Probando...' : 'Probar Conexión'}
+            </button>
             <button className="action-btn btn-secondary">
               <span>📊</span>
               Ver Estadísticas

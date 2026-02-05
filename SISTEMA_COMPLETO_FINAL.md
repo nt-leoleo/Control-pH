@@ -1,8 +1,8 @@
-# 🧪 SISTEMA CONTROL PILETA pH - VERSIÓN FINAL COMPLETA
+# 🧪 CONTROL PILETA pH - SISTEMA COMPLETO CON DOSIFICACIÓN
 
 ## 📋 RESUMEN EJECUTIVO
 
-El sistema ha sido completamente reescrito desde cero con una arquitectura robusta y bien organizada. Ahora funciona 100% remoto usando ThingSpeak como plataforma en la nube, eliminando todos los problemas de CORS y conectividad local.
+El sistema ha sido completamente reescrito desde cero con una arquitectura robusta y bien organizada. Ahora funciona 100% remoto usando ThingSpeak como plataforma en la nube, eliminando todos los problemas de CORS y conectividad local. **NUEVO: Sistema de dosificación automática con módulo de 2 relés implementado.**
 
 ## 🎯 FUNCIONALIDADES IMPLEMENTADAS
 
@@ -14,183 +14,184 @@ El sistema ha sido completamente reescrito desde cero con una arquitectura robus
 - ✅ Información detallada en Monitor Serie
 - ✅ Calibración automática del sensor
 - ✅ Manejo de errores y recuperación
+- ✅ **NUEVO: Sistema de dosificación automática**
+- ✅ **NUEVO: Control de módulo de 2 relés**
+- ✅ **NUEVO: API completa para dosificación manual**
 
 ### Web App (React)
 - ✅ Comunicación remota via ThingSpeak API
 - ✅ Verificación de estado del ESP32
 - ✅ Obtención de datos de pH en tiempo real
 - ✅ Historial de datos
-- ✅ Sistema de dosificación (simulado)
+- ✅ Sistema de dosificación (simulado para remoto)
 - ✅ Manejo completo de errores
 - ✅ Validación de datos
 - ✅ Interfaz de usuario responsive
 
-## 🌐 ARQUITECTURA DEL SISTEMA
+## 🔌 **CONEXIÓN DEL MÓDULO DE 2 RELÉS**
+
+### **Componentes Necesarios:**
+- ESP32 DevKit
+- Módulo de 2 relés (5V o 3.3V)
+- Sensor de pH
+- Cables jumper
+- Bombas dosificadoras (pH+ y pH-)
+
+### **Esquema de Conexión:**
 
 ```
-ESP32 → WiFi → ThingSpeak Cloud → Internet → Web App (Vercel)
+ESP32          →    MÓDULO DE RELÉS
+=================================
+GPIO 25        →    IN1 (Relé 1 - pH+)
+GPIO 26        →    IN2 (Relé 2 - pH-)
+GND            →    GND
+3.3V o 5V      →    VCC
+
+MÓDULO RELÉS   →    BOMBAS DOSIFICADORAS
+=====================================
+COM1 + NO1     →    Bomba pH+ (subir pH)
+COM2 + NO2     →    Bomba pH- (bajar pH)
+
+SENSOR pH      →    ESP32
+=====================
+Pin Negativo   →    GPIO 36
+Pin Positivo   →    3.3V
 ```
 
-### Flujo de Datos:
-1. **ESP32** lee sensor pH cada 30 segundos
-2. **ESP32** envía datos a ThingSpeak cada 1 minuto
-3. **Web App** lee datos desde ThingSpeak API
-4. **Usuario** ve datos actualizados en tiempo real
+### **Detalles de Conexión:**
 
-## 📊 CONFIGURACIÓN THINGSPEAK
+#### **ESP32 → Módulo de Relés:**
+- **VCC**: 3.3V (si el módulo es de 3.3V) o 5V (si es de 5V)
+- **GND**: GND del ESP32
+- **IN1**: GPIO 25 (controla relé para pH+)
+- **IN2**: GPIO 26 (controla relé para pH-)
 
-- **Canal ID:** 3249157
-- **Write API Key:** GQXD1DTF1D6DPUSG
-- **Fields:**
-  - Field1: pH (valor calculado)
-  - Field2: Voltaje (para calibración)
-  - Field3: WiFi RSSI (señal)
-  - Field4: Uptime (segundos funcionando)
+#### **Módulo de Relés → Bombas:**
+- **Relé 1 (pH+)**: COM1 y NO1 conectados en serie con bomba de pH+
+- **Relé 2 (pH-)**: COM2 y NO2 conectados en serie con bomba de pH-
 
-## 🔧 ARCHIVOS PRINCIPALES
+### **Configuración de Bombas:**
+- **Bomba pH+**: Producto alcalino (soda cáustica, carbonato de sodio)
+- **Bomba pH-**: Producto ácido (ácido muriático, bisulfato de sodio)
 
-### ESP32 Code
-- **Archivo:** `lecturaDatosPH/sensorPH_ThingSpeak/sensorPH_ThingSpeak.ino`
-- **Tamaño:** ~500 líneas de código
-- **Características:**
-  - Código completamente documentado
-  - Estructura modular y organizada
-  - Manejo robusto de errores
-  - Interfaz web HTML integrada
-  - Logging detallado
+## 🤖 **SISTEMA DE DOSIFICACIÓN AUTOMÁTICA**
 
-### Web App Communication
-- **Archivo:** `control-pileta/src/esp32Communication.js`
-- **Tamaño:** ~400 líneas de código
-- **Características:**
-  - API completa para ThingSpeak
-  - Validación de datos
-  - Manejo de errores
-  - Funciones utilitarias
-  - Sistema de hooks
+### **Configuración por Defecto:**
+- **pH Mínimo**: 7.0 (activa bomba pH+)
+- **pH Máximo**: 7.8 (activa bomba pH-)
+- **Duración**: 5 segundos por dosificación
+- **Cooldown**: 5 minutos entre dosificaciones
+- **Seguridad**: Máximo 60 segundos por dosificación
 
-## 🧪 TESTING COMPLETO
+### **Funcionamiento:**
+1. **Lectura continua**: El ESP32 lee el pH cada 30 segundos
+2. **Evaluación automática**: Si pH < 7.0 → activa pH+, si pH > 7.8 → activa pH-
+3. **Dosificación segura**: Activa relé por tiempo configurado
+4. **Cooldown**: Espera 5 minutos antes de la siguiente dosificación
+5. **Monitoreo**: Registra todas las dosificaciones en el log
 
-- **Archivo:** `control-pileta/test-completo.html`
-- **Funcionalidades:**
-  - Test de conectividad ThingSpeak
-  - Verificación de datos pH
-  - Test de historial
-  - Pruebas de integración
-  - Estadísticas en tiempo real
+## � **API DE DOSIFICACIÓN**
 
-## 📱 ENDPOINTS DISPONIBLES
+### **Endpoints Disponibles:**
 
-### ESP32 Local (Opcional)
-- `GET /` - Página principal con interfaz HTML
-- `GET /status` - Estado del sistema
-- `GET /ph` - Valor actual de pH
-- `GET /data` - Datos completos
-- `GET /calibration` - Información de calibración
+#### **POST /dosing** - Dosificación Manual
+```json
+{
+  "product": "ph_plus",  // o "ph_minus"
+  "duration": 5          // segundos (máx 60)
+}
+```
 
-### ThingSpeak API (Principal)
-- `GET https://api.thingspeak.com/channels/3249157/feeds/last.json` - Último dato
-- `GET https://api.thingspeak.com/channels/3249157/feeds.json` - Historial
+#### **GET /dosing/status** - Estado de Dosificación
+```json
+{
+  "dosing_active": false,
+  "current_product": "",
+  "dosing_count": 0,
+  "auto_dosing_enabled": true,
+  "relay_ph_plus": false,
+  "relay_ph_minus": false
+}
+```
 
-## 🔍 CARACTERÍSTICAS TÉCNICAS
+#### **POST /dosing/stop** - Parar Dosificación
+```json
+{
+  "success": true,
+  "message": "Dosing stopped"
+}
+```
 
-### ESP32
-- **WiFi:** Reconexión automática
-- **Sensor:** GPIO 36 (ADC1_CH0)
-- **Calibración:** pH 4.0 y pH 7.0
-- **Intervalos:** 30s lectura, 60s upload
-- **Memoria:** Optimizada y monitoreada
+## 🛡️ **CARACTERÍSTICAS DE SEGURIDAD**
 
-### Web App
-- **Timeout:** 10 segundos por petición
-- **Retry:** Cada 30 segundos
-- **Validación:** pH 0-14, Voltaje 0-5V
-- **Cache:** Control de cache inteligente
+### **Protecciones Implementadas:**
+- ✅ **Tiempo máximo**: 60 segundos por dosificación
+- ✅ **Cooldown obligatorio**: 5 minutos entre dosificaciones automáticas
+- ✅ **Un solo relé activo**: No se pueden activar ambos relés simultáneamente
+- ✅ **Parada de emergencia**: Comando para detener inmediatamente
+- ✅ **Monitoreo continuo**: Log detallado de todas las operaciones
+- ✅ **Validación de parámetros**: Verificación de comandos antes de ejecutar
 
-## 🚀 INSTRUCCIONES DE USO
+### **Indicadores Visuales:**
+- **LED integrado ESP32**: Se enciende durante dosificación
+- **Monitor Serie**: Log detallado de todas las operaciones
+- **Interfaz Web**: Estado en tiempo real
 
-### 1. Configurar ESP32
+## � **CONFIGURACIÓN Y CALIBRACIÓN**
+
+### **Ajustar Parámetros de Dosificación:**
 ```cpp
-// Actualizar credenciales WiFi en el código
-const char* WIFI_SSID = "TU_RED_WIFI";
-const char* WIFI_PASSWORD = "TU_PASSWORD";
+// En el código ESP32, modificar estas variables:
+float AUTO_DOSING_PH_MIN = 7.0;     // pH mínimo
+float AUTO_DOSING_PH_MAX = 7.8;     // pH máximo  
+unsigned long AUTO_DOSING_DURATION = 5000;  // 5 segundos
+unsigned long AUTO_DOSING_COOLDOWN = 300000; // 5 minutos
 ```
 
-### 2. Subir Código
-1. Abrir Arduino IDE
-2. Instalar librerías: WiFi, WebServer, HTTPClient
-3. Seleccionar placa ESP32
-4. Subir código
+### **Calibración de Bombas:**
+1. **Medir caudal**: Cronometrar cuánto producto dosifica cada bomba por segundo
+2. **Ajustar duración**: Modificar `AUTO_DOSING_DURATION` según necesidades
+3. **Probar manualmente**: Usar endpoint `/dosing` para pruebas controladas
 
-### 3. Verificar Funcionamiento
-1. Abrir Monitor Serie (115200 baud)
-2. Verificar conexión WiFi
-3. Confirmar envío a ThingSpeak
-4. Probar interfaz web local
+## � **MONITOREO Y DEBUG**
 
-### 4. Probar Web App
-1. Abrir `test-completo.html`
-2. Ejecutar "Test Completo"
-3. Verificar todos los tests pasan
-4. Confirmar datos en tiempo real
-
-## 📈 MONITOREO Y DEBUG
-
-### Monitor Serie ESP32
+### **Monitor Serie ESP32:**
 ```
-🧪 === LECTURA SENSOR pH ===
-📈 Valor ADC: 2047/4095
-⚡ Voltaje: 1.650V
-🧪 pH calculado: 7.05
-📤 Enviando datos a ThingSpeak...
-✅ Datos enviados exitosamente!
+💊 DOSIFICACIÓN INICIADA: pH+ por 5 segundos
+🔌 Relé pH+ activado (GPIO 25)
+⏰ Dosificación #1 - Finalizará en 5s
+✅ DOSIFICACIÓN COMPLETADA:
+   Producto: ph_plus
+   Duración: 5 segundos
+   pH antes: 6.85
+🔌 Todos los relés desactivados
 ```
 
-### Web App Console
-```
-🌐 [REMOTO] Verificando conexión con sensor...
-📡 [REMOTO] Respuesta recibida: {pH: 7.05, ...}
-✅ [REMOTO] Sensor conectado - datos recientes
-```
+### **Interfaz Web Local:**
+- **Estado en tiempo real**: http://[IP_ESP32]/dosing/status
+- **Dosificación manual**: POST a http://[IP_ESP32]/dosing
+- **Parada de emergencia**: POST a http://[IP_ESP32]/dosing/stop
 
-## 🔧 SOLUCIÓN DE PROBLEMAS
+## 🎉 **ESTADO FINAL**
 
-### ESP32 No Conecta WiFi
-1. Verificar credenciales
-2. Revisar señal WiFi
-3. Reiniciar ESP32
-4. Verificar firewall
-
-### No Llegan Datos a ThingSpeak
-1. Verificar API Key
-2. Confirmar Channel ID
-3. Revisar conectividad internet
-4. Verificar Monitor Serie
-
-### Web App No Recibe Datos
-1. Probar test-completo.html
-2. Verificar URL ThingSpeak
-3. Revisar console del navegador
-4. Confirmar datos recientes
-
-## 🎉 ESTADO FINAL
-
-- ✅ **ESP32:** Código completo y funcional
+- ✅ **ESP32:** Código completo con dosificación automática
+- ✅ **Módulo de Relés:** Configuración y conexión documentada
 - ✅ **ThingSpeak:** Configurado y operativo
 - ✅ **Web App:** Comunicación remota implementada
-- ✅ **Testing:** Suite completa de pruebas
+- ✅ **Dosificación:** Sistema automático y manual funcional
+- ✅ **Seguridad:** Protecciones y validaciones implementadas
+- ✅ **API:** Endpoints completos para control remoto
 - ✅ **Documentación:** Completa y detallada
-- ✅ **Sin CORS:** Problema eliminado completamente
-- ✅ **Remoto:** Funciona desde cualquier lugar
 
 ## 📞 PRÓXIMOS PASOS
 
-1. **Subir código al ESP32** y verificar funcionamiento
-2. **Probar sistema completo** con test-completo.html
-3. **Verificar app web** en https://controlpileta.vercel.app
-4. **Calibrar sensor** según necesidades específicas
-5. **Monitorear funcionamiento** durante 24-48 horas
+1. **Conectar módulo de relés** según el esquema proporcionado
+2. **Subir código actualizado** al ESP32
+3. **Conectar bombas dosificadoras** a los relés
+4. **Probar dosificación manual** usando la API
+5. **Configurar parámetros** según las necesidades de tu piscina
+6. **Monitorear funcionamiento** durante 24-48 horas
 
 ---
 
-**🎯 RESULTADO:** Sistema completamente funcional, bien organizado, sin perder ninguna función, y listo para producción.
+**🎯 RESULTADO:** Sistema completamente funcional con dosificación automática, bien organizado, sin perder ninguna función, y listo para producción con módulo de 2 relés.

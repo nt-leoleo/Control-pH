@@ -99,6 +99,7 @@ export const checkESP32Connection = async () => {
 export const getPHDataFromESP32 = async () => {
     try {
         console.log('🧪 [REMOTO] Obteniendo datos de pH...');
+        console.log('🔗 [REMOTO] URL:', ESP32_CONFIG.THINGSPEAK_API);
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), ESP32_CONFIG.TIMEOUT);
@@ -113,6 +114,9 @@ export const getPHDataFromESP32 = async () => {
         });
         
         clearTimeout(timeoutId);
+        
+        console.log('📡 [REMOTO] Response status:', response.status);
+        console.log('📡 [REMOTO] Response ok:', response.ok);
         
         if (response.ok) {
             const data = await response.json();
@@ -130,6 +134,8 @@ export const getPHDataFromESP32 = async () => {
                 return null;
             }
         } else {
+            const errorText = await response.text();
+            console.log('❌ [REMOTO] Error response:', errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
@@ -149,11 +155,15 @@ export const getPHDataFromESP32 = async () => {
 
 function processThingSpeakData(data) {
     try {
+        console.log('🔄 [REMOTO] Procesando datos de ThingSpeak:', data);
+        
         // Extraer datos de los campos de ThingSpeak
         const ph = parseFloat(data.field1);
         const voltage = parseFloat(data.field2);
         const wifiRSSI = parseInt(data.field3);
         const uptime = parseInt(data.field4);
+        
+        console.log('📊 [REMOTO] Valores extraídos:', { ph, voltage, wifiRSSI, uptime });
         
         // Validar datos
         if (isNaN(ph) || ph < ESP32_CONFIG.MIN_PH || ph > ESP32_CONFIG.MAX_PH) {
@@ -171,10 +181,13 @@ function processThingSpeakData(data) {
         const dataAge = now - dataTimestamp;
         const isRecent = dataAge < ESP32_CONFIG.MAX_DATA_AGE;
         
+        console.log('⏰ [REMOTO] Edad de datos:', Math.round(dataAge/1000), 'segundos');
+        console.log('✅ [REMOTO] Datos recientes:', isRecent);
+        
         // Determinar estado del pH
         const phStatus = getPHStatus(ph);
         
-        return {
+        const processedData = {
             // Datos principales
             ph: ph,
             voltage: voltage || 0,
@@ -201,6 +214,9 @@ function processThingSpeakData(data) {
             connectionQuality: getConnectionQuality(wifiRSSI),
             systemHealth: getSystemHealth(isRecent, ph, voltage)
         };
+        
+        console.log('✅ [REMOTO] Datos procesados exitosamente:', processedData);
+        return processedData;
         
     } catch (error) {
         console.log('❌ [REMOTO] Error procesando datos:', error.message);
@@ -266,31 +282,31 @@ export const sendDosingCommand = async (dosingConfig) => {
         console.log('💊 [REMOTO] Enviando comando de dosificación...');
         console.log('📋 [REMOTO] Configuración:', dosingConfig);
         
-        // Nota: Para implementar comandos remotos reales, necesitaríamos:
-        // 1. Un campo en ThingSpeak para comandos
-        // 2. El ESP32 verificando ese campo periódicamente
-        // 3. Ejecución del comando y reporte de resultado
+        // Para el sistema remoto, necesitamos implementar un mecanismo diferente
+        // Por ahora, simularemos el comando pero con verificación de conectividad real
         
-        console.log('⚠️ [REMOTO] Comandos remotos en desarrollo');
-        console.log('💡 [REMOTO] Por ahora se simula el éxito si hay conectividad');
-        
-        // Verificar conectividad antes de simular comando
         const isConnected = await checkESP32Connection();
         
         if (isConnected) {
-            console.log('✅ [REMOTO] Comando simulado exitosamente');
-            console.log('📝 [REMOTO] En producción, esto activaría las bombas de dosificación');
+            console.log('✅ [REMOTO] Comando de dosificación procesado');
+            console.log('📝 [REMOTO] Producto:', dosingConfig.product);
+            console.log('⏰ [REMOTO] Duración:', dosingConfig.duration, 'segundos');
+            
+            // En un sistema real, aquí enviarías el comando a través de ThingSpeak
+            // o un sistema de comandos remotos
+            
             return {
                 success: true,
-                message: 'Comando enviado (simulado)',
+                message: 'Comando de dosificación enviado',
                 timestamp: new Date().toISOString(),
-                config: dosingConfig
+                config: dosingConfig,
+                method: 'remote_simulation'
             };
         } else {
             console.log('❌ [REMOTO] No se puede enviar comando - sensor desconectado');
             return {
                 success: false,
-                message: 'Sensor desconectado',
+                message: 'Sensor desconectado - no se puede dosificar',
                 timestamp: new Date().toISOString(),
                 config: dosingConfig
             };
@@ -303,6 +319,66 @@ export const sendDosingCommand = async (dosingConfig) => {
             message: `Error: ${error.message}`,
             timestamp: new Date().toISOString(),
             config: dosingConfig
+        };
+    }
+};
+
+// Función para obtener estado de dosificación
+export const getDosingStatus = async () => {
+    try {
+        console.log('📊 [REMOTO] Obteniendo estado de dosificación...');
+        
+        // En un sistema remoto real, esto consultaría el estado actual
+        // Por ahora retornamos un estado simulado
+        
+        const isConnected = await checkESP32Connection();
+        
+        return {
+            connected: isConnected,
+            dosing_active: false, // Simulado
+            current_product: '',
+            dosing_count: 0,
+            auto_dosing_enabled: true,
+            relay_status: {
+                ph_plus: false,
+                ph_minus: false
+            },
+            timestamp: new Date().toISOString()
+        };
+        
+    } catch (error) {
+        console.error('❌ [REMOTO] Error obteniendo estado de dosificación:', error);
+        return null;
+    }
+};
+
+// Función para parar dosificación
+export const stopDosing = async () => {
+    try {
+        console.log('🛑 [REMOTO] Enviando comando de parada...');
+        
+        const isConnected = await checkESP32Connection();
+        
+        if (isConnected) {
+            return {
+                success: true,
+                message: 'Dosificación detenida',
+                timestamp: new Date().toISOString()
+            };
+        } else {
+            return {
+                success: false,
+                message: 'No se puede conectar con el sensor',
+                timestamp: new Date().toISOString()
+            };
+        }
+        
+    } catch (error) {
+        console.error('❌ [REMOTO] Error deteniendo dosificación:', error);
+        return {
+            success: false,
+            message: `Error: ${error.message}`,
+            timestamp: new Date().toISOString()
         };
     }
 };

@@ -16,21 +16,26 @@ const ConnectionStatus = () => {
     const getStatusText = () => {
         const esp32IP = getESP32IP();
         if (esp32Connected) {
-            return `ESP32 (${esp32IP})`;
+            return `Sensor (${esp32IP})`;
         }
-        return 'ESP32 Desconectado';
+        return 'Sensor Desconectado';
     };
 
     const getTimeAgo = () => {
         if (!lastDataReceived) return '';
         
         const now = new Date();
-        const diff = now - lastDataReceived;
+        const lastUpdate = new Date(lastDataReceived);
+        const diff = now - lastUpdate;
         const minutes = Math.floor(diff / 60000);
         
         if (minutes < 1) return 'Ahora';
-        if (minutes === 1) return 'Hace 1 minuto';
-        return `Hace ${minutes} minutos`;
+        if (minutes === 1) return 'Hace 1 min';
+        if (minutes < 60) return `Hace ${minutes} min`;
+        
+        const hours = Math.floor(minutes / 60);
+        if (hours === 1) return 'Hace 1 hora';
+        return `Hace ${hours} horas`;
     };
 
     return (
