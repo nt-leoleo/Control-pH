@@ -50,12 +50,23 @@ export const PHProvider = ({ children }) => {
             if (userConfig.alkalinity) setAlkalinity(userConfig.alkalinity);
             if (userConfig.chlorineType) setChlorineType(userConfig.chlorineType);
             if (userConfig.acidType) setAcidType(userConfig.acidType);
-            if (userConfig.phMin) setPhTolerance(userConfig.phMin);
-            if (userConfig.phMax) setPhToleranceRange(userConfig.phMax - userConfig.phMin);
+            
+            // Cargar pH y tolerancia (nuevo formato)
+            if (userConfig.phTolerance) setPhTolerance(userConfig.phTolerance);
+            if (userConfig.phToleranceRange) setPhToleranceRange(userConfig.phToleranceRange);
+            
+            // Compatibilidad con formato anterior (phMin/phMax)
+            if (!userConfig.phTolerance && userConfig.phMin) {
+                setPhTolerance(userConfig.phMin);
+            }
+            if (!userConfig.phToleranceRange && userConfig.phMax && userConfig.phMin) {
+                setPhToleranceRange(userConfig.phMax - userConfig.phMin);
+            }
+            
             if (userConfig.dosingMode) setDosingMode(userConfig.dosingMode);
             
             // Si tiene configuración básica, marcar como configurado
-            const hasBasicConfig = userConfig.poolVolume && userConfig.phMin && userConfig.phMax;
+            const hasBasicConfig = userConfig.poolVolume && (userConfig.phTolerance || userConfig.phMin);
             const isConfiguredValue = userConfig.isConfigured || hasBasicConfig || false;
             setIsConfigured(isConfiguredValue);
             
@@ -73,11 +84,22 @@ export const PHProvider = ({ children }) => {
                     if (localConfig.alkalinity) setAlkalinity(localConfig.alkalinity);
                     if (localConfig.chlorineType) setChlorineType(localConfig.chlorineType);
                     if (localConfig.acidType) setAcidType(localConfig.acidType);
-                    if (localConfig.phMin) setPhTolerance(localConfig.phMin);
-                    if (localConfig.phMax) setPhToleranceRange(localConfig.phMax - localConfig.phMin);
+                    
+                    // Cargar pH y tolerancia (nuevo formato)
+                    if (localConfig.phTolerance) setPhTolerance(localConfig.phTolerance);
+                    if (localConfig.phToleranceRange) setPhToleranceRange(localConfig.phToleranceRange);
+                    
+                    // Compatibilidad con formato anterior
+                    if (!localConfig.phTolerance && localConfig.phMin) {
+                        setPhTolerance(localConfig.phMin);
+                    }
+                    if (!localConfig.phToleranceRange && localConfig.phMax && localConfig.phMin) {
+                        setPhToleranceRange(localConfig.phMax - localConfig.phMin);
+                    }
+                    
                     if (localConfig.dosingMode) setDosingMode(localConfig.dosingMode);
                     
-                    const hasBasicConfig = localConfig.poolVolume && localConfig.phMin && localConfig.phMax;
+                    const hasBasicConfig = localConfig.poolVolume && (localConfig.phTolerance || localConfig.phMin);
                     setIsConfigured(localConfig.isConfigured || hasBasicConfig || false);
                 }
             } catch (error) {
@@ -145,7 +167,7 @@ export const PHProvider = ({ children }) => {
             }
             validateToleranceRange(validatedValue, phToleranceRange);
             setPhTolerance(validatedValue);
-            await saveConfigToFirebase({ phMin: validatedValue });
+            await saveConfigToFirebase({ phTolerance: validatedValue });
             setError(null);
         } catch (err) {
             logError('TOLERANCE_VALIDATION_ERROR', err.message, { value });
@@ -159,7 +181,7 @@ export const PHProvider = ({ children }) => {
             const validatedValue = validateTolerance(value);
             validateToleranceRange(phTolerance, validatedValue);
             setPhToleranceRange(validatedValue);
-            await saveConfigToFirebase({ phMax: phTolerance + validatedValue });
+            await saveConfigToFirebase({ phToleranceRange: validatedValue });
             setError(null);
         } catch (err) {
             logError('TOLERANCE_RANGE_VALIDATION_ERROR', err.message, { value });

@@ -462,3 +462,192 @@
     padding: 0.875rem 1.25rem;
   }
 }
+/* =====================================================
+   SLIDERS PARA pH Y TOLERANCIA
+   ===================================================== */
+
+.setting-control-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.slider-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Slider de pH */
+.ph-slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, 
+    #ff4444 0%, 
+    #ff8844 20%, 
+    #ffdd44 35%, 
+    #44ff44 50%, 
+    #44ddff 65%, 
+    #4488ff 80%, 
+    #8844ff 100%);
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.ph-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--accent-color);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+}
+
+.ph-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.ph-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--accent-color);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Slider de tolerancia */
+.tolerance-slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, 
+    #4CAF50 0%, 
+    #FFC107 50%, 
+    #FF5722 100%);
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.tolerance-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--accent-color);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+}
+
+.tolerance-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.tolerance-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--accent-color);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Zonas del slider de pH */
+.slider-track {
+  margin-top: 8px;
+}
+
+.slider-zones {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8em;
+  color: var(--text-secondary);
+}
+
+.zone {
+  font-weight: 500;
+}
+
+.zone.acidic {
+  color: #ff4444;
+}
+
+.zone.neutral {
+  color: #44ff44;
+}
+
+.zone.basic {
+  color: #8844ff;
+}
+
+/* Labels del slider de tolerancia */
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.8em;
+  color: var(--text-secondary);
+}
+
+/* Valor del slider */
+.slider-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.setting-input-small {
+  width: 80px;
+  padding: 8px 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 1em;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.setting-input-small:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* Responsive para sliders */
+@media (max-width: 480px) {
+  .setting-control-slider {
+    gap: 12px;
+  }
+  
+  .slider-zones,
+  .slider-labels {
+    font-size: 0.7em;
+  }
+  
+  .setting-input-small {
+    width: 70px;
+    padding: 6px 8px;
+    font-size: 0.9em;
+  }
+  
+  .ph-slider::-webkit-slider-thumb,
+  .tolerance-slider::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}

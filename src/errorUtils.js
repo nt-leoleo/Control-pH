@@ -21,8 +21,8 @@ export const validateTolerance = (value) => {
         throw new Error('La tolerancia debe ser un número válido');
     }
     
-    if (num <= 0 || num > 1) {
-        throw new Error('La tolerancia debe estar entre 0.1 y 1.0');
+    if (num <= 0 || num > 5) {
+        throw new Error('La tolerancia debe estar entre 0.1 y 5.0');
     }
     
     return num;

@@ -80,6 +80,13 @@ export default function App() {
 
   // Si está en vista de configuración, mostrar página de configuración
   if (currentView === 'settings') {
+    console.log('🔧 [App] Mostrando página de configuración:', {
+      user: user ? `${user.displayName}` : 'No user',
+      userConfig: userConfig ? 'Config loaded' : 'No config',
+      isConfigured: isConfigured,
+      currentView: currentView
+    });
+    
     return (
       <>
         <SettingsPage onBack={() => setCurrentView('main')} />

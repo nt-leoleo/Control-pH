@@ -85,8 +85,8 @@ export const useAuth = () => {
         
         const defaultConfig = {
           // Configuración por defecto de la piscina
-          phMin: 7.0,
-          phMax: 7.8,
+          phTolerance: 7.4,
+          phToleranceRange: 0.5,
           autoDosingEnabled: true,
           notifications: true,
           esp32IP: '192.168.100.134',

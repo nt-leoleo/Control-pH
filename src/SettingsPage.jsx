@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import WiFiConfig from './WiFiConfig';
 import './SettingsPage.css';
@@ -20,25 +20,85 @@ const SettingsPage = ({ onBack }) => {
   const [showWiFiConfig, setShowWiFiConfig] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
 
-  const handleToleranceChange = async (e) => {
-    const value = parseFloat(e.target.value);
-    if (value >= 6 && value <= 8) {
-      try {
-        await setPhTolerance(value);
-      } catch (error) {
-        console.error('❌ [Settings] Error actualizando tolerancia:', error);
+  // Estados locales para sliders suaves (sin lag)
+  const [localPhTolerance, setLocalPhTolerance] = useState(phTolerance);
+  const [localPhToleranceRange, setLocalPhToleranceRange] = useState(phToleranceRange);
+
+  // Sincronizar estados locales cuando cambian los valores del contexto
+  useEffect(() => {
+    setLocalPhTolerance(phTolerance);
+  }, [phTolerance]);
+
+  useEffect(() => {
+    setLocalPhToleranceRange(phToleranceRange);
+  }, [phToleranceRange]);
+
+  // Debounce para pH tolerance (guardar 500ms después de que pare de mover)
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (localPhTolerance !== phTolerance && localPhTolerance >= 0 && localPhTolerance <= 14) {
+        try {
+          console.log('💾 [SettingsPage] Guardando pH tolerance (debounced):', localPhTolerance);
+          await setPhTolerance(localPhTolerance);
+        } catch (error) {
+          console.error('❌ [Settings] Error guardando pH tolerance:', error);
+        }
       }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [localPhTolerance, phTolerance, setPhTolerance]);
+
+  // Debounce para pH tolerance range (guardar 500ms después de que pare de mover)
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (localPhToleranceRange !== phToleranceRange && localPhToleranceRange > 0 && localPhToleranceRange <= 5) {
+        try {
+          console.log('💾 [SettingsPage] Guardando pH tolerance range (debounced):', localPhToleranceRange);
+          await setPhToleranceRange(localPhToleranceRange);
+        } catch (error) {
+          console.error('❌ [Settings] Error guardando pH tolerance range:', error);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [localPhToleranceRange, phToleranceRange, setPhToleranceRange]);
+
+  // Debug logs
+  useEffect(() => {
+    console.log('⚙️ [SettingsPage] Componente renderizado:', {
+      phTolerance,
+      phToleranceRange,
+      localPhTolerance,
+      localPhToleranceRange,
+      dosingMode,
+      esp32Connected,
+      lastDataReceived: lastDataReceived ? lastDataReceived.toLocaleString() : 'Nunca',
+      setPhTolerance: typeof setPhTolerance,
+      setPhToleranceRange: typeof setPhToleranceRange
+    });
+  }, [phTolerance, phToleranceRange, localPhTolerance, localPhToleranceRange, dosingMode, esp32Connected, lastDataReceived]);
+
+  const handleToleranceChange = (e) => {
+    const value = parseFloat(e.target.value);
+    console.log('🎯 [SettingsPage] Cambiando tolerancia (local):', value);
+    
+    if (!isNaN(value) && value >= 0 && value <= 14) {
+      setLocalPhTolerance(value); // Cambio inmediato sin lag
+    } else {
+      console.warn('⚠️ [SettingsPage] Valor de tolerancia inválido:', value);
     }
   };
 
-  const handleRangeChange = async (e) => {
+  const handleRangeChange = (e) => {
     const value = parseFloat(e.target.value);
-    if (value >= 0.1 && value <= 1) {
-      try {
-        await setPhToleranceRange(value);
-      } catch (error) {
-        console.error('❌ [Settings] Error actualizando rango:', error);
-      }
+    console.log('🎯 [SettingsPage] Cambiando rango (local):', value);
+    
+    if (!isNaN(value) && value > 0 && value <= 5) {
+      setLocalPhToleranceRange(value); // Cambio inmediato sin lag
+    } else {
+      console.warn('⚠️ [SettingsPage] Valor de rango inválido:', value);
     }
   };
 
@@ -84,17 +144,37 @@ const SettingsPage = ({ onBack }) => {
               pH Objetivo
               <span className="setting-description">Valor ideal de pH para la piscina</span>
             </label>
-            <div className="setting-control">
-              <input
-                type="number"
-                min="6"
-                max="8"
-                step="0.1"
-                value={phTolerance}
-                onChange={handleToleranceChange}
-                className="setting-input"
-              />
-              <span className="setting-unit">pH</span>
+            <div className="setting-control-slider">
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0"
+                  max="14"
+                  step="0.1"
+                  value={localPhTolerance}
+                  onChange={handleToleranceChange}
+                  className="ph-slider"
+                />
+                <div className="slider-track">
+                  <div className="slider-zones">
+                    <span className="zone acidic">Ácido</span>
+                    <span className="zone neutral">Neutro</span>
+                    <span className="zone basic">Básico</span>
+                  </div>
+                </div>
+              </div>
+              <div className="slider-value">
+                <input
+                  type="number"
+                  min="0"
+                  max="14"
+                  step="0.1"
+                  value={localPhTolerance}
+                  onChange={handleToleranceChange}
+                  className="setting-input-small"
+                />
+                <span className="setting-unit">pH</span>
+              </div>
             </div>
           </div>
 
@@ -103,17 +183,34 @@ const SettingsPage = ({ onBack }) => {
               Tolerancia
               <span className="setting-description">Rango permitido de variación (±)</span>
             </label>
-            <div className="setting-control">
-              <input
-                type="number"
-                min="0.1"
-                max="1"
-                step="0.1"
-                value={phToleranceRange}
-                onChange={handleRangeChange}
-                className="setting-input"
-              />
-              <span className="setting-unit">±pH</span>
+            <div className="setting-control-slider">
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="5"
+                  step="0.1"
+                  value={localPhToleranceRange}
+                  onChange={handleRangeChange}
+                  className="tolerance-slider"
+                />
+                <div className="slider-labels">
+                  <span>Preciso</span>
+                  <span>Flexible</span>
+                </div>
+              </div>
+              <div className="slider-value">
+                <input
+                  type="number"
+                  min="0.1"
+                  max="5"
+                  step="0.1"
+                  value={localPhToleranceRange}
+                  onChange={handleRangeChange}
+                  className="setting-input-small"
+                />
+                <span className="setting-unit">±</span>
+              </div>
             </div>
           </div>
 
@@ -121,7 +218,7 @@ const SettingsPage = ({ onBack }) => {
             <div className="ph-range">
               <span className="range-label">Rango Aceptable:</span>
               <span className="range-value">
-                {(phTolerance - phToleranceRange).toFixed(1)} - {(phTolerance + phToleranceRange).toFixed(1)} pH
+                {(localPhTolerance - localPhToleranceRange).toFixed(1)} - {(localPhTolerance + localPhToleranceRange).toFixed(1)} pH
               </span>
             </div>
           </div>

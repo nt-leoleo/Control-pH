@@ -178,14 +178,14 @@ const Onboarding = () => {
                             <label>pH ideal para tu piscina:</label>
                             <input
                                 type="number"
-                                min="6"
-                                max="8"
+                                min="0"
+                                max="14"
                                 step="0.1"
                                 value={idealPH}
                                 onChange={(e) => setIdealPH(e.target.value)}
                                 className="onboardingInput"
                             />
-                            <span className="inputHint">Rango recomendado: 7.2 - 7.8</span>
+                            <span className="inputHint">Rango válido: 0 - 14 (recomendado: 7.2 - 7.8)</span>
                         </div>
 
                         <div className="settingGroup">
@@ -193,13 +193,13 @@ const Onboarding = () => {
                             <input
                                 type="number"
                                 min="0.1"
-                                max="1"
+                                max="5"
                                 step="0.1"
                                 value={tolerance}
                                 onChange={(e) => setTolerance(e.target.value)}
                                 className="onboardingInput"
                             />
-                            <span className="inputHint">Ej: 0.5 significa 7.4 ±0.5 (6.9 - 7.9)</span>
+                            <span className="inputHint">Ej: 0.5 significa 7.4 ±0.5 (6.9 - 7.9). Máximo: 5.0</span>
                         </div>
                     </div>
                 )}
