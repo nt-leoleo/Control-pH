@@ -36,6 +36,10 @@ export const useAuth = () => {
 
   const loginWithGoogle = async () => {
     try {
+      console.log('🔐 Iniciando login con Google...');
+      console.log('🌐 Auth domain:', auth.app.options.authDomain);
+      console.log('🔑 API Key:', auth.app.options.apiKey ? 'Configurada' : 'Falta');
+      
       const result = await signInWithPopup(auth, googleProvider);
       console.log('✅ Login exitoso:', result.user.displayName);
       
@@ -44,7 +48,9 @@ export const useAuth = () => {
       
       return result.user;
     } catch (error) {
-      console.error('❌ Error login:', error.message);
+      console.error('❌ Error login completo:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error message:', error.message);
       throw error;
     }
   };

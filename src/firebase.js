@@ -21,4 +21,9 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
+// Configuración adicional para Google Auth
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
 export default app;

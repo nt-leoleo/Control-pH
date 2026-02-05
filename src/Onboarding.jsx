@@ -22,7 +22,7 @@ const Onboarding = () => {
     const [idealPH, setIdealPH] = useState('7.4');
     const [tolerance, setTolerance] = useState('0.5');
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (step === 1) {
             if (!poolVol || poolVol <= 0) {
                 setError({ type: 'error', message: 'Ingresá un volumen válido' });
@@ -34,21 +34,29 @@ const Onboarding = () => {
         } else if (step === 3) {
             setStep(4);
         } else if (step === 4) {
-            finishOnboarding();
+            await finishOnboarding();
         }
     };
 
-    const finishOnboarding = () => {
+    const finishOnboarding = async () => {
         try {
-            setPoolVolume(parseFloat(poolVol));
-            setAlkalinity(parseFloat(alkLevel));
-            setChlorineType(chlorType);
-            setAcidType(acdType);
-            setPhTolerance(parseFloat(idealPH));
-            setPhToleranceRange(parseFloat(tolerance));
-            setIsConfigured(true);
+            console.log('🎯 [Onboarding] Guardando configuración inicial...');
+            
+            // Guardar toda la configuración de una vez
+            await Promise.all([
+                setPoolVolume(parseFloat(poolVol)),
+                setAlkalinity(parseFloat(alkLevel)),
+                setChlorineType(chlorType),
+                setAcidType(acdType),
+                setPhTolerance(parseFloat(idealPH)),
+                setPhToleranceRange(parseFloat(tolerance)),
+                setIsConfigured(true)
+            ]);
+            
+            console.log('✅ [Onboarding] Configuración guardada exitosamente');
         } catch (err) {
-            setError({ type: 'error', message: 'Error al guardar configuración' });
+            console.error('❌ [Onboarding] Error guardando configuración:', err);
+            setError({ type: 'error', message: 'Error al guardar configuración: ' + err.message });
         }
     };
 

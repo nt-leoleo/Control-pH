@@ -1,23 +1,23 @@
 import { createContext, useState, useEffect } from 'react';
 import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
 import { useESP32Connection, getPHDataFromESP32, checkESP32Connection } from './esp32Communication';
+import { useAuth } from './useAuth';
 
 export const PHContext = createContext(null);
 
 export const PHProvider = ({ children }) => {
-    const [isConfigured, setIsConfigured] = useState(false); // Nueva: si pasó onboarding
-    const [poolVolume, setPoolVolume] = useState(null); // Litros de la piscina
-    const [alkalinity, setAlkalinity] = useState(100); // ppm (80-120 ideal)
-    const [chlorineType, setChlorineType] = useState('sodium-hypochlorite'); // Tipo de cloro
-    const [acidType, setAcidType] = useState('muriatic'); // Tipo de ácido para bajar pH
+    const { user, userConfig, updateUserConfig } = useAuth();
+    const [isConfigured, setIsConfigured] = useState(false);
     
-    // Estado de conexión ESP32
-    const [esp32Connected, setEsp32Connected] = useState(false);
-    const [lastDataReceived, setLastDataReceived] = useState(null);
-    
-    const [ph, setPH] = useState(7.4);
-    const [phTolerance, setPhTolerance] = useState(7.4); // pH ideal para piscinas
+    // Estados que se sincronizarán con Firebase
+    const [poolVolume, setPoolVolume] = useState(null);
+    const [alkalinity, setAlkalinity] = useState(100);
+    const [chlorineType, setChlorineType] = useState('sodium-hypochlorite');
+    const [acidType, setAcidType] = useState('muriatic');
+    const [phTolerance, setPhTolerance] = useState(7.4);
     const [phToleranceRange, setPhToleranceRange] = useState(0.5);
+    const [dosingMode, setDosingMode] = useState('automatic');
+    const [ph, setPH] = useState(7.4);
     const [phHistory, setPhHistory] = useState([
         { hour: '00:00', value: 7.0 },
         { hour: '01:00', value: 7.1 },
@@ -28,14 +28,64 @@ export const PHProvider = ({ children }) => {
         { hour: '06:00', value: 7.1 },
     ]);
     const [error, setError] = useState(null);
-    const [dosingMode, setDosingMode] = useState('automatic'); // 'automatic' | 'manual'
     const [manualDosingConfig, setManualDosingConfig] = useState({
-        product: 'sodium-hypochlorite', // Por defecto
+        product: 'sodium-hypochlorite',
         minutes: 2,
         seconds: 30,
         liters: 5,
     });
     const [dosingHistory, setDosingHistory] = useState([]);
+
+    // Estado de conexión ESP32
+    const [esp32Connected, setEsp32Connected] = useState(false);
+    const [lastDataReceived, setLastDataReceived] = useState(null);
+
+    // Cargar configuración desde Firebase cuando esté disponible
+    useEffect(() => {
+        if (userConfig) {
+            console.log('🔧 [PHContext] Cargando configuración desde Firebase:', userConfig);
+            
+            // Cargar configuración guardada
+            if (userConfig.poolVolume) setPoolVolume(userConfig.poolVolume);
+            if (userConfig.alkalinity) setAlkalinity(userConfig.alkalinity);
+            if (userConfig.chlorineType) setChlorineType(userConfig.chlorineType);
+            if (userConfig.acidType) setAcidType(userConfig.acidType);
+            if (userConfig.phMin) setPhTolerance(userConfig.phMin);
+            if (userConfig.phMax) setPhToleranceRange(userConfig.phMax - userConfig.phMin);
+            if (userConfig.dosingMode) setDosingMode(userConfig.dosingMode);
+            
+            // Si tiene configuración básica, marcar como configurado
+            const hasBasicConfig = userConfig.poolVolume && userConfig.phMin && userConfig.phMax;
+            setIsConfigured(hasBasicConfig || userConfig.isConfigured || false);
+            
+            console.log('✅ [PHContext] Configuración cargada, isConfigured:', hasBasicConfig);
+        }
+    }, [userConfig]);
+
+    // Función para guardar configuración en Firebase
+    const saveConfigToFirebase = async (configUpdate) => {
+        if (!user) return;
+        
+        try {
+            await updateUserConfig(configUpdate);
+            console.log('💾 [PHContext] Configuración guardada en Firebase:', configUpdate);
+        } catch (error) {
+            console.error('❌ [PHContext] Error guardando configuración:', error);
+            logError('FIREBASE_SAVE_ERROR', error.message, configUpdate);
+        }
+    };
+
+    // Wrapper mejorado para setPoolVolume que guarda en Firebase
+    const safePoolVolumeSet = async (value) => {
+        setPoolVolume(value);
+        await saveConfigToFirebase({ poolVolume: value });
+    };
+
+    // Wrapper mejorado para setIsConfigured que guarda en Firebase
+    const safeSetIsConfigured = async (value) => {
+        setIsConfigured(value);
+        await saveConfigToFirebase({ isConfigured: value });
+    };
 
     // Wrapper para setPH con validación
     const safePHSet = (value) => {
@@ -49,8 +99,8 @@ export const PHProvider = ({ children }) => {
         }
     };
 
-    // Wrapper para setPhTolerance con validación
-    const safeToleranceSet = (value) => {
+    // Wrapper para setPhTolerance con validación y guardado en Firebase
+    const safeToleranceSet = async (value) => {
         try {
             const validatedValue = parseFloat(value);
             if (isNaN(validatedValue)) {
@@ -58,6 +108,7 @@ export const PHProvider = ({ children }) => {
             }
             validateToleranceRange(validatedValue, phToleranceRange);
             setPhTolerance(validatedValue);
+            await saveConfigToFirebase({ phMin: validatedValue });
             setError(null);
         } catch (err) {
             logError('TOLERANCE_VALIDATION_ERROR', err.message, { value });
@@ -65,17 +116,24 @@ export const PHProvider = ({ children }) => {
         }
     };
 
-    // Wrapper para setPhToleranceRange con validación
-    const safeToleranceRangeSet = (value) => {
+    // Wrapper para setPhToleranceRange con validación y guardado en Firebase
+    const safeToleranceRangeSet = async (value) => {
         try {
             const validatedValue = validateTolerance(value);
             validateToleranceRange(phTolerance, validatedValue);
             setPhToleranceRange(validatedValue);
+            await saveConfigToFirebase({ phMax: phTolerance + validatedValue });
             setError(null);
         } catch (err) {
             logError('TOLERANCE_RANGE_VALIDATION_ERROR', err.message, { value });
             setError({ type: 'error', message: err.message });
         }
+    };
+
+    // Wrapper para setDosingMode con guardado en Firebase
+    const safeDosingModeSet = async (value) => {
+        setDosingMode(value);
+        await saveConfigToFirebase({ dosingMode: value });
     };
 
     // Función para obtener datos de ThingSpeak
@@ -206,20 +264,25 @@ export const PHProvider = ({ children }) => {
     
     return (
         <PHContext.Provider value={{ 
+            // Estados de configuración
             isConfigured,
-            setIsConfigured,
+            setIsConfigured: safeSetIsConfigured,
             poolVolume,
-            setPoolVolume,
+            setPoolVolume: safePoolVolumeSet,
             alkalinity,
             setAlkalinity,
             chlorineType,
             setChlorineType,
             acidType,
             setAcidType,
+            
+            // Estados de conexión ESP32
             esp32Connected,
             setEsp32Connected,
             lastDataReceived,
             setLastDataReceived,
+            
+            // Estados de pH
             ph, 
             setPH: safePHSet, 
             phTolerance, 
@@ -227,17 +290,25 @@ export const PHProvider = ({ children }) => {
             phToleranceRange, 
             setPhToleranceRange: safeToleranceRangeSet, 
             phHistory,
+            
+            // Estados de error y dosificación
             error,
             setError,
             dosingMode,
-            setDosingMode,
+            setDosingMode: safeDosingModeSet,
             manualDosingConfig,
             setManualDosingConfig,
             dosingHistory,
             setDosingHistory,
+            
             // Funciones adicionales
             fetchPHData,
-            checkConnection
+            checkConnection,
+            saveConfigToFirebase,
+            
+            // Información de usuario
+            user,
+            userConfig
         }}>
             {children}
         </PHContext.Provider>
