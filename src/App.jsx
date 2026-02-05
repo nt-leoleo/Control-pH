@@ -19,6 +19,16 @@ export default function App() {
   const [currentView, setCurrentView] = useState('main'); // 'main' o 'settings'
   const [theme, setTheme] = useState('dark'); // Modo nocturno por defecto
 
+  // Debug logs para autenticación
+  useEffect(() => {
+    console.log('🔍 [App] Estado de autenticación:', {
+      user: user ? `${user.displayName} (${user.email})` : 'No autenticado',
+      userConfig: userConfig ? 'Configuración cargada' : 'Sin configuración',
+      loading: loading,
+      isConfigured: isConfigured
+    });
+  }, [user, userConfig, loading, isConfigured]);
+
   // Cargar tema guardado al iniciar
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'dark';

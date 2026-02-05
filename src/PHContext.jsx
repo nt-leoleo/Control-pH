@@ -56,22 +56,59 @@ export const PHProvider = ({ children }) => {
             
             // Si tiene configuración básica, marcar como configurado
             const hasBasicConfig = userConfig.poolVolume && userConfig.phMin && userConfig.phMax;
-            setIsConfigured(hasBasicConfig || userConfig.isConfigured || false);
+            const isConfiguredValue = userConfig.isConfigured || hasBasicConfig || false;
+            setIsConfigured(isConfiguredValue);
             
-            console.log('✅ [PHContext] Configuración cargada, isConfigured:', hasBasicConfig);
+            console.log('✅ [PHContext] Configuración cargada, isConfigured:', isConfiguredValue);
+        } else if (user && !userConfig) {
+            // Si hay usuario pero no configuración de Firebase, intentar localStorage
+            console.log('🔄 [PHContext] No hay configuración de Firebase, intentando localStorage...');
+            
+            try {
+                const localConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
+                if (Object.keys(localConfig).length > 0) {
+                    console.log('📱 [PHContext] Configuración encontrada en localStorage:', localConfig);
+                    
+                    if (localConfig.poolVolume) setPoolVolume(localConfig.poolVolume);
+                    if (localConfig.alkalinity) setAlkalinity(localConfig.alkalinity);
+                    if (localConfig.chlorineType) setChlorineType(localConfig.chlorineType);
+                    if (localConfig.acidType) setAcidType(localConfig.acidType);
+                    if (localConfig.phMin) setPhTolerance(localConfig.phMin);
+                    if (localConfig.phMax) setPhToleranceRange(localConfig.phMax - localConfig.phMin);
+                    if (localConfig.dosingMode) setDosingMode(localConfig.dosingMode);
+                    
+                    const hasBasicConfig = localConfig.poolVolume && localConfig.phMin && localConfig.phMax;
+                    setIsConfigured(localConfig.isConfigured || hasBasicConfig || false);
+                }
+            } catch (error) {
+                console.error('❌ [PHContext] Error cargando localStorage:', error);
+            }
         }
-    }, [userConfig]);
+    }, [userConfig, user]);
 
     // Función para guardar configuración en Firebase
     const saveConfigToFirebase = async (configUpdate) => {
-        if (!user) return;
+        if (!user) {
+            console.warn('⚠️ [PHContext] No hay usuario para guardar en Firebase');
+            return;
+        }
         
         try {
             await updateUserConfig(configUpdate);
             console.log('💾 [PHContext] Configuración guardada en Firebase:', configUpdate);
         } catch (error) {
-            console.error('❌ [PHContext] Error guardando configuración:', error);
-            logError('FIREBASE_SAVE_ERROR', error.message, configUpdate);
+            console.error('❌ [PHContext] Error guardando en Firebase, usando localStorage:', error);
+            
+            // Fallback a localStorage si Firebase falla
+            try {
+                const currentConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
+                const newConfig = { ...currentConfig, ...configUpdate };
+                localStorage.setItem('poolConfig', JSON.stringify(newConfig));
+                console.log('💾 [PHContext] Configuración guardada en localStorage como fallback');
+            } catch (localError) {
+                console.error('❌ [PHContext] Error guardando en localStorage:', localError);
+                logError('CONFIG_SAVE_ERROR', localError.message, configUpdate);
+            }
         }
     };
 
