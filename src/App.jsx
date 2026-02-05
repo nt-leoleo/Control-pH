@@ -8,11 +8,14 @@ import ManualDosing from "./ManualDosing";
 import Onboarding from "./Onboarding";
 import SettingsPage from "./SettingsPage";
 import ErrorNotification from "./ErrorNotification";
+import LoginScreen from "./LoginScreen";
 import { PHContext } from "./PHContext";
+import { useAuth } from "./useAuth";
 import "./App.css";
 
 export default function App() {
   const { ph, setPH, phTolerance, phToleranceRange, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
+  const { user, userConfig, loading } = useAuth();
   const [currentView, setCurrentView] = useState('main'); // 'main' o 'settings'
   const [theme, setTheme] = useState('dark'); // Modo nocturno por defecto
 
@@ -22,6 +25,32 @@ export default function App() {
     setTheme(savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
   }, []);
+
+  // Función para cambiar tema
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
+
+  // Mostrar loading mientras se verifica la autenticación
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-container">
+          <h1>🧪 Control Pileta pH</h1>
+          <div className="loading-spinner"></div>
+          <p>Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no hay usuario autenticado, mostrar pantalla de login
+  if (!user) {
+    return <LoginScreen />;
+  }
 
   // Función para cambiar tema
   const toggleTheme = () => {

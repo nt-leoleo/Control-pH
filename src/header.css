@@ -153,3 +153,53 @@ header::before {
     pointer-events: none;
     border-radius: inherit;
 }
+/* =====================================================
+   INFORMACIÓN DE USUARIO EN HEADER
+   ===================================================== */
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-color);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  color: var(--text-color);
+}
+
+.logout-btn:hover {
+  background-color: var(--hover-color);
+}
+
+/* Responsive para información de usuario */
+@media (max-width: 480px) {
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .logout-btn {
+    font-size: 1em;
+  }
+}
