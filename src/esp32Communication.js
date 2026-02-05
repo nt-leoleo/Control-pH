@@ -100,7 +100,7 @@ export const checkESP32Connection = async () => {
 export const getPHDataFromESP32 = async () => {
     try {
         console.log('🧪 [REMOTO] Obteniendo datos de pH...');
-        console.log('🔗 [REMOTO] URL:', ESP32_CONFIG.THINGSPEAK_API);
+        console.log('🔗 [REMOTO] URL completa:', ESP32_CONFIG.THINGSPEAK_API);
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), ESP32_CONFIG.TIMEOUT);
@@ -118,25 +118,35 @@ export const getPHDataFromESP32 = async () => {
         
         console.log('📡 [REMOTO] Response status:', response.status);
         console.log('📡 [REMOTO] Response ok:', response.ok);
+        console.log('📡 [REMOTO] Response headers:', [...response.headers.entries()]);
         
         if (response.ok) {
-            const data = await response.json();
+            const text = await response.text();
+            console.log('📄 [REMOTO] Raw response text:', text);
             
-            console.log('✅ [REMOTO] Datos de pH obtenidos:', data);
-            
-            // Validar y procesar datos
-            const processedData = processThingSpeakData(data);
-            
-            if (processedData) {
-                console.log('📊 [REMOTO] Datos procesados:', processedData);
-                return processedData;
-            } else {
-                console.log('❌ [REMOTO] Datos inválidos recibidos');
+            try {
+                const data = JSON.parse(text);
+                console.log('✅ [REMOTO] Datos JSON parseados:', data);
+                
+                // Validar y procesar datos
+                const processedData = processThingSpeakData(data);
+                
+                if (processedData) {
+                    console.log('📊 [REMOTO] Datos procesados exitosamente:', processedData);
+                    return processedData;
+                } else {
+                    console.log('❌ [REMOTO] Datos inválidos después del procesamiento');
+                    return null;
+                }
+            } catch (parseError) {
+                console.log('❌ [REMOTO] Error parseando JSON:', parseError.message);
+                console.log('📄 [REMOTO] Texto que falló al parsear:', text);
                 return null;
             }
         } else {
             const errorText = await response.text();
-            console.log('❌ [REMOTO] Error response:', errorText);
+            console.log('❌ [REMOTO] Error response status:', response.status);
+            console.log('❌ [REMOTO] Error response text:', errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
@@ -145,6 +155,7 @@ export const getPHDataFromESP32 = async () => {
             console.log('⏰ [REMOTO] Timeout obteniendo datos de pH');
         } else {
             console.log('❌ [REMOTO] Error obteniendo pH:', error.message);
+            console.log('❌ [REMOTO] Error stack:', error.stack);
         }
         return null;
     }
@@ -158,22 +169,48 @@ function processThingSpeakData(data) {
     try {
         console.log('🔄 [REMOTO] Procesando datos de ThingSpeak:', data);
         
+        // Verificar que tenemos los campos básicos
+        if (!data) {
+            console.log('❌ [REMOTO] Data es null o undefined');
+            return null;
+        }
+        
+        if (!data.created_at) {
+            console.log('❌ [REMOTO] Falta campo created_at');
+            return null;
+        }
+        
         // Extraer datos de los campos de ThingSpeak
         const ph = parseFloat(data.field1);
         const voltage = parseFloat(data.field2);
         const wifiRSSI = parseInt(data.field3);
         const uptime = parseInt(data.field4);
         
-        console.log('📊 [REMOTO] Valores extraídos:', { ph, voltage, wifiRSSI, uptime });
+        console.log('📊 [REMOTO] Valores extraídos:', { 
+            ph, 
+            voltage, 
+            wifiRSSI, 
+            uptime,
+            field1_raw: data.field1,
+            field2_raw: data.field2,
+            field3_raw: data.field3,
+            field4_raw: data.field4
+        });
         
-        // Validar datos
-        if (isNaN(ph) || ph < ESP32_CONFIG.MIN_PH || ph > ESP32_CONFIG.MAX_PH) {
-            console.log('⚠️ [REMOTO] Valor de pH inválido:', ph);
+        // Validar pH (campo más importante)
+        if (isNaN(ph)) {
+            console.log('⚠️ [REMOTO] Campo field1 (pH) es NaN:', data.field1);
             return null;
         }
         
-        if (isNaN(voltage) || voltage < ESP32_CONFIG.MIN_VOLTAGE || voltage > ESP32_CONFIG.MAX_VOLTAGE) {
-            console.log('⚠️ [REMOTO] Valor de voltaje inválido:', voltage);
+        if (ph < ESP32_CONFIG.MIN_PH || ph > ESP32_CONFIG.MAX_PH) {
+            console.log('⚠️ [REMOTO] Valor de pH fuera de rango:', ph, 'Rango válido:', ESP32_CONFIG.MIN_PH, '-', ESP32_CONFIG.MAX_PH);
+            return null;
+        }
+        
+        // Validar voltaje (opcional, no bloquear si falla)
+        if (isNaN(voltage)) {
+            console.log('⚠️ [REMOTO] Valor de voltaje inválido, usando 0:', data.field2);
         }
         
         // Calcular edad de los datos
@@ -182,6 +219,7 @@ function processThingSpeakData(data) {
         const dataAge = now - dataTimestamp;
         const isRecent = dataAge < ESP32_CONFIG.MAX_DATA_AGE;
         
+        console.log('⏰ [REMOTO] Timestamp datos:', data.created_at);
         console.log('⏰ [REMOTO] Edad de datos:', Math.round(dataAge/1000), 'segundos');
         console.log('✅ [REMOTO] Datos recientes:', isRecent);
         
@@ -221,6 +259,8 @@ function processThingSpeakData(data) {
         
     } catch (error) {
         console.log('❌ [REMOTO] Error procesando datos:', error.message);
+        console.log('❌ [REMOTO] Stack trace:', error.stack);
+        console.log('❌ [REMOTO] Data que causó el error:', data);
         return null;
     }
 }
