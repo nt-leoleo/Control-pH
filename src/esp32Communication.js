@@ -50,11 +50,7 @@ export const checkESP32Connection = async () => {
         
         const response = await fetch(ESP32_CONFIG.THINGSPEAK_API, {
             method: 'GET',
-            signal: controller.signal,
-            headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
-            }
+            signal: controller.signal
         });
         
         clearTimeout(timeoutId);
@@ -85,7 +81,7 @@ export const checkESP32Connection = async () => {
         
     } catch (error) {
         if (error.name === 'AbortError') {
-            console.log('⏰ [REMOTO] Timeout - La petición tardó más de 10 segundos');
+            console.log('⏰ [REMOTO] Timeout - La petición tardó más de 5 segundos');
         } else {
             console.log('❌ [REMOTO] Error de conexión:', error.message);
         }
@@ -107,11 +103,7 @@ export const getPHDataFromESP32 = async () => {
         
         const response = await fetch(ESP32_CONFIG.THINGSPEAK_API, {
             method: 'GET',
-            signal: controller.signal,
-            headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
-            }
+            signal: controller.signal
         });
         
         clearTimeout(timeoutId);
