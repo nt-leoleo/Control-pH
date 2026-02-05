@@ -21,13 +21,14 @@
 export const ESP32_CONFIG = {
     // ThingSpeak Configuration
     CHANNEL_ID: '3249157',
-    THINGSPEAK_API: 'https://api.thingspeak.com/channels/3249157/feeds/last.json',
-    THINGSPEAK_HISTORY_API: 'https://api.thingspeak.com/channels/3249157/feeds.json',
+    READ_API_KEY: 'S7Q7FWREGP96KX04',
+    THINGSPEAK_API: 'https://api.thingspeak.com/channels/3249157/feeds/last.json?api_key=S7Q7FWREGP96KX04',
+    THINGSPEAK_HISTORY_API: 'https://api.thingspeak.com/channels/3249157/feeds.json?api_key=S7Q7FWREGP96KX04',
     
-    // Timeouts and Intervals
-    TIMEOUT: 10000,                    // 10 segundos
-    RETRY_INTERVAL: 30000,             // 30 segundos
-    MAX_DATA_AGE: 300000,              // 5 minutos
+    // Timeouts and Intervals - OPTIMIZADOS PARA VELOCIDAD
+    TIMEOUT: 5000,                     // 5 segundos (era 10)
+    RETRY_INTERVAL: 15000,             // 15 segundos (era 30)
+    MAX_DATA_AGE: 120000,              // 2 minutos (era 5)
     
     // Data validation
     MIN_PH: 0,
@@ -422,7 +423,7 @@ export const getPHHistory = async (results = 100) => {
     try {
         console.log(`📈 [REMOTO] Obteniendo historial (${results} entradas)...`);
         
-        const url = `${ESP32_CONFIG.THINGSPEAK_HISTORY_API}?results=${results}`;
+        const url = `${ESP32_CONFIG.THINGSPEAK_HISTORY_API}&results=${results}`;
         const response = await fetch(url);
         
         if (response.ok) {
@@ -467,14 +468,15 @@ export const useESP32Connection = (onDataReceived, onConnectionChange) => {
         }
         
         isRunning = true;
-        console.log('🚀 [REMOTO] Iniciando sistema de monitoreo remoto...');
+        console.log('🚀 [REMOTO] Iniciando sistema de monitoreo remoto RÁPIDO...');
         console.log('🌐 [REMOTO] Fuente: ThingSpeak');
         console.log('📊 [REMOTO] Canal:', ESP32_CONFIG.CHANNEL_ID);
-        console.log('⏰ [REMOTO] Intervalo de verificación: 30 segundos');
+        console.log('⏰ [REMOTO] Intervalo de verificación: 15 segundos');
+        console.log('⚡ [REMOTO] Modo optimizado para velocidad');
         
-        // Verificación inicial
+        // Verificación inicial INMEDIATA
         setTimeout(async () => {
-            console.log('🔍 [REMOTO] Verificación inicial del sistema...');
+            console.log('🔍 [REMOTO] Verificación inicial inmediata...');
             
             try {
                 const isConnected = await checkESP32Connection();
@@ -496,7 +498,7 @@ export const useESP32Connection = (onDataReceived, onConnectionChange) => {
                 console.error('❌ [REMOTO] Error en verificación inicial:', error);
                 onConnectionChange(false);
             }
-        }, 1000);
+        }, 500); // 500ms en lugar de 1000ms
         
         // Verificación periódica
         connectionInterval = setInterval(async () => {

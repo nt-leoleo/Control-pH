@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { PHContext } from './PHContext';
-import { getESP32IP } from './esp32Communication-proxy';
+import { getESP32IP } from './esp32Communication';
 import './ConnectionStatus.css';
 
 const ConnectionStatus = () => {

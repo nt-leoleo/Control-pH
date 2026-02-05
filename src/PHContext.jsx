@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect } from 'react';
 import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
-import { useESP32Connection, getPHDataFromESP32, checkESP32Connection } from './esp32Communication-proxy';
+import { useESP32Connection, getPHDataFromESP32, checkESP32Connection } from './esp32Communication';
 
 export const PHContext = createContext(null);
 
