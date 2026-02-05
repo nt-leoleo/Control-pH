@@ -52,14 +52,6 @@ export default function App() {
     return <LoginScreen />;
   }
 
-  // Función para cambiar tema
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  };
-
   // Si no está configurado, mostrar onboarding
   if (!isConfigured) {
     return (
