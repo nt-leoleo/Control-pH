@@ -133,7 +133,14 @@ export default function App() {
 
         <div className="mode-toggle-container">
           <button 
-            onClick={() => setDosingMode(dosingMode === 'automatic' ? 'manual' : 'automatic')}
+            onClick={async () => {
+              try {
+                const newMode = dosingMode === 'automatic' ? 'manual' : 'automatic';
+                await setDosingMode(newMode);
+              } catch (error) {
+                console.error('❌ [App] Error cambiando modo de dosificación:', error);
+              }
+            }}
             className={`mode-toggle-button ${dosingMode === 'automatic' ? 'mode-toggle-button--automatic' : 'mode-toggle-button--manual'}`}
           >
             <span>🔧 Modo: {dosingMode === 'automatic' ? 'AUTOMÁTICO' : 'MANUAL'}</span>

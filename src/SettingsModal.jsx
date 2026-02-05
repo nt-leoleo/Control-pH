@@ -23,17 +23,21 @@ const SettingsModal = ({ isOpen, onClose }) => {
         }
     }, [isOpen, phTolerance, phToleranceRange, alkalinity, chlorineType, acidType]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         try {
             if (isNaN(tempTolerance) || isNaN(tempToleranceRange) || isNaN(tempAlkalinity)) {
                 throw new Error('Los valores deben ser números válidos');
             }
             
-            setPhTolerance(tempTolerance);
-            setPhToleranceRange(tempToleranceRange);
-            setAlkalinity(tempAlkalinity);
-            setChlorineType(tempChlorineType);
-            setAcidType(tempAcidType);
+            // Guardar todas las configuraciones de forma asíncrona
+            await Promise.all([
+                setPhTolerance(tempTolerance),
+                setPhToleranceRange(tempToleranceRange),
+                setAlkalinity(tempAlkalinity),
+                setChlorineType(tempChlorineType),
+                setAcidType(tempAcidType)
+            ]);
+            
             logError('SETTINGS_SAVED', 'Configuración guardada exitosamente', { 
                 tolerance: tempTolerance, 
                 range: tempToleranceRange,
@@ -43,6 +47,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
             });
             onClose();
         } catch (err) {
+            console.error('❌ [SettingsModal] Error guardando configuración:', err);
             logError('SETTINGS_SAVE_ERROR', err.message);
             setError({ type: 'error', message: err.message });
         }

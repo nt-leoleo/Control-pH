@@ -20,17 +20,25 @@ const SettingsPage = ({ onBack }) => {
   const [showWiFiConfig, setShowWiFiConfig] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
 
-  const handleToleranceChange = (e) => {
+  const handleToleranceChange = async (e) => {
     const value = parseFloat(e.target.value);
     if (value >= 6 && value <= 8) {
-      setPhTolerance(value);
+      try {
+        await setPhTolerance(value);
+      } catch (error) {
+        console.error('❌ [Settings] Error actualizando tolerancia:', error);
+      }
     }
   };
 
-  const handleRangeChange = (e) => {
+  const handleRangeChange = async (e) => {
     const value = parseFloat(e.target.value);
     if (value >= 0.1 && value <= 1) {
-      setPhToleranceRange(value);
+      try {
+        await setPhToleranceRange(value);
+      } catch (error) {
+        console.error('❌ [Settings] Error actualizando rango:', error);
+      }
     }
   };
 
@@ -126,7 +134,13 @@ const SettingsPage = ({ onBack }) => {
           <div className="dosing-modes">
             <button
               className={`dosing-mode-btn ${dosingMode === 'automatic' ? 'active' : ''}`}
-              onClick={() => setDosingMode('automatic')}
+              onClick={async () => {
+                try {
+                  await setDosingMode('automatic');
+                } catch (error) {
+                  console.error('❌ [Settings] Error cambiando a modo automático:', error);
+                }
+              }}
             >
               <div className="mode-icon">🤖</div>
               <div className="mode-info">
@@ -137,7 +151,13 @@ const SettingsPage = ({ onBack }) => {
 
             <button
               className={`dosing-mode-btn ${dosingMode === 'manual' ? 'active' : ''}`}
-              onClick={() => setDosingMode('manual')}
+              onClick={async () => {
+                try {
+                  await setDosingMode('manual');
+                } catch (error) {
+                  console.error('❌ [Settings] Error cambiando a modo manual:', error);
+                }
+              }}
             >
               <div className="mode-icon">👤</div>
               <div className="mode-info">
