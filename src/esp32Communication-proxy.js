@@ -153,7 +153,7 @@ export const sendDosingCommand = async (dosingConfig) => {
  * @returns {string}
  */
 export const getESP32IP = () => {
-    return ESP32_CONFIG.BASE_URL.replace('http://', '').replace('/api/esp32', '192.168.100.134');
+    return ESP32_CONFIG.BASE_URL.replace('http://', '').replace('/api/esp32', '') || '192.168.100.134';
 };
 
 /**
