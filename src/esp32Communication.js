@@ -292,66 +292,50 @@ export const sendRealDosingCommand = async (product, durationSeconds) => {
         // Incrementar el contador para señalar nuevo comando
         const newCount = currentCount + 1;
         
-        // URL del comando con los 3 campos
+        // URL del comando SOLO con Field5, Field6, Field7
+        // El ESP32 se encargará de escribir Field1-4 (datos del sensor)
         const commandUrl = `https://api.thingspeak.com/update?api_key=${writeApiKey}&field5=${productCode}&field6=${durationSeconds}&field7=${newCount}`;
         
-        // REINTENTAR hasta que ThingSpeak acepte el comando (máximo 1 minuto)
-        const maxRetryTime = 60000; // 1 minuto
-        const retryInterval = 2000; // Reintentar cada 2 segundos
-        const startTime = Date.now();
-        let commandAccepted = false;
-        let entryId = '0';
+        // Enviar comando UNA SOLA VEZ (sin retry loop)
+        // El ESP32 leerá este comando en su próximo ciclo
+        console.log('🔄 Enviando comando a ThingSpeak...');
         
-        console.log('🔄 Intentando enviar comando a ThingSpeak...');
-        
-        while (!commandAccepted && (Date.now() - startTime) < maxRetryTime) {
-            try {
-                const response = await fetch(commandUrl, {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(5000)
-                });
-                
-                if (response.ok) {
-                    entryId = await response.text();
-                    
-                    if (entryId !== '0') {
-                        commandAccepted = true;
-                        console.log('✅ Comando aceptado por ThingSpeak (Entry ID: ' + entryId + ')');
-                        break;
-                    } else {
-                        console.log('⏳ ThingSpeak rechazó el comando (rate limit), reintentando en 2s...');
-                    }
-                } else {
-                    console.log(`⚠️ HTTP ${response.status}, reintentando...`);
-                }
-            } catch (error) {
-                console.log(`⚠️ Error en petición: ${error.message}, reintentando...`);
-            }
+        try {
+            const response = await fetch(commandUrl, {
+                method: 'GET',
+                signal: AbortSignal.timeout(10000)
+            });
             
-            // Esperar antes del siguiente intento
-            if (!commandAccepted) {
-                await new Promise(resolve => setTimeout(resolve, retryInterval));
+            if (response.ok) {
+                entryId = await response.text();
+                
+                if (entryId !== '0') {
+                    console.log('✅ Comando enviado (Entry ID: ' + entryId + ')');
+                    console.log(`📡 El ESP32 leerá y ejecutará el comando en su próximo ciclo (máx 20s)`);
+                    
+                    return {
+                        success: true,
+                        message: `Comando enviado: ${esp32Product} por ${durationSeconds}s`,
+                        timestamp: new Date().toISOString(),
+                        method: 'thingspeak_unified',
+                        entryId: entryId,
+                        note: 'El ESP32 procesará el comando en su próximo ciclo (máx 20s)'
+                    };
+                } else {
+                    throw new Error('ThingSpeak rechazó el comando (rate limit). Espera 15 segundos e intenta de nuevo.');
+                }
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            return {
+                success: false,
+                message: `Error: ${error.message}`,
+                timestamp: new Date().toISOString(),
+                method: 'failed'
+            };
         }
-        
-        // Verificar si se aceptó el comando
-        if (!commandAccepted) {
-            throw new Error('Timeout: ThingSpeak no aceptó el comando después de 1 minuto. Intenta de nuevo más tarde.');
-        }
-        
-        console.log(`⏳ Esperando ${durationSeconds} segundos para que complete la dosificación...`);
-        
-        // Esperar el tiempo de dosificación + margen
-        await new Promise(resolve => setTimeout(resolve, (durationSeconds + 5) * 1000));
-        
-        return {
-            success: true,
-            message: `Dosificación completada: ${esp32Product} por ${durationSeconds}s`,
-            timestamp: new Date().toISOString(),
-            method: 'thingspeak_counter',
-            entryId: entryId
-        };
-        
     } catch (error) {
         console.error('❌ Error:', error.message);
         return {

@@ -286,6 +286,27 @@ const SettingsPage = ({ onBack }) => {
           </button>
         </div>
 
+        {/* Administración de Piscinas */}
+        <div className="settings-section scale-in">
+          <h3>🏊 Gestión de Piscinas</h3>
+          
+          <button 
+            className="esp32-config-btn"
+            onClick={() => window.location.hash = 'pool-manager'}
+          >
+            <div className="config-icon">🏊</div>
+            <div className="config-info">
+              <div className="config-title">Administrar Piscinas</div>
+              <div className="config-desc">Agregar, editar y cambiar entre piscinas</div>
+            </div>
+            <div className="config-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m9 18 6-6-6-6"/>
+              </svg>
+            </div>
+          </button>
+        </div>
+
         {/* Información del Sistema */}
         <div className="settings-section scale-in">
           <h3>ℹ️ Información del Sistema</h3>

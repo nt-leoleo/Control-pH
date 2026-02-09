@@ -5,8 +5,10 @@ import HandleAdmin from "./HandleAdmin";
 import PHBar from "./PHBar";
 import PHChart from "./PHChart";
 import ManualDosing from "./ManualDosing";
+import AutomaticDosing from "./AutomaticDosing";
 import Onboarding from "./Onboarding";
 import SettingsPage from "./SettingsPage";
+import PoolManager from "./PoolManager";
 import ErrorNotification from "./ErrorNotification";
 import LoginScreen from "./LoginScreen";
 import { PHContext } from "./PHContext";
@@ -16,8 +18,27 @@ import "./App.css";
 export default function App() {
   const { ph, setPH, phTolerance, phToleranceRange, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
   const { user, userConfig, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('main'); // 'main' o 'settings'
+  const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'pool-manager'
   const [theme, setTheme] = useState('dark'); // Modo nocturno por defecto
+
+  // Escuchar cambios en el hash para navegación
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'pool-manager') {
+        setCurrentView('pool-manager');
+      } else if (hash === 'settings') {
+        setCurrentView('settings');
+      } else {
+        setCurrentView('main');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Verificar hash inicial
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Cargar tema guardado al iniciar
   useEffect(() => {
@@ -72,7 +93,29 @@ export default function App() {
   if (currentView === 'settings') {
     return (
       <>
-        <SettingsPage onBack={() => setCurrentView('main')} />
+        <SettingsPage onBack={() => {
+          setCurrentView('main');
+          window.location.hash = '';
+        }} />
+        <button 
+          className="theme-toggle" 
+          onClick={toggleTheme}
+          title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </>
+    );
+  }
+
+  // Si está en vista de administrador de piscinas
+  if (currentView === 'pool-manager') {
+    return (
+      <>
+        <PoolManager onBack={() => {
+          setCurrentView('settings');
+          window.location.hash = 'settings';
+        }} />
         <button 
           className="theme-toggle" 
           onClick={toggleTheme}
@@ -97,7 +140,10 @@ export default function App() {
 
   return (
     <>
-      <Header onConfigClick={() => setCurrentView('settings')} />
+      <Header onConfigClick={() => {
+        setCurrentView('settings');
+        window.location.hash = 'settings';
+      }} />
       <main className="fade-in">
         <ShowpH />
         <HandleAdmin />
@@ -118,6 +164,12 @@ export default function App() {
         {dosingMode === 'manual' && (
           <div className="scale-in">
             <ManualDosing />
+          </div>
+        )}
+
+        {dosingMode === 'automatic' && (
+          <div className="scale-in">
+            <AutomaticDosing />
           </div>
         )}
 
