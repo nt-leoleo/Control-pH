@@ -29,14 +29,6 @@ const ShowpH = () => {
 
     const status = getStatus();
 
-    // Debug info
-    console.log('🧪 [ShowpH] Estado actual:', {
-        ph,
-        esp32Connected,
-        lastDataReceived,
-        status: status.status
-    });
-
     return (
         <div className='body fade-in' data-ph-status={status.status}>
             <span className='ph'>Nivel de pH</span>

@@ -43,8 +43,6 @@ export const PHProvider = ({ children }) => {
     // Cargar configuración desde Firebase cuando esté disponible
     useEffect(() => {
         if (userConfig) {
-            console.log('🔧 [PHContext] Cargando configuración desde Firebase:', userConfig);
-            
             // Cargar configuración guardada
             if (userConfig.poolVolume) setPoolVolume(userConfig.poolVolume);
             if (userConfig.alkalinity) setAlkalinity(userConfig.alkalinity);
@@ -65,21 +63,30 @@ export const PHProvider = ({ children }) => {
             
             if (userConfig.dosingMode) setDosingMode(userConfig.dosingMode);
             
+            // Cargar última configuración de dosificación manual
+            if (userConfig.lastManualDosingConfig) {
+                console.log('📥 Cargando configuración de dosificación manual:', userConfig.lastManualDosingConfig);
+                const savedConfig = userConfig.lastManualDosingConfig;
+                setManualDosingConfig({
+                    product: savedConfig.product ?? 'sodium-hypochlorite',
+                    minutes: savedConfig.minutes ?? 2,
+                    seconds: savedConfig.seconds ?? 30,
+                    liters: savedConfig.liters ?? 5
+                });
+                console.log('✅ Configuración aplicada - Minutos:', savedConfig.minutes);
+            } else {
+                console.log('⚠️ No hay configuración de dosificación manual guardada');
+            }
+            
             // Si tiene configuración básica, marcar como configurado
             const hasBasicConfig = userConfig.poolVolume && (userConfig.phTolerance || userConfig.phMin);
             const isConfiguredValue = userConfig.isConfigured || hasBasicConfig || false;
             setIsConfigured(isConfiguredValue);
-            
-            console.log('✅ [PHContext] Configuración cargada, isConfigured:', isConfiguredValue);
         } else if (user && !userConfig) {
             // Si hay usuario pero no configuración de Firebase, intentar localStorage
-            console.log('🔄 [PHContext] No hay configuración de Firebase, intentando localStorage...');
-            
             try {
                 const localConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
                 if (Object.keys(localConfig).length > 0) {
-                    console.log('📱 [PHContext] Configuración encontrada en localStorage:', localConfig);
-                    
                     if (localConfig.poolVolume) setPoolVolume(localConfig.poolVolume);
                     if (localConfig.alkalinity) setAlkalinity(localConfig.alkalinity);
                     if (localConfig.chlorineType) setChlorineType(localConfig.chlorineType);
@@ -103,32 +110,24 @@ export const PHProvider = ({ children }) => {
                     setIsConfigured(localConfig.isConfigured || hasBasicConfig || false);
                 }
             } catch (error) {
-                console.error('❌ [PHContext] Error cargando localStorage:', error);
+                // Ignorar errores de localStorage
             }
         }
     }, [userConfig, user]);
 
     // Función para guardar configuración en Firebase
     const saveConfigToFirebase = async (configUpdate) => {
-        if (!user) {
-            console.warn('⚠️ [PHContext] No hay usuario para guardar en Firebase');
-            return;
-        }
+        if (!user) return;
         
         try {
             await updateUserConfig(configUpdate);
-            console.log('💾 [PHContext] Configuración guardada en Firebase:', configUpdate);
         } catch (error) {
-            console.error('❌ [PHContext] Error guardando en Firebase, usando localStorage:', error);
-            
             // Fallback a localStorage si Firebase falla
             try {
                 const currentConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
                 const newConfig = { ...currentConfig, ...configUpdate };
                 localStorage.setItem('poolConfig', JSON.stringify(newConfig));
-                console.log('💾 [PHContext] Configuración guardada en localStorage como fallback');
             } catch (localError) {
-                console.error('❌ [PHContext] Error guardando en localStorage:', localError);
                 logError('CONFIG_SAVE_ERROR', localError.message, configUpdate);
             }
         }
@@ -198,11 +197,9 @@ export const PHProvider = ({ children }) => {
     // Función para obtener datos de ThingSpeak
     const fetchPHData = async () => {
         try {
-            console.log('🔍 [PHContext] Obteniendo datos de ThingSpeak...');
             const phData = await getPHDataFromESP32();
             
             if (phData) {
-                console.log('✅ [PHContext] Datos recibidos:', phData);
                 safePHSet(phData.ph);
                 setLastDataReceived(new Date(phData.timestamp));
                 setEsp32Connected(true);
@@ -219,11 +216,9 @@ export const PHProvider = ({ children }) => {
                 });
                 
             } else {
-                console.log('⚠️ [PHContext] No se recibieron datos');
                 setEsp32Connected(false);
             }
         } catch (error) {
-            console.error('❌ [PHContext] Error obteniendo datos:', error);
             setEsp32Connected(false);
             logError('THINGSPEAK_DATA_ERROR', error.message);
         }
@@ -234,14 +229,7 @@ export const PHProvider = ({ children }) => {
         try {
             const isConnected = await checkESP32Connection();
             setEsp32Connected(isConnected);
-            
-            if (isConnected) {
-                console.log('✅ [PHContext] ESP32 conectado');
-            } else {
-                console.log('❌ [PHContext] ESP32 desconectado');
-            }
         } catch (error) {
-            console.error('❌ [PHContext] Error verificando conexión:', error);
             setEsp32Connected(false);
         }
     };
@@ -249,18 +237,15 @@ export const PHProvider = ({ children }) => {
     // Comunicación con ESP32 usando ThingSpeak
     const handleDataReceived = (phData) => {
         try {
-            console.log('📊 [PHContext] Datos recibidos del hook:', phData);
             safePHSet(phData.ph);
             setLastDataReceived(new Date(phData.timestamp));
             setEsp32Connected(true);
         } catch (error) {
-            console.error('❌ [PHContext] Error procesando datos:', error);
             logError('ESP32_DATA_ERROR', error.message, phData);
         }
     };
 
     const handleConnectionChange = (isConnected) => {
-        console.log('🔄 [PHContext] Cambio de conexión:', isConnected);
         setEsp32Connected(isConnected);
         if (isConnected) {
             setLastDataReceived(new Date());
@@ -274,8 +259,6 @@ export const PHProvider = ({ children }) => {
 
     // Inicializar sistema de datos
     useEffect(() => {
-        console.log('🚀 [PHContext] Inicializando sistema de datos...');
-        
         // Verificación inicial
         checkConnection();
         

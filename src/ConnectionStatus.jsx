@@ -6,13 +6,6 @@ import './ConnectionStatus.css';
 const ConnectionStatus = () => {
     const { esp32Connected, lastDataReceived } = useContext(PHContext);
     
-    // Debug logging
-    console.log('🔍 [ConnectionStatus] Estado actual:', {
-        esp32Connected,
-        lastDataReceived,
-        timestamp: new Date().toISOString()
-    });
-    
     const getStatusText = () => {
         const esp32IP = getESP32IP();
         if (esp32Connected) {

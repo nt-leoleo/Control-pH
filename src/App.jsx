@@ -19,16 +19,6 @@ export default function App() {
   const [currentView, setCurrentView] = useState('main'); // 'main' o 'settings'
   const [theme, setTheme] = useState('dark'); // Modo nocturno por defecto
 
-  // Debug logs para autenticación
-  useEffect(() => {
-    console.log('🔍 [App] Estado de autenticación:', {
-      user: user ? `${user.displayName} (${user.email})` : 'No autenticado',
-      userConfig: userConfig ? 'Configuración cargada' : 'Sin configuración',
-      loading: loading,
-      isConfigured: isConfigured
-    });
-  }, [user, userConfig, loading, isConfigured]);
-
   // Cargar tema guardado al iniciar
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -80,13 +70,6 @@ export default function App() {
 
   // Si está en vista de configuración, mostrar página de configuración
   if (currentView === 'settings') {
-    console.log('🔧 [App] Mostrando página de configuración:', {
-      user: user ? `${user.displayName}` : 'No user',
-      userConfig: userConfig ? 'Config loaded' : 'No config',
-      isConfigured: isConfigured,
-      currentView: currentView
-    });
-    
     return (
       <>
         <SettingsPage onBack={() => setCurrentView('main')} />

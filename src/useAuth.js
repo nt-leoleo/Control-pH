@@ -17,26 +17,17 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
   const [userConfig, setUserConfig] = useState(null);
 
-  console.log('🔧 [useAuth] Hook inicializado');
-
   useEffect(() => {
-    console.log('🔧 [useAuth] Configurando listener de autenticación...');
-    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('🔄 [useAuth] Estado de auth cambió:', user ? `${user.displayName} (${user.email})` : 'No user');
       setUser(user);
       
       if (user) {
-        console.log('👤 [useAuth] Usuario autenticado, cargando configuración...');
-        // Cargar configuración del usuario
         await loadUserConfig(user.uid);
       } else {
-        console.log('❌ [useAuth] No hay usuario, limpiando configuración');
         setUserConfig(null);
       }
       
       setLoading(false);
-      console.log('✅ [useAuth] Loading completado');
     });
 
     return unsubscribe;
@@ -44,10 +35,6 @@ export const useAuth = () => {
 
   const loginWithGoogle = async () => {
     try {
-      console.log('🔐 Iniciando login con Google...');
-      console.log('🌐 Auth domain:', auth.app.options.authDomain);
-      console.log('🔑 API Key:', auth.app.options.apiKey ? 'Configurada' : 'Falta');
-      
       const result = await signInWithPopup(auth, googleProvider);
       console.log('✅ Login exitoso:', result.user.displayName);
       
@@ -129,18 +116,14 @@ export const useAuth = () => {
       
       if (userSnap.exists()) {
         setUserConfig(userSnap.data());
-        console.log('✅ Configuración cargada:', userSnap.data());
       }
     } catch (error) {
-      console.error('❌ Error cargando configuración:', error);
+      console.error('Error cargando configuración:', error);
     }
   };
 
   const updateUserConfig = async (newConfig) => {
-    if (!user) {
-      console.warn('⚠️ [Auth] No hay usuario autenticado para actualizar configuración');
-      return;
-    }
+    if (!user) return;
 
     try {
       console.log('💾 [Auth] Actualizando configuración:', newConfig);

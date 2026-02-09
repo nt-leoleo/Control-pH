@@ -253,6 +253,126 @@
     border-radius: 0.5em;
 }
 
+/* Estilos para estado de dosificación activa */
+.dosing-status-section {
+    margin: 1.5em 0;
+}
+
+.dosing-status {
+    padding: 1.2em;
+    border-radius: 0.8em;
+    border: 2px solid rgba(34, 197, 94, 0.3);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.05));
+    animation: pulse-dosing 2s infinite;
+}
+
+.dosing-status.active {
+    border-color: #22c55e;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.1));
+}
+
+@keyframes pulse-dosing {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+    }
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+    color: #22c55e;
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.stop-dosing-btn {
+    padding: 0.5em 1em;
+    border: 2px solid #ef4444;
+    border-radius: 0.5em;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    animation: blink-stop 1.5s infinite;
+}
+
+@keyframes blink-stop {
+    0%, 50% {
+        opacity: 1;
+    }
+    51%, 100% {
+        opacity: 0.7;
+    }
+}
+
+.stop-dosing-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.status-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5em 0;
+    color: whitesmoke;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-row:last-child {
+    border-bottom: none;
+}
+
+.esp32-status.connected {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+/* Estilos para indicador de conexión ESP32 */
+.esp32-connection-status {
+    margin: 1.5em 0;
+    padding: 1em;
+    border-radius: 0.6em;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.connection-indicator {
+    display: block;
+    font-weight: 600;
+    font-size: 1em;
+    margin-bottom: 0.5em;
+}
+
+.connection-indicator.connected {
+    color: #22c55e;
+}
+
+.connection-indicator.disconnected {
+    color: #ef4444;
+}
+
+.esp32-connection-status small {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85em;
+    display: block;
+    margin-top: 0.5em;
+}
+
 @media (max-width: 600px) {
     .estimateRow {
         font-size: 0.9em;
@@ -265,5 +385,28 @@
     .finalPh.valid,
     .finalPh.invalid {
         font-size: 1.1em;
+    }
+
+    .status-header {
+        flex-direction: column;
+        gap: 0.8em;
+        text-align: center;
+    }
+
+    .stop-dosing-btn {
+        width: 100%;
+        padding: 0.8em;
+    }
+
+    .status-row {
+        font-size: 0.9em;
+    }
+
+    .esp32-connection-status {
+        padding: 0.8em;
+    }
+
+    .connection-indicator {
+        font-size: 0.9em;
     }
 }

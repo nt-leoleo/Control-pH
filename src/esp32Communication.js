@@ -43,8 +43,6 @@ export const ESP32_CONFIG = {
 
 export const checkESP32Connection = async () => {
     try {
-        console.log('🌐 [REMOTO] Verificando conexión con sensor...');
-        
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), ESP32_CONFIG.TIMEOUT);
         
@@ -57,34 +55,16 @@ export const checkESP32Connection = async () => {
         
         if (response.ok) {
             const data = await response.json();
-            console.log('📡 [REMOTO] Respuesta recibida:', data);
-            
-            // Verificar si los datos son recientes
             const dataTimestamp = new Date(data.created_at).getTime();
             const now = Date.now();
             const dataAge = now - dataTimestamp;
             
-            console.log(`📅 [REMOTO] Última actualización: ${new Date(dataTimestamp).toLocaleString()}`);
-            console.log(`⏰ [REMOTO] Edad de los datos: ${Math.round(dataAge/1000)}s`);
-            
-            if (dataAge < ESP32_CONFIG.MAX_DATA_AGE) {
-                console.log('✅ [REMOTO] Sensor conectado - datos recientes');
-                return true;
-            } else {
-                console.log('⚠️ [REMOTO] Datos obsoletos - sensor posiblemente desconectado');
-                return false;
-            }
-        } else {
-            console.log('❌ [REMOTO] Error HTTP:', response.status, response.statusText);
-            return false;
+            return dataAge < ESP32_CONFIG.MAX_DATA_AGE;
         }
         
+        return false;
+        
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.log('⏰ [REMOTO] Timeout - La petición tardó más de 5 segundos');
-        } else {
-            console.log('❌ [REMOTO] Error de conexión:', error.message);
-        }
         return false;
     }
 };
@@ -95,9 +75,6 @@ export const checkESP32Connection = async () => {
 
 export const getPHDataFromESP32 = async () => {
     try {
-        console.log('🧪 [REMOTO] Obteniendo datos de pH...');
-        console.log('🔗 [REMOTO] URL completa:', ESP32_CONFIG.THINGSPEAK_API);
-        
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), ESP32_CONFIG.TIMEOUT);
         
@@ -108,47 +85,21 @@ export const getPHDataFromESP32 = async () => {
         
         clearTimeout(timeoutId);
         
-        console.log('📡 [REMOTO] Response status:', response.status);
-        console.log('📡 [REMOTO] Response ok:', response.ok);
-        console.log('📡 [REMOTO] Response headers:', [...response.headers.entries()]);
-        
         if (response.ok) {
             const text = await response.text();
-            console.log('📄 [REMOTO] Raw response text:', text);
             
             try {
                 const data = JSON.parse(text);
-                console.log('✅ [REMOTO] Datos JSON parseados:', data);
-                
-                // Validar y procesar datos
                 const processedData = processThingSpeakData(data);
-                
-                if (processedData) {
-                    console.log('📊 [REMOTO] Datos procesados exitosamente:', processedData);
-                    return processedData;
-                } else {
-                    console.log('❌ [REMOTO] Datos inválidos después del procesamiento');
-                    return null;
-                }
+                return processedData;
             } catch (parseError) {
-                console.log('❌ [REMOTO] Error parseando JSON:', parseError.message);
-                console.log('📄 [REMOTO] Texto que falló al parsear:', text);
                 return null;
             }
         } else {
-            const errorText = await response.text();
-            console.log('❌ [REMOTO] Error response status:', response.status);
-            console.log('❌ [REMOTO] Error response text:', errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.log('⏰ [REMOTO] Timeout obteniendo datos de pH');
-        } else {
-            console.log('❌ [REMOTO] Error obteniendo pH:', error.message);
-            console.log('❌ [REMOTO] Error stack:', error.stack);
-        }
         return null;
     }
 };
@@ -159,100 +110,47 @@ export const getPHDataFromESP32 = async () => {
 
 function processThingSpeakData(data) {
     try {
-        console.log('🔄 [REMOTO] Procesando datos de ThingSpeak:', data);
-        
-        // Verificar que tenemos los campos básicos
-        if (!data) {
-            console.log('❌ [REMOTO] Data es null o undefined');
+        if (!data || !data.created_at) {
             return null;
         }
         
-        if (!data.created_at) {
-            console.log('❌ [REMOTO] Falta campo created_at');
-            return null;
-        }
-        
-        // Extraer datos de los campos de ThingSpeak
         const ph = parseFloat(data.field1);
         const voltage = parseFloat(data.field2);
         const wifiRSSI = parseInt(data.field3);
         const uptime = parseInt(data.field4);
         
-        console.log('📊 [REMOTO] Valores extraídos:', { 
-            ph, 
-            voltage, 
-            wifiRSSI, 
-            uptime,
-            field1_raw: data.field1,
-            field2_raw: data.field2,
-            field3_raw: data.field3,
-            field4_raw: data.field4
-        });
-        
-        // Validar pH (campo más importante)
-        if (isNaN(ph)) {
-            console.log('⚠️ [REMOTO] Campo field1 (pH) es NaN:', data.field1);
+        if (isNaN(ph) || ph < ESP32_CONFIG.MIN_PH || ph > ESP32_CONFIG.MAX_PH) {
             return null;
         }
         
-        if (ph < ESP32_CONFIG.MIN_PH || ph > ESP32_CONFIG.MAX_PH) {
-            console.log('⚠️ [REMOTO] Valor de pH fuera de rango:', ph, 'Rango válido:', ESP32_CONFIG.MIN_PH, '-', ESP32_CONFIG.MAX_PH);
-            return null;
-        }
-        
-        // Validar voltaje (opcional, no bloquear si falla)
-        if (isNaN(voltage)) {
-            console.log('⚠️ [REMOTO] Valor de voltaje inválido, usando 0:', data.field2);
-        }
-        
-        // Calcular edad de los datos
         const dataTimestamp = new Date(data.created_at).getTime();
         const now = Date.now();
         const dataAge = now - dataTimestamp;
         const isRecent = dataAge < ESP32_CONFIG.MAX_DATA_AGE;
-        
-        console.log('⏰ [REMOTO] Timestamp datos:', data.created_at);
-        console.log('⏰ [REMOTO] Edad de datos:', Math.round(dataAge/1000), 'segundos');
-        console.log('✅ [REMOTO] Datos recientes:', isRecent);
-        
-        // Determinar estado del pH
         const phStatus = getPHStatus(ph);
         
         const processedData = {
-            // Datos principales
             ph: ph,
             voltage: voltage || 0,
             wifi_rssi: wifiRSSI || -50,
             uptime: uptime || 0,
-            
-            // Metadatos
             timestamp: new Date(dataTimestamp),
             device_id: `thingspeak_${ESP32_CONFIG.CHANNEL_ID}`,
             location: 'piscina_principal',
             source: 'esp32-thingspeak',
-            
-            // Estado
             isRecent: isRecent,
             dataAge: Math.round(dataAge / 1000),
             phStatus: phStatus,
-            
-            // ThingSpeak específico
             entry_id: data.entry_id,
             channel_id: ESP32_CONFIG.CHANNEL_ID,
-            
-            // Información adicional
             lastUpdate: new Date(dataTimestamp).toLocaleString(),
             connectionQuality: getConnectionQuality(wifiRSSI),
             systemHealth: getSystemHealth(isRecent, ph, voltage)
         };
         
-        console.log('✅ [REMOTO] Datos procesados exitosamente:', processedData);
         return processedData;
         
     } catch (error) {
-        console.log('❌ [REMOTO] Error procesando datos:', error.message);
-        console.log('❌ [REMOTO] Stack trace:', error.stack);
-        console.log('❌ [REMOTO] Data que causó el error:', data);
         return null;
     }
 }
@@ -307,21 +205,21 @@ function getSystemHealth(isRecent, ph, voltage) {
 }
 
 // =====================================================
-// COMANDOS DE DOSIFICACIÓN
+// COMANDOS DE DOSIFICACIÓN REAL
 // =====================================================
 
 export const sendDosingCommand = async (dosingConfig) => {
     try {
-        console.log('💊 [REMOTO] Enviando comando de dosificación...');
+        console.log('💊 [REMOTO] Enviando comando de dosificación real...');
         console.log('📋 [REMOTO] Configuración:', dosingConfig);
         
-        // Para el sistema remoto, necesitamos implementar un mecanismo diferente
+        // Para el sistema remoto con ThingSpeak, necesitamos una implementación diferente
         // Por ahora, simularemos el comando pero con verificación de conectividad real
         
         const isConnected = await checkESP32Connection();
         
         if (isConnected) {
-            console.log('✅ [REMOTO] Comando de dosificación procesado');
+            console.log('✅ [REMOTO] Comando de dosificación procesado (simulado)');
             console.log('📝 [REMOTO] Producto:', dosingConfig.product);
             console.log('⏰ [REMOTO] Duración:', dosingConfig.duration, 'segundos');
             
@@ -356,19 +254,186 @@ export const sendDosingCommand = async (dosingConfig) => {
     }
 };
 
+// Función para enviar comando de dosificación remoto a través de ThingSpeak
+export const sendRealDosingCommand = async (product, durationSeconds) => {
+    try {
+        console.log('💊 Enviando comando de dosificación...');
+        
+        const productMap = {
+            'sodium-hypochlorite': 'ph_plus',
+            'calcium-hypochlorite': 'ph_plus',
+            'muriatic': 'ph_minus',
+            'bisulfate': 'ph_minus',
+            'chlorine-gas': 'ph_minus'
+        };
+        
+        const esp32Product = productMap[product] || 'ph_plus';
+        const productCode = esp32Product === 'ph_plus' ? '1' : '2';
+        
+        const writeApiKey = 'GQXD1DTF1D6DPUSG';
+        const channelId = '3249157';
+        
+        // Leer el contador actual de dosificaciones (Field7)
+        const currentCountUrl = `https://api.thingspeak.com/channels/${channelId}/fields/7/last.txt`;
+        let currentCount = 0;
+        
+        try {
+            const countResponse = await fetch(currentCountUrl);
+            if (countResponse.ok) {
+                const countText = await countResponse.text();
+                currentCount = parseInt(countText) || 0;
+            }
+        } catch (e) {
+            // Si falla, asumir 0
+        }
+        
+        console.log(`📊 Contador actual: ${currentCount}`);
+        
+        // Incrementar el contador para señalar nuevo comando
+        const newCount = currentCount + 1;
+        
+        // URL del comando con los 3 campos
+        const commandUrl = `https://api.thingspeak.com/update?api_key=${writeApiKey}&field5=${productCode}&field6=${durationSeconds}&field7=${newCount}`;
+        
+        // REINTENTAR hasta que ThingSpeak acepte el comando (máximo 1 minuto)
+        const maxRetryTime = 60000; // 1 minuto
+        const retryInterval = 2000; // Reintentar cada 2 segundos
+        const startTime = Date.now();
+        let commandAccepted = false;
+        let entryId = '0';
+        
+        console.log('🔄 Intentando enviar comando a ThingSpeak...');
+        
+        while (!commandAccepted && (Date.now() - startTime) < maxRetryTime) {
+            try {
+                const response = await fetch(commandUrl, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000)
+                });
+                
+                if (response.ok) {
+                    entryId = await response.text();
+                    
+                    if (entryId !== '0') {
+                        commandAccepted = true;
+                        console.log('✅ Comando aceptado por ThingSpeak (Entry ID: ' + entryId + ')');
+                        break;
+                    } else {
+                        console.log('⏳ ThingSpeak rechazó el comando (rate limit), reintentando en 2s...');
+                    }
+                } else {
+                    console.log(`⚠️ HTTP ${response.status}, reintentando...`);
+                }
+            } catch (error) {
+                console.log(`⚠️ Error en petición: ${error.message}, reintentando...`);
+            }
+            
+            // Esperar antes del siguiente intento
+            if (!commandAccepted) {
+                await new Promise(resolve => setTimeout(resolve, retryInterval));
+            }
+        }
+        
+        // Verificar si se aceptó el comando
+        if (!commandAccepted) {
+            throw new Error('Timeout: ThingSpeak no aceptó el comando después de 1 minuto. Intenta de nuevo más tarde.');
+        }
+        
+        console.log(`⏳ Esperando ${durationSeconds} segundos para que complete la dosificación...`);
+        
+        // Esperar el tiempo de dosificación + margen
+        await new Promise(resolve => setTimeout(resolve, (durationSeconds + 5) * 1000));
+        
+        return {
+            success: true,
+            message: `Dosificación completada: ${esp32Product} por ${durationSeconds}s`,
+            timestamp: new Date().toISOString(),
+            method: 'thingspeak_counter',
+            entryId: entryId
+        };
+        
+    } catch (error) {
+        console.error('❌ Error:', error.message);
+        return {
+            success: false,
+            message: `Error: ${error.message}`,
+            timestamp: new Date().toISOString(),
+            method: 'failed'
+        };
+    }
+};
+
+// Función para obtener estado de dosificación real
+export const getRealDosingStatus = async () => {
+    try {
+        const response = await fetch('http://192.168.100.134/dosing/status', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+            const status = await response.json();
+            return {
+                success: true,
+                data: status,
+                timestamp: new Date().toISOString()
+            };
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message,
+            timestamp: new Date().toISOString()
+        };
+    }
+};
+
+// Función para parar dosificación real
+export const stopRealDosing = async () => {
+    try {
+        const response = await fetch('http://192.168.100.134/dosing/stop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            return {
+                success: true,
+                message: 'Dosificación detenida',
+                timestamp: new Date().toISOString(),
+                esp32Response: result
+            };
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+    } catch (error) {
+        return {
+            success: false,
+            message: `Error: ${error.message}`,
+            timestamp: new Date().toISOString()
+        };
+    }
+};
+
 // Función para obtener estado de dosificación
 export const getDosingStatus = async () => {
     try {
-        console.log('📊 [REMOTO] Obteniendo estado de dosificación...');
-        
-        // En un sistema remoto real, esto consultaría el estado actual
-        // Por ahora retornamos un estado simulado
-        
         const isConnected = await checkESP32Connection();
         
         return {
             connected: isConnected,
-            dosing_active: false, // Simulado
+            dosing_active: false,
             current_product: '',
             dosing_count: 0,
             auto_dosing_enabled: true,
@@ -380,7 +445,6 @@ export const getDosingStatus = async () => {
         };
         
     } catch (error) {
-        console.error('❌ [REMOTO] Error obteniendo estado de dosificación:', error);
         return null;
     }
 };
@@ -388,8 +452,6 @@ export const getDosingStatus = async () => {
 // Función para parar dosificación
 export const stopDosing = async () => {
     try {
-        console.log('🛑 [REMOTO] Enviando comando de parada...');
-        
         const isConnected = await checkESP32Connection();
         
         if (isConnected) {
@@ -407,7 +469,6 @@ export const stopDosing = async () => {
         }
         
     } catch (error) {
-        console.error('❌ [REMOTO] Error deteniendo dosificación:', error);
         return {
             success: false,
             message: `Error: ${error.message}`,
@@ -442,7 +503,6 @@ export const getSystemInfo = async () => {
             }
         };
     } catch (error) {
-        console.error('❌ [REMOTO] Error obteniendo info del sistema:', error);
         return null;
     }
 };
@@ -453,8 +513,6 @@ export const getSystemInfo = async () => {
 
 export const getPHHistory = async (results = 100) => {
     try {
-        console.log(`📈 [REMOTO] Obteniendo historial (${results} entradas)...`);
-        
         const url = `${ESP32_CONFIG.THINGSPEAK_HISTORY_API}&results=${results}`;
         const response = await fetch(url);
         
@@ -462,7 +520,7 @@ export const getPHHistory = async (results = 100) => {
             const data = await response.json();
             
             const history = data.feeds
-                .filter(feed => feed.field1) // Solo entradas con pH
+                .filter(feed => feed.field1)
                 .map(feed => ({
                     timestamp: new Date(feed.created_at),
                     ph: parseFloat(feed.field1),
@@ -472,15 +530,13 @@ export const getPHHistory = async (results = 100) => {
                     entry_id: feed.entry_id,
                     phStatus: getPHStatus(parseFloat(feed.field1))
                 }))
-                .sort((a, b) => b.timestamp - a.timestamp); // Más reciente primero
+                .sort((a, b) => b.timestamp - a.timestamp);
             
-            console.log(`✅ [REMOTO] Historial obtenido: ${history.length} entradas`);
             return history;
         } else {
             throw new Error(`HTTP ${response.status}`);
         }
     } catch (error) {
-        console.error('❌ [REMOTO] Error obteniendo historial:', error);
         return [];
     }
 };
@@ -494,50 +550,29 @@ export const useESP32Connection = (onDataReceived, onConnectionChange) => {
     let isRunning = false;
     
     const startConnection = () => {
-        if (isRunning) {
-            console.log('⚠️ [REMOTO] Conexión ya está activa');
-            return;
-        }
+        if (isRunning) return;
         
         isRunning = true;
-        console.log('🚀 [REMOTO] Iniciando sistema de monitoreo remoto RÁPIDO...');
-        console.log('🌐 [REMOTO] Fuente: ThingSpeak');
-        console.log('📊 [REMOTO] Canal:', ESP32_CONFIG.CHANNEL_ID);
-        console.log('⏰ [REMOTO] Intervalo de verificación: 15 segundos');
-        console.log('⚡ [REMOTO] Modo optimizado para velocidad');
         
-        // Verificación inicial INMEDIATA
         setTimeout(async () => {
-            console.log('🔍 [REMOTO] Verificación inicial inmediata...');
-            
             try {
                 const isConnected = await checkESP32Connection();
-                console.log('📡 [REMOTO] Estado inicial:', isConnected ? 'Conectado' : 'Desconectado');
                 onConnectionChange(isConnected);
                 
                 if (isConnected) {
-                    console.log('📊 [REMOTO] Obteniendo datos iniciales...');
                     const phData = await getPHDataFromESP32();
-                    
                     if (phData) {
-                        console.log('🧪 [REMOTO] Datos iniciales recibidos');
                         onDataReceived(phData);
-                    } else {
-                        console.log('⚠️ [REMOTO] No se pudieron obtener datos iniciales');
                     }
                 }
             } catch (error) {
-                console.error('❌ [REMOTO] Error en verificación inicial:', error);
                 onConnectionChange(false);
             }
-        }, 500); // 500ms en lugar de 1000ms
+        }, 500);
         
-        // Verificación periódica
         connectionInterval = setInterval(async () => {
             if (!isRunning) return;
             
-            console.log('🔄 [REMOTO] Verificación periódica...');
-            
             try {
                 const isConnected = await checkESP32Connection();
                 onConnectionChange(isConnected);
@@ -547,33 +582,22 @@ export const useESP32Connection = (onDataReceived, onConnectionChange) => {
                     if (phData) {
                         onDataReceived(phData);
                     }
-                } else {
-                    console.log('⚠️ [REMOTO] Sensor desconectado en verificación periódica');
                 }
             } catch (error) {
-                console.error('❌ [REMOTO] Error en verificación periódica:', error);
                 onConnectionChange(false);
             }
         }, ESP32_CONFIG.RETRY_INTERVAL);
-        
-        console.log('✅ [REMOTO] Sistema de monitoreo configurado y activo');
     };
     
     const stopConnection = () => {
-        if (!isRunning) {
-            console.log('⚠️ [REMOTO] Conexión ya está detenida');
-            return;
-        }
+        if (!isRunning) return;
         
         isRunning = false;
-        console.log('🛑 [REMOTO] Deteniendo sistema de monitoreo...');
         
         if (connectionInterval) {
             clearInterval(connectionInterval);
             connectionInterval = null;
         }
-        
-        console.log('✅ [REMOTO] Sistema de monitoreo detenido');
     };
     
     const getStatus = () => {
