@@ -3,13 +3,13 @@
     margin: 2em auto;
     padding: 1.5em;
     border-radius: 1em;
-    border: 2px solid rgba(59, 130, 246, 0.3);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
-    box-shadow: rgba(0, 0, 0, 0.493) 0.4em 0.4em 2em;
+    border: 2px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-lg);
 }
 
 .automatic-dosing-container h3 {
-    color: whitesmoke;
+    color: var(--text-primary);
     margin-top: 0;
     margin-bottom: 1.5em;
     text-align: center;
@@ -35,14 +35,20 @@
 .auto-status {
     padding: 1.5em;
     border-radius: 0.8em;
-    background-color: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     margin-bottom: 1.5em;
 }
 
 .auto-status.monitoring {
     border-color: rgba(34, 197, 94, 0.3);
     background-color: rgba(34, 197, 94, 0.05);
+}
+
+.auto-status.alert {
+    border-color: rgba(245, 158, 11, 0.3);
+    background-color: rgba(245, 158, 11, 0.05);
+    animation: pulse-warning 2s infinite;
 }
 
 .auto-status.dosing {
@@ -54,6 +60,11 @@
 .auto-status.waiting {
     border-color: rgba(245, 158, 11, 0.3);
     background-color: rgba(245, 158, 11, 0.05);
+}
+
+.auto-status.connecting {
+    border-color: rgba(156, 163, 175, 0.3);
+    background-color: rgba(156, 163, 175, 0.05);
 }
 
 .auto-status.error {
@@ -77,7 +88,7 @@
 .status-text {
     font-size: 1.2em;
     font-weight: 600;
-    color: whitesmoke;
+    color: var(--text-primary);
 }
 
 .status-details {
@@ -91,7 +102,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.5em 0;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-secondary);
 }
 
 .detail-row .value {
@@ -140,6 +151,88 @@
     color: #93c5fd;
 }
 
+.backend-info {
+    margin-top: 1.5em;
+    padding: 1em;
+    border-radius: 0.5em;
+    background-color: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.backend-info h4 {
+    color: #a5b4fc;
+    margin-top: 0;
+    margin-bottom: 1em;
+    font-size: 1em;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8em;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+    padding: 0.5em;
+    background-color: var(--bg-tertiary);
+    border-radius: 0.3em;
+}
+
+.info-label {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 1em;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.last-event {
+    margin-top: 1.5em;
+    padding: 1em;
+    border-radius: 0.5em;
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.last-event h4 {
+    color: #4ade80;
+    margin-top: 0;
+    margin-bottom: 1em;
+    font-size: 1em;
+}
+
+.event-details p {
+    margin: 0.5em 0;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.event-details strong {
+    color: var(--success-color);
+}
+
+.backend-status {
+    margin-top: 1em;
+    padding: 1em;
+    background-color: rgba(59, 130, 246, 0.1);
+    border-radius: 0.5em;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.backend-status p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
 .next-check {
     margin-top: 1.5em;
     padding: 1em;
@@ -162,12 +255,12 @@
 .auto-info {
     padding: 1em;
     border-radius: 0.8em;
-    background-color: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
 }
 
 .auto-info h4 {
-    color: #93c5fd;
+    color: var(--primary-color);
     margin-top: 0;
     margin-bottom: 1em;
     font-size: 1em;
@@ -181,9 +274,9 @@
 
 .auto-info li {
     padding: 0.5em 0;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-secondary);
     font-size: 0.9em;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .auto-info li:last-child {
@@ -215,9 +308,11 @@
 @keyframes pulse-warning {
     0%, 100% {
         opacity: 1;
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
     }
     50% {
-        opacity: 0.6;
+        opacity: 0.9;
+        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
     }
 }
 

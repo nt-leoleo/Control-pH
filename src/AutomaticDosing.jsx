@@ -1,8 +1,9 @@
 import { useContext, useEffect, useState } from 'react';
 import { PHContext } from './PHContext';
-import { calculatePHChange, getChemicalInfo } from './dosageCalculations';
-import { CONFIG, getConfig, getModeDescription } from './config';
-import { sendRealDosingCommand } from './esp32Communication';
+import { getChemicalInfo } from './dosageCalculations';
+import { useAuth } from './useAuth';
+import { ref, onValue } from 'firebase/database';
+import { database } from './firebase';
 import './AutomaticDosing.css';
 
 const AutomaticDosing = () => {
@@ -10,243 +11,158 @@ const AutomaticDosing = () => {
         ph, 
         phTolerance, 
         phToleranceRange, 
-        poolVolume, 
-        alkalinity,
-        acidType,
-        chlorineType,
         dosingMode,
-        setError,
-        dosingHistory,
-        setDosingHistory
+        userConfig
     } = useContext(PHContext);
 
-    const [autoStatus, setAutoStatus] = useState('monitoring'); // monitoring, dosing, waiting, error
-    const [lastDosing, setLastDosing] = useState(null);
-    const [nextCheckTime, setNextCheckTime] = useState(null);
-    const [currentAction, setCurrentAction] = useState(null);
-
-    // Obtener configuración según el modo
-    const config = getConfig();
-    const modeInfo = getModeDescription();
+    const { user } = useAuth();
+    const [backendStatus, setBackendStatus] = useState(null);
+    const [lastDosingEvent, setLastDosingEvent] = useState(null);
+    const [dosingState, setDosingState] = useState(null);
     
-    // Constantes de hardware
-    const { PUMP_FLOW_RATE, MAX_DOSE_VOLUME, CORRECTION_FACTOR, MIN_DOSE_VOLUME } = CONFIG.HARDWARE;
-    const { MIN_WAIT_TIME, CHECK_INTERVAL, DOSING_DELAY } = config;
-
-    /**
-     * Calcula la cantidad de producto necesaria para ajustar el pH
-     * Usa búsqueda iterativa para encontrar la dosis correcta
-     */
-    const calculateRequiredDose = (currentPH, targetPH, poolVolumeL, alkalinityPpm) => {
-        const deviation = currentPH - targetPH;
-        
-        // Determinar producto a usar
-        const product = deviation > 0 ? acidType : chlorineType;
-        
-        // Búsqueda iterativa: probar diferentes cantidades hasta encontrar la correcta
-        let liters = 0.01; // Empezar con 10ml
-        let phChange = 0;
-        let iterations = 0;
-        const maxIterations = 100;
-        
-        // Incrementar de a poco hasta lograr el cambio deseado
-        while (Math.abs(phChange) < Math.abs(deviation) * CORRECTION_FACTOR && iterations < maxIterations) {
-            liters += 0.01; // Incrementar 10ml
-            phChange = calculatePHChange(product, liters, poolVolumeL, alkalinityPpm);
-            iterations++;
-            
-            // Limitar a dosis máxima segura
-            if (liters >= MAX_DOSE_VOLUME) {
-                break;
-            }
-        }
-        
-        // Asegurar mínimo
-        liters = Math.max(MIN_DOSE_VOLUME, liters);
-        
-        // Recalcular cambio final
-        const finalPhChange = calculatePHChange(product, liters, poolVolumeL, alkalinityPpm);
-        
-        return {
-            product,
-            liters: Math.round(liters * 100) / 100, // Redondear a 2 decimales
-            expectedChange: finalPhChange,
-            duration: calculatePumpDuration(liters)
-        };
+    // Configuración por defecto del administrador
+    const adminConfig = userConfig?.adminConfig || {
+        minWaitTimeBetweenDoses: 0.5,
+        maxDailyDoses: 10,
+        checkInterval: 1,
+        minPH: 6.0,
+        maxPH: 8.5
     };
 
-    /**
-     * Calcula el tiempo que debe estar encendida la bomba
-     * Basado en el caudal de la bomba (1.5 L/h)
-     * Limitado a máximo 15 minutos (900 segundos)
-     */
-    const calculatePumpDuration = (liters) => {
-        const hours = liters / PUMP_FLOW_RATE;
-        const seconds = Math.min(Math.round(hours * 3600), 900); // Máximo 15 minutos
-        return {
-            seconds,
-            minutes: Math.floor(seconds / 60),
-            remainingSeconds: seconds % 60
-        };
-    };
-
-    /**
-     * Verifica si es necesario dosificar
-     */
-    const checkAndDose = () => {
-        // Verificar que estamos en modo automático
-        if (dosingMode !== 'automatic') return;
-
-        // Verificar que tenemos configuración válida
-        if (!poolVolume || poolVolume <= 0) {
-            setAutoStatus('error');
-            setError({ 
-                type: 'warning', 
-                message: 'Configuración incompleta: Volumen de piscina no configurado' 
-            });
-            return;
-        }
-
-        // Verificar si estamos en período de espera
-        if (lastDosing && (Date.now() - lastDosing) < MIN_WAIT_TIME) {
-            const remainingTime = MIN_WAIT_TIME - (Date.now() - lastDosing);
-            const remainingMinutes = Math.ceil(remainingTime / 60000);
-            setAutoStatus('waiting');
-            setNextCheckTime(new Date(lastDosing + MIN_WAIT_TIME));
-            return;
-        }
-
-        // Calcular desviación del pH
-        const deviation = ph - phTolerance;
-        const isOutOfRange = Math.abs(deviation) > phToleranceRange;
-
-        if (isOutOfRange) {
-            // pH fuera de rango, calcular dosificación
-            const dose = calculateRequiredDose(ph, phTolerance, poolVolume, alkalinity || 100);
-            
-            setAutoStatus('dosing');
-            setCurrentAction(dose);
-            
-            // Simular dosificación
-            executeDosing(dose);
-        } else {
-            // pH en rango, solo monitorear
-            setAutoStatus('monitoring');
-            setCurrentAction(null);
-        }
-    };
-
-    /**
-     * Ejecuta la dosificación
-     */
-    const executeDosing = async (dose) => {
-        const chemInfo = getChemicalInfo(dose.product);
-        
-        setAutoStatus('dosing');
-        setCurrentAction(dose);
-        
-        try {
-            // Enviar comando real al ESP32
-            console.log('🚀 Enviando comando de dosificación al ESP32...');
-            const result = await sendRealDosingCommand(dose.product, dose.duration.seconds);
-            
-            if (result.success) {
-                console.log('✅ Comando enviado exitosamente:', result);
-                
-                const now = new Date();
-                const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-                
-                const dosingRecord = {
-                    timestamp: timeString,
-                    product: dose.product,
-                    productName: chemInfo.name,
-                    duration: dose.duration,
-                    liters: dose.liters,
-                    phBefore: ph,
-                    phTarget: phTolerance,
-                    expectedChange: dose.expectedChange,
-                    mode: 'automatic',
-                    status: 'completado',
-                    esp32Response: result
-                };
-
-                setDosingHistory(prev => [...prev, dosingRecord]);
-                setLastDosing(Date.now());
-                
-                setError({ 
-                    type: 'success', 
-                    message: `✓ Dosificación automática: ${dose.liters.toFixed(2)}L de ${chemInfo.name} durante ${dose.duration.minutes}m ${dose.duration.remainingSeconds}s` 
-                });
-            } else {
-                console.error('❌ Error en comando:', result.message);
-                setError({ 
-                    type: 'error', 
-                    message: `Error al dosificar: ${result.message}` 
-                });
-            }
-        } catch (error) {
-            console.error('❌ Error ejecutando dosificación:', error);
-            setError({ 
-                type: 'error', 
-                message: `Error al comunicarse con el ESP32: ${error.message}` 
-            });
-        }
-
-        // Después de dosificar, esperar período de mezcla
-        setTimeout(() => {
-            setAutoStatus('waiting');
-            setNextCheckTime(new Date(Date.now() + MIN_WAIT_TIME));
-        }, DOSING_DELAY);
-    };
-
-    // Efecto para verificación periódica
+    // Escuchar estado del backend (Cloud Functions)
     useEffect(() => {
-        if (dosingMode !== 'automatic') return;
+        if (!user || dosingMode !== 'automatic') return;
 
-        // Verificación inicial
-        checkAndDose();
+        console.log('🔌 Conectando con Firebase Realtime Database...');
+        
+        // Inicializar estado vacío después de 2 segundos si no hay datos
+        const timeoutId = setTimeout(() => {
+            if (!dosingState) {
+                console.log('⚠️ No hay datos del backend aún, mostrando estado inicial');
+                setDosingState({
+                    initialized: false,
+                    message: 'Backend iniciando...'
+                });
+            }
+        }, 2000);
 
-        // Configurar intervalo de verificación
-        const interval = setInterval(() => {
-            checkAndDose();
-        }, CHECK_INTERVAL);
+        // Escuchar estado de dosificación
+        const dosingStateRef = ref(database, `users/${user.uid}/dosingState`);
+        const unsubscribeState = onValue(dosingStateRef, (snapshot) => {
+            clearTimeout(timeoutId);
+            if (snapshot.exists()) {
+                const state = snapshot.val();
+                setDosingState({ ...state, initialized: true });
+                console.log('📊 Estado de dosificación actualizado:', state);
+            } else {
+                console.log('ℹ️ No hay estado de dosificación guardado');
+                setDosingState({
+                    initialized: true,
+                    message: 'Sin dosificaciones previas'
+                });
+            }
+        }, (error) => {
+            console.error('❌ Error leyendo dosingState:', error);
+            clearTimeout(timeoutId);
+            setDosingState({
+                initialized: true,
+                error: error.message
+            });
+        });
 
-        return () => clearInterval(interval);
-    }, [ph, phTolerance, phToleranceRange, poolVolume, dosingMode, lastDosing]);
+        // Escuchar último evento de dosificación
+        const historyRef = ref(database, `users/${user.uid}/dosingHistory`);
+        const unsubscribeHistory = onValue(historyRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const history = snapshot.val();
+                const events = Object.values(history);
+                // Obtener el último evento
+                const lastEvent = events.sort((a, b) => b.timestamp - a.timestamp)[0];
+                setLastDosingEvent(lastEvent);
+                console.log('📝 Último evento de dosificación:', lastEvent);
+            } else {
+                console.log('ℹ️ No hay historial de dosificación');
+            }
+        }, (error) => {
+            console.error('❌ Error leyendo historial:', error);
+        });
+
+        return () => {
+            clearTimeout(timeoutId);
+            unsubscribeState();
+            unsubscribeHistory();
+        };
+    }, [user, dosingMode]);
 
     // No mostrar nada si no está en modo automático
     if (dosingMode !== 'automatic') return null;
 
+    // Calcular desviación actual
+    const deviation = ph - phTolerance;
+    const isOutOfRange = Math.abs(deviation) > phToleranceRange;
+
+    // Determinar estado del sistema
+    const getSystemStatus = () => {
+        if (!dosingState) {
+            return { icon: '🔄', text: 'Conectando con backend...', status: 'connecting' };
+        }
+
+        if (!dosingState.initialized) {
+            return { icon: '🔄', text: dosingState.message || 'Inicializando...', status: 'connecting' };
+        }
+
+        if (dosingState.error) {
+            return { 
+                icon: '❌', 
+                text: `Error: ${dosingState.error}`, 
+                status: 'error' 
+            };
+        }
+
+        const timeSinceLastDosing = dosingState.lastDosingTime 
+            ? Date.now() - dosingState.lastDosingTime 
+            : null;
+
+        // Calcular tiempo de espera desde la configuración del administrador
+        const waitTimeMs = (adminConfig.minWaitTimeBetweenDoses || 0.5) * 60 * 60 * 1000;
+
+        // Si dosificó hace menos del tiempo configurado, está en espera
+        if (timeSinceLastDosing && timeSinceLastDosing < waitTimeMs) {
+            const remainingMinutes = Math.ceil((waitTimeMs - timeSinceLastDosing) / 60000);
+            return { 
+                icon: '⏳', 
+                text: `Esperando mezcla (${remainingMinutes} min)`, 
+                status: 'waiting' 
+            };
+        }
+
+        // Si el pH está fuera de rango
+        if (isOutOfRange) {
+            return { 
+                icon: '⚠️', 
+                text: 'pH fuera de rango - Backend dosificará pronto', 
+                status: 'alert' 
+            };
+        }
+
+        // pH en rango, monitoreando
+        return { 
+            icon: '✅', 
+            text: 'pH en rango - Monitoreando', 
+            status: 'monitoring' 
+        };
+    };
+
+    const systemStatus = getSystemStatus();
+
     return (
         <div className="automatic-dosing-container">
-            <h3>🤖 Modo Automático Activo {CONFIG.DEV_MODE && <span className="dev-badge">{modeInfo.mode}</span>}</h3>
+            <h3>🤖 Modo Automático - Backend 24/7</h3>
             
-            <div className={`auto-status ${autoStatus}`}>
+            <div className={`auto-status ${systemStatus.status}`}>
                 <div className="status-indicator">
-                    {autoStatus === 'monitoring' && (
-                        <>
-                            <span className="status-icon">👁️</span>
-                            <span className="status-text">Monitoreando pH</span>
-                        </>
-                    )}
-                    {autoStatus === 'dosing' && (
-                        <>
-                            <span className="status-icon">💧</span>
-                            <span className="status-text">Dosificando...</span>
-                        </>
-                    )}
-                    {autoStatus === 'waiting' && (
-                        <>
-                            <span className="status-icon">⏳</span>
-                            <span className="status-text">Esperando mezcla completa</span>
-                        </>
-                    )}
-                    {autoStatus === 'error' && (
-                        <>
-                            <span className="status-icon">⚠️</span>
-                            <span className="status-text">Error de configuración</span>
-                        </>
-                    )}
+                    <span className="status-icon">{systemStatus.icon}</span>
+                    <span className="status-text">{systemStatus.text}</span>
                 </div>
 
                 <div className="status-details">
@@ -256,58 +172,93 @@ const AutomaticDosing = () => {
                     </div>
                     <div className="detail-row">
                         <span>pH Actual:</span>
-                        <span className={`value ${Math.abs(ph - phTolerance) > phToleranceRange ? 'out-of-range' : 'in-range'}`}>
+                        <span className={`value ${isOutOfRange ? 'out-of-range' : 'in-range'}`}>
                             {ph.toFixed(2)}
                         </span>
                     </div>
                     <div className="detail-row">
                         <span>Desviación:</span>
-                        <span className={`value ${Math.abs(ph - phTolerance) > phToleranceRange ? 'warning' : 'ok'}`}>
-                            {(ph - phTolerance) >= 0 ? '+' : ''}{(ph - phTolerance).toFixed(2)}
+                        <span className={`value ${isOutOfRange ? 'warning' : 'ok'}`}>
+                            {deviation >= 0 ? '+' : ''}{deviation.toFixed(2)}
                         </span>
                     </div>
                 </div>
 
-                {currentAction && autoStatus === 'dosing' && (
-                    <div className="current-action">
-                        <h4>Acción en curso:</h4>
-                        <div className="action-details">
-                            <p><strong>Producto:</strong> {getChemicalInfo(currentAction.product).name}</p>
-                            <p><strong>Cantidad:</strong> {currentAction.liters.toFixed(2)} L</p>
-                            <p><strong>Duración:</strong> {currentAction.duration.minutes}m {currentAction.duration.remainingSeconds}s</p>
-                            <p><strong>Cambio esperado:</strong> {currentAction.expectedChange >= 0 ? '+' : ''}{currentAction.expectedChange.toFixed(2)} pH</p>
-                        </div>
+                {dosingState && dosingState.initialized && !dosingState.error && (
+                    <div className="backend-info">
+                        <h4>📊 Estado del Backend</h4>
+                        {dosingState.message ? (
+                            <p style={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', padding: '1em' }}>
+                                {dosingState.message}
+                            </p>
+                        ) : (
+                            <div className="info-grid">
+                                {dosingState.lastDosingTime && (
+                                    <div className="info-item">
+                                        <span className="info-label">Última dosificación:</span>
+                                        <span className="info-value">
+                                            {new Date(dosingState.lastDosingTime).toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
+                                {dosingState.lastProduct && (
+                                    <div className="info-item">
+                                        <span className="info-label">Producto usado:</span>
+                                        <span className="info-value">
+                                            {dosingState.lastProduct === 'ph_plus' ? 'pH+ (Soda Ash)' : 'pH- (Acido)'}
+                                        </span>
+                                    </div>
+                                )}
+                                {dosingState.lastDuration && (
+                                    <div className="info-item">
+                                        <span className="info-label">Duración:</span>
+                                        <span className="info-value">{dosingState.lastDuration}s</span>
+                                    </div>
+                                )}
+                                {dosingState.dosingCountToday !== undefined && (
+                                    <div className="info-item">
+                                        <span className="info-label">Dosificaciones hoy:</span>
+                                        <span className="info-value">
+                                            {dosingState.dosingCountToday} / {adminConfig.maxDailyDoses || 10}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {nextCheckTime && autoStatus === 'waiting' && (
-                    <div className="next-check">
-                        <p>Próxima verificación: {nextCheckTime.toLocaleTimeString()}</p>
-                        <p className="info-text">
-                            ⏱️ Tiempo de espera: {modeInfo.waitTime}
-                        </p>
+                {lastDosingEvent && (
+                    <div className="last-event">
+                        <h4>📝 Último Evento</h4>
+                        <div className="event-details">
+                            <p><strong>Fecha:</strong> {new Date(lastDosingEvent.timestamp).toLocaleString()}</p>
+                            <p><strong>Producto:</strong> {lastDosingEvent.product === 'ph_plus' ? 'pH+' : 'pH-'}</p>
+                            <p><strong>Duración:</strong> {lastDosingEvent.duration}s</p>
+                            <p><strong>pH antes:</strong> {lastDosingEvent.phBefore?.toFixed(2)}</p>
+                            <p><strong>pH objetivo:</strong> {lastDosingEvent.phTarget?.toFixed(2)}</p>
+                            <p><strong>Desviación:</strong> {lastDosingEvent.deviation?.toFixed(2)}</p>
+                        </div>
                     </div>
                 )}
             </div>
 
             <div className="auto-info">
                 <h4>ℹ️ Información del Sistema</h4>
-                {CONFIG.DEV_MODE && modeInfo.warning && (
-                    <div className="dev-warning">
-                        {modeInfo.warning}
-                        <ul>
-                            <li>Verificación: Cada {modeInfo.checkInterval}</li>
-                            <li>Tiempo de espera: {modeInfo.waitTime}</li>
-                            <li>Cambiar DEV_MODE en src/config.js</li>
-                        </ul>
-                    </div>
-                )}
                 <ul>
-                    <li>Caudal de bomba: {PUMP_FLOW_RATE} L/h (25 ml/min)</li>
-                    <li>Dosis máxima: {MAX_DOSE_VOLUME * 1000} ml por ciclo</li>
-                    <li>Tiempo de espera: {modeInfo.waitTime}</li>
-                    <li>Verificación: {modeInfo.checkInterval}</li>
+                    <li>✅ Cloud Functions activas 24/7</li>
+                    <li>🔄 Verificación automática cada {adminConfig.checkInterval || 1} minuto(s)</li>
+                    <li>⏱️ Tiempo de espera entre dosificaciones: {adminConfig.minWaitTimeBetweenDoses || 0.5} hora(s)</li>
+                    <li>🛡️ Límite diario: {adminConfig.maxDailyDoses || 10} dosificaciones</li>
+                    <li>📊 Rango seguro de pH: {adminConfig.minPH || 6.0} - {adminConfig.maxPH || 8.5}</li>
+                    <li>🌐 No requiere app abierta para funcionar</li>
                 </ul>
+                <div className="backend-status">
+                    <p>
+                        <strong>Estado:</strong> El backend está monitoreando tu piscina continuamente.
+                        Cuando el pH salga del rango configurado, dosificará automáticamente.
+                    </p>
+                </div>
             </div>
         </div>
     );

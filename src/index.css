@@ -30,6 +30,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: var(--bg-primary);
 }
 
 main {
@@ -39,6 +40,7 @@ main {
   flex-direction: column;
   align-items: center;
   padding: 1rem 1rem 7rem 1rem;
+  background: var(--bg-primary);
 }
 
 /* ===== VARIABLES DE TEMA MEJORADAS ===== */
@@ -102,40 +104,18 @@ main {
   --gradient-bg: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
 }
 
-/* Aplicar tema al body */
+/* Aplicar tema al body y html */
+html {
+  background: var(--bg-primary);
+}
+
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
 }
 
-/* ===== BOTÓN DE CAMBIO DE TEMA MEJORADO ===== */
-.theme-toggle {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 50%;
-  background: var(--gradient-primary);
-  border: none;
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-lg);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.theme-toggle:hover {
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: var(--shadow-xl);
-}
-
-.theme-toggle:active {
-  transform: translateY(-1px) scale(1.02);
+#root {
+  background: var(--bg-primary);
 }
 
 /* ===== ESTILOS GENERALES MEJORADOS ===== */
@@ -189,27 +169,11 @@ button {
   main {
     padding: 0.75rem 0.75rem 6rem 0.75rem;
   }
-  
-  .theme-toggle {
-    bottom: 1.5rem;
-    right: 1.5rem;
-    width: 3rem;
-    height: 3rem;
-    font-size: 1.25rem;
-  }
 }
 
 @media (max-width: 480px) {
   main {
     padding: 0.5rem 0.5rem 5rem 0.5rem;
-  }
-  
-  .theme-toggle {
-    bottom: 1rem;
-    right: 1rem;
-    width: 2.75rem;
-    height: 2.75rem;
-    font-size: 1.1rem;
   }
 }
 

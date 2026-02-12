@@ -167,6 +167,10 @@ export const PHProvider = ({ children }) => {
             validateToleranceRange(validatedValue, phToleranceRange);
             setPhTolerance(validatedValue);
             await saveConfigToFirebase({ phTolerance: validatedValue });
+            
+            // Enviar configuración a ThingSpeak para el ESP32
+            await sendConfigToThingSpeak(validatedValue, phToleranceRange, dosingMode);
+            
             setError(null);
         } catch (err) {
             logError('TOLERANCE_VALIDATION_ERROR', err.message, { value });
@@ -181,6 +185,10 @@ export const PHProvider = ({ children }) => {
             validateToleranceRange(phTolerance, validatedValue);
             setPhToleranceRange(validatedValue);
             await saveConfigToFirebase({ phToleranceRange: validatedValue });
+            
+            // Enviar configuración a ThingSpeak para el ESP32
+            await sendConfigToThingSpeak(phTolerance, validatedValue, dosingMode);
+            
             setError(null);
         } catch (err) {
             logError('TOLERANCE_RANGE_VALIDATION_ERROR', err.message, { value });
@@ -192,12 +200,44 @@ export const PHProvider = ({ children }) => {
     const safeDosingModeSet = async (value) => {
         setDosingMode(value);
         await saveConfigToFirebase({ dosingMode: value });
+        
+        // Enviar configuración a ThingSpeak para el ESP32
+        await sendConfigToThingSpeak(phTolerance, phToleranceRange, value);
+    };
+    
+    // Función para enviar configuración a ThingSpeak Field8
+    const sendConfigToThingSpeak = async (phTarget, tolerance, mode) => {
+        try {
+            const autoMode = mode === 'automatic' ? '1' : '0';
+            const configStr = `phTarget:${phTarget},tolerance:${tolerance},autoMode:${autoMode}`;
+            
+            const url = `https://api.thingspeak.com/update?api_key=GQXD1DTF1D6DPUSG&field8=${encodeURIComponent(configStr)}`;
+            
+            await fetch(url, { method: 'GET' });
+            console.log('✅ Configuración enviada a ThingSpeak:', configStr);
+        } catch (error) {
+            console.error('❌ Error enviando configuración a ThingSpeak:', error);
+        }
     };
 
-    // Función para obtener datos de ThingSpeak
-    const fetchPHData = async () => {
+    // Verificar conexión ESP32
+    const checkConnection = async () => {
+        if (!user?.uid) return;
+        
         try {
-            const phData = await getPHDataFromESP32();
+            const isConnected = await checkESP32Connection(user.uid);
+            setEsp32Connected(isConnected);
+        } catch (error) {
+            setEsp32Connected(false);
+        }
+    };
+
+    // Función para obtener datos (ahora desde Firebase)
+    const fetchPHData = async () => {
+        if (!user?.uid) return;
+        
+        try {
+            const phData = await getPHDataFromESP32(user.uid);
             
             if (phData) {
                 safePHSet(phData.ph);
@@ -220,26 +260,28 @@ export const PHProvider = ({ children }) => {
             }
         } catch (error) {
             setEsp32Connected(false);
-            logError('THINGSPEAK_DATA_ERROR', error.message);
+            logError('FIREBASE_DATA_ERROR', error.message);
         }
     };
 
-    // Verificar conexión ESP32
-    const checkConnection = async () => {
-        try {
-            const isConnected = await checkESP32Connection();
-            setEsp32Connected(isConnected);
-        } catch (error) {
-            setEsp32Connected(false);
-        }
-    };
-
-    // Comunicación con ESP32 usando ThingSpeak
+    // Comunicación con ESP32 usando Firebase (tiempo real)
     const handleDataReceived = (phData) => {
         try {
             safePHSet(phData.ph);
             setLastDataReceived(new Date(phData.timestamp));
             setEsp32Connected(true);
+            
+            // Actualizar historial
+            const now = new Date();
+            const hour = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const timeString = `${hour}:${minutes}`;
+            
+            setPhHistory(prev => {
+                const filtered = prev.filter(item => item.hour !== timeString);
+                const newHistory = [...filtered, { hour: timeString, value: phData.ph }];
+                return newHistory.slice(-24);
+            });
         } catch (error) {
             logError('ESP32_DATA_ERROR', error.message, phData);
         }
@@ -253,37 +295,31 @@ export const PHProvider = ({ children }) => {
     };
 
     const { startConnection, stopConnection } = useESP32Connection(
+        user?.uid, // Pasar userId para Firebase
         handleDataReceived,
         handleConnectionChange
     );
 
-    // Inicializar sistema de datos
+    // Inicializar sistema de datos con Firebase
     useEffect(() => {
+        if (!user?.uid) {
+            console.log('⏳ Esperando autenticación de usuario...');
+            return;
+        }
+        
+        console.log('🔌 Iniciando conexión Firebase para usuario:', user.uid);
+        
         // Verificación inicial
         checkConnection();
         
-        // Obtener datos iniciales
-        fetchPHData();
-        
-        // Iniciar conexión automática
+        // Iniciar conexión automática con Firebase (tiempo real)
         startConnection();
         
-        // Intervalo para obtener datos cada 30 segundos
-        const dataInterval = setInterval(() => {
-            fetchPHData();
-        }, 30000);
-        
-        // Intervalo para verificar conexión cada 60 segundos
-        const connectionInterval = setInterval(() => {
-            checkConnection();
-        }, 60000);
-        
         return () => {
+            console.log('🔌 Cerrando conexión Firebase');
             stopConnection();
-            clearInterval(dataInterval);
-            clearInterval(connectionInterval);
         };
-    }, []);
+    }, [user?.uid]); // Reiniciar cuando cambie el usuario
 
     // Actualizar historial cuando cambia el pH
     useEffect(() => {

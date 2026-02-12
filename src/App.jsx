@@ -75,55 +75,34 @@ export default function App() {
 
   // Si no está configurado, mostrar onboarding
   if (!isConfigured) {
-    return (
-      <>
-        <Onboarding />
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
-      </>
-    );
+    return <Onboarding />;
   }
 
   // Si está en vista de configuración, mostrar página de configuración
   if (currentView === 'settings') {
     return (
-      <>
-        <SettingsPage onBack={() => {
+      <SettingsPage 
+        onBack={() => {
           setCurrentView('main');
           window.location.hash = '';
-        }} />
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
-      </>
+        }}
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
     );
   }
 
   // Si está en vista de administrador de piscinas
   if (currentView === 'pool-manager') {
     return (
-      <>
-        <PoolManager onBack={() => {
+      <PoolManager 
+        onBack={() => {
           setCurrentView('settings');
           window.location.hash = 'settings';
-        }} />
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
-      </>
+        }}
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
     );
   }
 
@@ -190,15 +169,6 @@ export default function App() {
           </button>
         </div>
       </main>
-
-      {/* Botón de cambio de tema */}
-      <button 
-        className="theme-toggle" 
-        onClick={toggleTheme}
-        title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
-      >
-        {theme === 'dark' ? '☀️' : '🌙'}
-      </button>
 
       {error && (
         <ErrorNotification 

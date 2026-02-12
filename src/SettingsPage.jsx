@@ -1,9 +1,10 @@
 import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import WiFiConfig from './WiFiConfig';
+import AdminPanel from './AdminPanel';
 import './SettingsPage.css';
 
-const SettingsPage = ({ onBack }) => {
+const SettingsPage = ({ onBack, theme, toggleTheme }) => {
   const { 
     phTolerance, 
     setPhTolerance, 
@@ -19,6 +20,9 @@ const SettingsPage = ({ onBack }) => {
   
   const [showWiFiConfig, setShowWiFiConfig] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
 
   // Estados locales para sliders suaves (sin lag)
   const [localPhTolerance, setLocalPhTolerance] = useState(phTolerance);
@@ -116,6 +120,17 @@ const SettingsPage = ({ onBack }) => {
     }
   };
 
+  const handleAdminLogin = () => {
+    if (adminCredentials.username === 'Leonardo' && adminCredentials.password === 'ctrlph26') {
+      setShowAdminLogin(false);
+      setShowAdminPanel(true);
+      setAdminCredentials({ username: '', password: '' });
+    } else {
+      alert('Usuario o contrasena incorrectos');
+      setAdminCredentials({ username: '', password: '' });
+    }
+  };
+
   return (
     <div className="settings-page fade-in">
       {/* Header */}
@@ -134,6 +149,26 @@ const SettingsPage = ({ onBack }) => {
 
       {/* Contenido */}
       <div className="settings-content">
+        
+        {/* Apariencia */}
+        <div className="settings-section scale-in">
+          <h3>🎨 Apariencia</h3>
+          
+          <div className="setting-item">
+            <label className="setting-label">
+              Tema de la aplicación
+              <span className="setting-description">
+                Modo {theme === 'dark' ? 'oscuro' : 'claro'} activado
+              </span>
+            </label>
+            <button 
+              onClick={toggleTheme}
+              className="theme-toggle-btn"
+            >
+              {theme === 'dark' ? '☀️ Modo Claro' : '🌙 Modo Oscuro'}
+            </button>
+          </div>
+        </div>
         
         {/* Configuración de pH */}
         <div className="settings-section scale-in">
@@ -346,11 +381,11 @@ const SettingsPage = ({ onBack }) => {
               disabled={isTestingConnection}
             >
               <span>{isTestingConnection ? '🔄' : '🧪'}</span>
-              {isTestingConnection ? 'Probando...' : 'Probar Conexión'}
+              {isTestingConnection ? 'Probando...' : 'Probar Conexion'}
             </button>
             <button className="action-btn btn-secondary">
               <span>📊</span>
-              Ver Estadísticas
+              Ver Estadisticas
             </button>
             <button className="action-btn btn-secondary">
               <span>🔄</span>
@@ -358,9 +393,30 @@ const SettingsPage = ({ onBack }) => {
             </button>
             <button className="action-btn btn-danger">
               <span>⚠️</span>
-              Restablecer Configuración
+              Restablecer Configuracion
             </button>
           </div>
+        </div>
+
+        {/* Modo Administrador */}
+        <div className="settings-section scale-in">
+          <h3>🔐 Modo Administrador</h3>
+          
+          <button 
+            className="esp32-config-btn admin-access-btn"
+            onClick={() => setShowAdminLogin(true)}
+          >
+            <div className="config-icon">🔐</div>
+            <div className="config-info">
+              <div className="config-title">Acceso Administrador</div>
+              <div className="config-desc">Configuracion avanzada del sistema</div>
+            </div>
+            <div className="config-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m9 18 6-6-6-6"/>
+              </svg>
+            </div>
+          </button>
         </div>
 
       </div>
@@ -370,7 +426,7 @@ const SettingsPage = ({ onBack }) => {
         <div className="wifi-modal-overlay" onClick={() => setShowWiFiConfig(false)}>
           <div className="wifi-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="wifi-modal-header">
-              <h3>📶 Configuración WiFi</h3>
+              <h3>📶 Configuracion WiFi</h3>
               <button 
                 className="wifi-modal-close"
                 onClick={() => setShowWiFiConfig(false)}
@@ -381,6 +437,56 @@ const SettingsPage = ({ onBack }) => {
             <WiFiConfig />
           </div>
         </div>
+      )}
+
+      {/* Modal Admin Login */}
+      {showAdminLogin && (
+        <div className="wifi-modal-overlay" onClick={() => setShowAdminLogin(false)}>
+          <div className="admin-login-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-login-header">
+              <h3>🔐 Acceso Administrador</h3>
+              <button 
+                className="wifi-modal-close"
+                onClick={() => {
+                  setShowAdminLogin(false);
+                  setAdminCredentials({ username: '', password: '' });
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-login-content">
+              <div className="admin-login-field">
+                <label>Usuario</label>
+                <input
+                  type="text"
+                  value={adminCredentials.username}
+                  onChange={(e) => setAdminCredentials(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="Ingresa tu usuario"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                />
+              </div>
+              <div className="admin-login-field">
+                <label>Contrasena</label>
+                <input
+                  type="password"
+                  value={adminCredentials.password}
+                  onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Ingresa tu contrasena"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                />
+              </div>
+              <button className="admin-login-btn" onClick={handleAdminLogin}>
+                Iniciar Sesion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Panel de Administrador */}
+      {showAdminPanel && (
+        <AdminPanel onClose={() => setShowAdminPanel(false)} />
       )}
     </div>
   );

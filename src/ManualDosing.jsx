@@ -134,8 +134,8 @@ const ManualDosing = () => {
             setIsDosing(true);
             setError({ type: 'info', message: '⏳ Dosificando... Esperando respuesta del ESP32' });
 
-            // Enviar comando real al ESP32 y ESPERAR la respuesta
-            const result = await sendRealDosingCommand(product, totalSeconds);
+            // Enviar comando real al ESP32 a través de Cloud Functions
+            const result = await sendRealDosingCommand(product, totalSeconds, user.uid);
             
             if (result.success) {
                 // Calcular cambio de pH

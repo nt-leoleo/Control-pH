@@ -1,34 +1,42 @@
 /*
  * =====================================================
- *        COMUNICACIÓN ESP32 - SISTEMA COMPLETO
+ *        COMUNICACIÓN ESP32 - SISTEMA HÍBRIDO
  * =====================================================
  * 
- * Funcionalidades:
- * - Conexión con ThingSpeak para datos remotos
- * - Verificación de estado del ESP32
- * - Obtención de datos de pH en tiempo real
- * - Manejo de errores y reconexión automática
- * - Compatible con sistema de dosificación
+ * NUEVO FLUJO (v4.0):
+ * - Arduino → ThingSpeak (solo datos)
+ * - Cloud Functions → Firebase (datos + decisiones)
+ * - App Web ↔ Firebase (monitoreo + comandos en tiempo real)
+ * - Cloud Functions → ThingSpeak → Arduino (comandos)
  * 
- * Versión: 3.0 - Completa y Optimizada
+ * Este archivo mantiene compatibilidad con código existente
+ * pero usa Firebase como fuente principal de datos.
+ * 
+ * Versión: 4.0 - Firebase Integration
  * =====================================================
  */
+
+import { subscribeToPHData, sendManualDosingCommand as sendManualDosingCommandFirebase, checkESP32Connection as checkESP32ConnectionFirebase } from './esp32Communication-firebase';
 
 // =====================================================
 // CONFIGURACIÓN
 // =====================================================
 
 export const ESP32_CONFIG = {
-    // ThingSpeak Configuration
+    // ThingSpeak Configuration (solo para referencia)
     CHANNEL_ID: '3249157',
     READ_API_KEY: 'S7Q7FWREGP96KX04',
     THINGSPEAK_API: 'https://api.thingspeak.com/channels/3249157/feeds/last.json?api_key=S7Q7FWREGP96KX04',
     THINGSPEAK_HISTORY_API: 'https://api.thingspeak.com/channels/3249157/feeds.json?api_key=S7Q7FWREGP96KX04',
     
-    // Timeouts and Intervals - OPTIMIZADOS PARA VELOCIDAD
-    TIMEOUT: 5000,                     // 5 segundos (era 10)
-    RETRY_INTERVAL: 15000,             // 15 segundos (era 30)
-    MAX_DATA_AGE: 120000,              // 2 minutos (era 5)
+    // Cloud Functions endpoints
+    CLOUD_FUNCTIONS_BASE: 'https://us-central1-control-ph-82951.cloudfunctions.net',
+    MANUAL_DOSING_ENDPOINT: '/sendManualDosingCommand',
+    
+    // Timeouts and Intervals
+    TIMEOUT: 5000,
+    RETRY_INTERVAL: 15000,
+    MAX_DATA_AGE: 120000,
     
     // Data validation
     MIN_PH: 0,
@@ -38,10 +46,25 @@ export const ESP32_CONFIG = {
 };
 
 // =====================================================
-// VERIFICACIÓN DE CONEXIÓN
+// VERIFICACIÓN DE CONEXIÓN - USA FIREBASE
 // =====================================================
 
-export const checkESP32Connection = async () => {
+/**
+ * Verifica conexión del ESP32 a través de Firebase
+ * @param {string} userId - ID del usuario (requerido)
+ */
+export const checkESP32Connection = async (userId = null) => {
+    if (!userId) {
+        console.warn('⚠️ checkESP32Connection requiere userId, usando método legacy');
+        // Fallback al método antiguo si no hay userId
+        return await checkESP32ConnectionLegacy();
+    }
+    
+    return await checkESP32ConnectionFirebase(userId);
+};
+
+// Método legacy para compatibilidad
+async function checkESP32ConnectionLegacy() {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), ESP32_CONFIG.TIMEOUT);
@@ -67,13 +90,30 @@ export const checkESP32Connection = async () => {
     } catch (error) {
         return false;
     }
+}
+
+// =====================================================
+// OBTENCIÓN DE DATOS DE pH - USA FIREBASE
+// =====================================================
+
+/**
+ * Obtiene datos de pH desde Firebase (método preferido)
+ * Mantiene compatibilidad con código existente
+ * @param {string} userId - ID del usuario (requerido para Firebase)
+ */
+export const getPHDataFromESP32 = async (userId = null) => {
+    if (!userId) {
+        console.warn('⚠️ getPHDataFromESP32 requiere userId para usar Firebase, usando ThingSpeak legacy');
+        return await getPHDataFromThingSpeakLegacy();
+    }
+    
+    // Importar dinámicamente para evitar problemas de dependencias circulares
+    const { getPHDataFromFirebase } = await import('./esp32Communication-firebase.js');
+    return await getPHDataFromFirebase(userId);
 };
 
-// =====================================================
-// OBTENCIÓN DE DATOS DE pH
-// =====================================================
-
-export const getPHDataFromESP32 = async () => {
+// Método legacy que lee directamente de ThingSpeak
+async function getPHDataFromThingSpeakLegacy() {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), ESP32_CONFIG.TIMEOUT);
@@ -102,7 +142,7 @@ export const getPHDataFromESP32 = async () => {
     } catch (error) {
         return null;
     }
-};
+}
 
 // =====================================================
 // PROCESAMIENTO DE DATOS
@@ -254,90 +294,35 @@ export const sendDosingCommand = async (dosingConfig) => {
     }
 };
 
-// Función para enviar comando de dosificación remoto a través de ThingSpeak
-export const sendRealDosingCommand = async (product, durationSeconds) => {
-    try {
-        console.log('💊 Enviando comando de dosificación...');
-        
-        const productMap = {
-            'sodium-hypochlorite': 'ph_plus',
-            'calcium-hypochlorite': 'ph_plus',
-            'muriatic': 'ph_minus',
-            'bisulfate': 'ph_minus',
-            'chlorine-gas': 'ph_minus'
+// =====================================================
+// COMANDOS DE DOSIFICACIÓN - USA CLOUD FUNCTIONS
+// =====================================================
+
+/**
+ * Envía comando de dosificación a través de Cloud Functions
+ * @param {string} product - Producto a dosificar
+ * @param {number} durationSeconds - Duración en segundos
+ * @param {string} userId - ID del usuario (requerido)
+ */
+export const sendRealDosingCommand = async (product, durationSeconds, userId = null) => {
+    if (!userId) {
+        console.error('❌ sendRealDosingCommand requiere userId');
+        return {
+            success: false,
+            message: 'userId es requerido para enviar comandos',
+            timestamp: new Date().toISOString(),
+            method: 'failed'
         };
+    }
+    
+    try {
+        console.log('💊 Enviando comando de dosificación vía Cloud Functions...');
+        console.log('📋 Configuración:', { product, durationSeconds, userId });
         
-        const esp32Product = productMap[product] || 'ph_plus';
-        const productCode = esp32Product === 'ph_plus' ? '1' : '2';
+        return await sendManualDosingCommandFirebase(userId, product, durationSeconds);
         
-        const writeApiKey = 'GQXD1DTF1D6DPUSG';
-        const channelId = '3249157';
-        
-        // Leer el contador actual de dosificaciones (Field7)
-        const currentCountUrl = `https://api.thingspeak.com/channels/${channelId}/fields/7/last.txt`;
-        let currentCount = 0;
-        
-        try {
-            const countResponse = await fetch(currentCountUrl);
-            if (countResponse.ok) {
-                const countText = await countResponse.text();
-                currentCount = parseInt(countText) || 0;
-            }
-        } catch (e) {
-            // Si falla, asumir 0
-        }
-        
-        console.log(`📊 Contador actual: ${currentCount}`);
-        
-        // Incrementar el contador para señalar nuevo comando
-        const newCount = currentCount + 1;
-        
-        // URL del comando SOLO con Field5, Field6, Field7
-        // El ESP32 se encargará de escribir Field1-4 (datos del sensor)
-        const commandUrl = `https://api.thingspeak.com/update?api_key=${writeApiKey}&field5=${productCode}&field6=${durationSeconds}&field7=${newCount}`;
-        
-        // Enviar comando UNA SOLA VEZ (sin retry loop)
-        // El ESP32 leerá este comando en su próximo ciclo
-        console.log('🔄 Enviando comando a ThingSpeak...');
-        
-        try {
-            const response = await fetch(commandUrl, {
-                method: 'GET',
-                signal: AbortSignal.timeout(10000)
-            });
-            
-            if (response.ok) {
-                entryId = await response.text();
-                
-                if (entryId !== '0') {
-                    console.log('✅ Comando enviado (Entry ID: ' + entryId + ')');
-                    console.log(`📡 El ESP32 leerá y ejecutará el comando en su próximo ciclo (máx 20s)`);
-                    
-                    return {
-                        success: true,
-                        message: `Comando enviado: ${esp32Product} por ${durationSeconds}s`,
-                        timestamp: new Date().toISOString(),
-                        method: 'thingspeak_unified',
-                        entryId: entryId,
-                        note: 'El ESP32 procesará el comando en su próximo ciclo (máx 20s)'
-                    };
-                } else {
-                    throw new Error('ThingSpeak rechazó el comando (rate limit). Espera 15 segundos e intenta de nuevo.');
-                }
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('❌ Error:', error.message);
-            return {
-                success: false,
-                message: `Error: ${error.message}`,
-                timestamp: new Date().toISOString(),
-                method: 'failed'
-            };
-        }
     } catch (error) {
-        console.error('❌ Error:', error.message);
+        console.error('❌ Error enviando comando:', error.message);
         return {
             success: false,
             message: `Error: ${error.message}`,
@@ -526,69 +511,53 @@ export const getPHHistory = async (results = 100) => {
 };
 
 // =====================================================
-// HOOK DE CONEXIÓN PRINCIPAL
+// HOOK DE CONEXIÓN PRINCIPAL - USA FIREBASE
 // =====================================================
 
-export const useESP32Connection = (onDataReceived, onConnectionChange) => {
-    let connectionInterval;
+/**
+ * Hook para conexión con ESP32 vía Firebase (tiempo real)
+ * @param {string} userId - ID del usuario
+ * @param {Function} onDataReceived - Callback para datos recibidos
+ * @param {Function} onConnectionChange - Callback para cambios de conexión
+ */
+export const useESP32Connection = (userId, onDataReceived, onConnectionChange) => {
+    let unsubscribe = null;
     let isRunning = false;
     
     const startConnection = () => {
-        if (isRunning) return;
+        if (isRunning || !userId) {
+            console.warn('⚠️ Conexión ya iniciada o userId no proporcionado');
+            return;
+        }
         
         isRunning = true;
+        console.log('🔌 Iniciando conexión Firebase en tiempo real...');
         
-        setTimeout(async () => {
-            try {
-                const isConnected = await checkESP32Connection();
-                onConnectionChange(isConnected);
-                
-                if (isConnected) {
-                    const phData = await getPHDataFromESP32();
-                    if (phData) {
-                        onDataReceived(phData);
-                    }
-                }
-            } catch (error) {
-                onConnectionChange(false);
-            }
-        }, 500);
-        
-        connectionInterval = setInterval(async () => {
-            if (!isRunning) return;
-            
-            try {
-                const isConnected = await checkESP32Connection();
-                onConnectionChange(isConnected);
-                
-                if (isConnected) {
-                    const phData = await getPHDataFromESP32();
-                    if (phData) {
-                        onDataReceived(phData);
-                    }
-                }
-            } catch (error) {
-                onConnectionChange(false);
-            }
-        }, ESP32_CONFIG.RETRY_INTERVAL);
+        // Suscribirse a cambios en tiempo real
+        unsubscribe = subscribeToPHData(userId, (data) => {
+            onDataReceived(data);
+            onConnectionChange(data.isRecent);
+        });
     };
     
     const stopConnection = () => {
         if (!isRunning) return;
         
         isRunning = false;
+        console.log('🔌 Deteniendo conexión Firebase...');
         
-        if (connectionInterval) {
-            clearInterval(connectionInterval);
-            connectionInterval = null;
+        if (unsubscribe) {
+            unsubscribe();
+            unsubscribe = null;
         }
     };
     
     const getStatus = () => {
         return {
             running: isRunning,
-            interval: connectionInterval ? true : false,
-            config: ESP32_CONFIG
+            interval: false, // Firebase usa listeners, no polling
+            config: ESP32_CONFIG,
+            method: 'firebase-realtime'
         };
     };
     

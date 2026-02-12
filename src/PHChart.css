@@ -3,9 +3,9 @@
     margin: 2em auto;
     padding: 1.5em;
     border-radius: 1em;
-    border: 1px solid rgba(255, 255, 255, 0.158);
-    background-color: rgb(41, 25, 66);
-    box-shadow: rgba(0, 0, 0, 0.493) 0.4em 0.4em 2em;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    box-shadow: var(--shadow-lg);
 }
 
 .chartHeader {
@@ -16,7 +16,7 @@
 }
 
 .chartContainer h3 {
-    color: whitesmoke;
+    color: var(--text-primary);
     margin: 0;
     text-align: center;
     font-size: 1.2em;
@@ -30,7 +30,7 @@
     width: 2em;
     height: 2em;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--bg-secondary);
     animation: pulse 1.5s ease-in-out infinite;
 }
 
