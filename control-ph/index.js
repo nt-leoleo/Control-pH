@@ -1,6 +1,13 @@
 /**
  * Firebase Cloud Functions para Control de Pileta pH
- * Sistema autónomo 24/7 que monitorea y dosifica automáticamente
+ * Sistema Cloud-Native Completo
+ * 
+ * NUEVA ARQUITECTURA:
+ * - Arduino → Cloud Functions (HTTP POST/GET directo)
+ * - Cloud Functions ↔ Firebase Realtime DB
+ * - App Web ↔ Firebase (tiempo real)
+ * 
+ * Sin ThingSpeak, sin rate limits, sin "pelea por tiempos"
  */
 
 const {onSchedule} = require("firebase-functions/v2/scheduler");
@@ -19,10 +26,188 @@ setGlobalOptions({ maxInstances: 10 });
 const firestore = admin.firestore();
 const realtimeDb = admin.database();
 
-// Configuración de ThingSpeak
-const THINGSPEAK_CHANNEL_ID = '3249157';
-const THINGSPEAK_READ_API_KEY = 'S7Q7FWREGP96KX04';
-const THINGSPEAK_WRITE_API_KEY = 'GQXD1DTF1D6DPUSG';
+// =====================================================
+// CLOUD FUNCTIONS - COMUNICACIÓN DIRECTA CON ARDUINO
+// =====================================================
+
+/**
+ * Recibe datos del sensor desde Arduino (HTTP POST cada 10s)
+ */
+exports.receiveSensorData = onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Methods', 'POST');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.status(204).send('');
+    return;
+  }
+  
+  try {
+    const { deviceId, ph, voltage, wifiRSSI, uptime } = req.body;
+    
+    logger.info('📥 Datos recibidos:', { deviceId, ph, voltage, wifiRSSI, uptime });
+    
+    // Validar datos
+    if (!deviceId || ph === undefined) {
+      logger.error('❌ Faltan campos requeridos');
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+    
+    // Buscar userId por deviceId
+    logger.info(`🔍 Buscando dispositivo: ${deviceId}`);
+    const deviceDoc = await firestore.collection('devices').doc(deviceId).get();
+    
+    if (!deviceDoc.exists) {
+      logger.error(`❌ Dispositivo no registrado: ${deviceId}`);
+      res.status(404).json({ error: 'Device not registered' });
+      return;
+    }
+    
+    const deviceData = deviceDoc.data();
+    const userId = deviceData.userId;
+    
+    logger.info(`✅ Dispositivo encontrado. userId: ${userId}`);
+    
+    // Guardar en Firebase Realtime DB
+    const dataPath = `users/${userId}/sensorData`;
+    logger.info(`💾 Guardando en: ${dataPath}`);
+    
+    await realtimeDb.ref(dataPath).set({
+      ph: parseFloat(ph),
+      voltage: parseFloat(voltage) || 0,
+      wifiRSSI: parseInt(wifiRSSI) || -50,
+      uptime: parseInt(uptime) || 0,
+      timestamp: Date.now(),
+      deviceId: deviceId,
+      isRecent: true
+    });
+    
+    logger.info(`✅ Datos guardados correctamente en ${dataPath}`);
+    
+    res.json({ success: true, message: 'Data received', userId: userId });
+    
+  } catch (error) {
+    logger.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Arduino solicita comandos pendientes (HTTP GET cada 5s)
+ */
+exports.getCommand = onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  
+  try {
+    const { deviceId } = req.query;
+    
+    if (!deviceId) {
+      res.status(400).json({ error: 'deviceId required' });
+      return;
+    }
+    
+    // Buscar userId por deviceId
+    const deviceDoc = await firestore.collection('devices').doc(deviceId).get();
+    
+    if (!deviceDoc.exists) {
+      res.status(404).json({ error: 'Device not registered' });
+      return;
+    }
+    
+    const userId = deviceDoc.data().userId;
+    
+    // Buscar comando pendiente
+    const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
+    const snapshot = await commandsRef
+      .orderByChild('status')
+      .equalTo('pending')
+      .limitToFirst(1)
+      .once('value');
+    
+    if (!snapshot.exists()) {
+      res.json({ command: null });
+      return;
+    }
+    
+    const commandId = Object.keys(snapshot.val())[0];
+    const command = snapshot.val()[commandId];
+    
+    // Marcar como "processing"
+    await commandsRef.child(commandId).update({
+      status: 'processing',
+      processedAt: Date.now()
+    });
+    
+    logger.info(`📤 Comando enviado a ${deviceId}: ${command.product}, ${command.duration}s`);
+    
+    res.json({
+      commandId: commandId,
+      product: command.product,
+      duration: command.duration
+    });
+    
+  } catch (error) {
+    logger.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Arduino confirma comando completado (HTTP POST)
+ */
+exports.confirmCommand = onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Methods', 'POST');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.status(204).send('');
+    return;
+  }
+  
+  try {
+    const { commandId, deviceId, status } = req.body;
+    
+    if (!commandId || !deviceId || !status) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+    
+    // Buscar userId por deviceId
+    const deviceDoc = await firestore.collection('devices').doc(deviceId).get();
+    
+    if (!deviceDoc.exists) {
+      res.status(404).json({ error: 'Device not registered' });
+      return;
+    }
+    
+    const userId = deviceDoc.data().userId;
+    
+    // Actualizar comando
+    await realtimeDb.ref(`users/${userId}/commands/${commandId}`).update({
+      status: status,
+      completedAt: Date.now()
+    });
+    
+    // Registrar en historial
+    await realtimeDb.ref(`users/${userId}/dosingHistory`).push({
+      commandId: commandId,
+      status: status,
+      timestamp: Date.now(),
+      deviceId: deviceId
+    });
+    
+    logger.info(`✅ Comando ${commandId} confirmado: ${status}`);
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    logger.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 /**
  * Función que se ejecuta cada 1 minuto para verificar y dosificar
@@ -71,6 +256,7 @@ exports.checkAndDoseAutomatically = onSchedule("every 1 minutes", async (event) 
 
 /**
  * Procesa un usuario individual
+ * NUEVO: Lee datos de Firebase (enviados por Arduino vía receiveSensorData)
  */
 async function processUser(userId, userData) {
   try {
@@ -89,7 +275,10 @@ async function processUser(userId, userData) {
     
     // Leer configuración de administrador (si existe)
     const adminConfig = userData.adminConfig || {};
-    const MIN_WAIT_TIME = (adminConfig.minWaitTimeBetweenDoses || 0.5) * 60 * 60 * 1000; // Convertir horas a ms
+    const minWaitHours = adminConfig.minWaitTimeBetweenDoses !== undefined 
+      ? adminConfig.minWaitTimeBetweenDoses 
+      : 0.5;
+    const MIN_WAIT_TIME = minWaitHours * 60 * 60 * 1000; // Convertir horas a ms
     const MAX_DAILY_DOSES = adminConfig.maxDailyDoses || 10;
     const MIN_PH = adminConfig.minPH || 6.0;
     const MAX_PH = adminConfig.maxPH || 8.5;
@@ -100,36 +289,41 @@ async function processUser(userId, userData) {
     const tolerance = userData.phToleranceRange;
     
     logger.info(`📊 Config: pH objetivo ${targetPH} ±${tolerance}`);
-    logger.info(`⚙️ Admin Config: Min wait ${adminConfig.minWaitTimeBetweenDoses || 0.5}h, Max doses ${MAX_DAILY_DOSES}/día`);
+    logger.info(`⚙️ Admin Config: Min wait ${minWaitHours}h, Max doses ${MAX_DAILY_DOSES}/día`);
     
-    // 1. Leer datos del sensor desde ThingSpeak
-    const sensorData = await readPHFromThingSpeak();
-    if (!sensorData) {
-      logger.info('❌ No se pudo leer datos de ThingSpeak');
+    // 1. Leer datos del sensor desde Firebase (enviados por Arduino)
+    const sensorDataRef = realtimeDb.ref(`users/${userId}/sensorData`);
+    const sensorDataSnapshot = await sensorDataRef.once('value');
+    const sensorData = sensorDataSnapshot.val();
+    
+    if (!sensorData || !sensorData.ph) {
+      logger.info('❌ No hay datos del sensor en Firebase');
       await updateSystemStatus(userId, {
         lastCheck: Date.now(),
         currentPH: null,
         targetPH: targetPH,
         autoMode: true,
-        error: 'No se pudo leer datos de ThingSpeak'
+        error: 'No hay datos del sensor'
+      });
+      return;
+    }
+    
+    // Verificar que los datos sean recientes (últimos 2 minutos)
+    const dataAge = Date.now() - sensorData.timestamp;
+    if (dataAge > 2 * 60 * 1000) {
+      logger.info(`❌ Datos obsoletos (${Math.round(dataAge/1000)}s)`);
+      await updateSystemStatus(userId, {
+        lastCheck: Date.now(),
+        currentPH: sensorData.ph,
+        targetPH: targetPH,
+        autoMode: true,
+        error: 'Datos del sensor obsoletos'
       });
       return;
     }
     
     const currentPH = sensorData.ph;
-    logger.info(`🧪 pH actual: ${currentPH}`);
-    
-    // Actualizar datos del sensor en Firebase Realtime Database
-    await realtimeDb.ref(`users/${userId}/sensorData`).set({
-      currentPH: currentPH,
-      voltage: sensorData.voltage,
-      wifiRSSI: sensorData.wifiRSSI,
-      uptime: sensorData.uptime,
-      timestamp: sensorData.timestamp,
-      dataAge: sensorData.dataAge,
-      isRecent: sensorData.isRecent,
-      lastUpdate: Date.now()
-    });
+    logger.info(`🧪 pH actual: ${currentPH} (edad: ${Math.round(dataAge/1000)}s)`);
     
     // 2. Verificar si necesita dosificar
     const deviation = currentPH - targetPH;
@@ -176,11 +370,11 @@ async function processUser(userId, userData) {
       return;
     }
     
-    // 5. Verificar tiempo de espera
+    // 5. Verificar tiempo de espera (solo si es mayor a 0)
     const lastDosingTime = dosingState.lastDosingTime || 0;
     const timeSinceLastDosing = Date.now() - lastDosingTime;
     
-    if (timeSinceLastDosing < MIN_WAIT_TIME) {
+    if (minWaitHours > 0 && timeSinceLastDosing < MIN_WAIT_TIME) {
       const remainingMinutes = Math.ceil((MIN_WAIT_TIME - timeSinceLastDosing) / 60000);
       logger.info(`⏱️ Esperando ${remainingMinutes} minutos antes de dosificar`);
       return;
@@ -240,54 +434,55 @@ async function processUser(userId, userData) {
     logger.info(`   Duración: ${duration}s`);
     logger.info(`   Detalles:`, dosingCalc.details);
     
-    // 8. Ejecutar dosificación
-    const success = await sendDosingCommand(product, duration);
+    // 8. Crear comando en Firebase (Arduino lo leerá con getCommand)
+    const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
+    const newCommandRef = commandsRef.push();
     
-    if (success) {
-      // Actualizar estado en Realtime Database
-      await realtimeDb.ref(`users/${userId}/dosingState`).update({
-        lastDosingTime: Date.now(),
-        lastDosingDate: today,
-        dosingCountToday: dosingCountToday + 1,
-        lastProduct: product,
-        lastDuration: duration,
-        lastPH: currentPH,
-        lastDeviation: deviation
-      });
-      
-      // Actualizar estado del sistema
-      await updateSystemStatus(userId, {
-        lastDosing: Date.now(),
-        dosingCount: dosingCountToday + 1
-      });
-      
-      // Registrar en historial en Realtime Database
-      await logDosingEvent(userId, {
-        timestamp: Date.now(),
-        product: product,
-        duration: duration,
-        phBefore: currentPH,
-        phTarget: targetPH,
-        deviation: deviation,
-        mode: 'automatic',
-        source: 'cloud-function',
-        correctionFactor: CORRECTION_FACTOR
-      });
-      
-      // Agregar log
-      await addLog(userId, 'success', `Dosificación automática: ${product} por ${duration}s`, {
-        product,
-        duration,
-        currentPH,
-        targetPH,
-        deviation
-      });
-      
-      logger.info('✅ Dosificación completada y registrada');
-    } else {
-      logger.error('❌ Error al enviar comando de dosificación');
-      await addLog(userId, 'error', 'Error al enviar comando de dosificación', { product, duration });
-    }
+    await newCommandRef.set({
+      product: product,
+      duration: duration,
+      status: 'pending',
+      createdAt: Date.now(),
+      source: 'automatic',
+      phBefore: currentPH,
+      phTarget: targetPH,
+      deviation: deviation
+    });
+    
+    const commandId = newCommandRef.key;
+    
+    logger.info(`✅ Comando automático creado en Firebase: ${commandId}`);
+    
+    // Actualizar estado en Realtime Database
+    await realtimeDb.ref(`users/${userId}/dosingState`).update({
+      lastDosingTime: Date.now(),
+      lastDosingDate: today,
+      dosingCountToday: dosingCountToday + 1,
+      lastProduct: product,
+      lastDuration: duration,
+      lastPH: currentPH,
+      lastDeviation: deviation,
+      lastCommandId: commandId
+    });
+    
+    // Actualizar estado del sistema
+    await updateSystemStatus(userId, {
+      lastDosing: Date.now(),
+      dosingCount: dosingCountToday + 1,
+      lastCommandId: commandId
+    });
+    
+    // Agregar log
+    await addLog(userId, 'success', `Dosificación automática creada: ${product} por ${duration}s`, {
+      commandId,
+      product,
+      duration,
+      currentPH,
+      targetPH,
+      deviation
+    });
+    
+    logger.info('✅ Comando creado, Arduino lo procesará en máximo 5 segundos');
     
   } catch (error) {
     logger.error(`❌ Error procesando usuario ${userId}:`, error);
@@ -295,133 +490,9 @@ async function processUser(userId, userData) {
   }
 }
 
-/**
- * Lee el pH actual desde ThingSpeak y actualiza Firebase
- */
-async function readPHFromThingSpeak() {
-  try {
-    const url = `https://api.thingspeak.com/channels/${THINGSPEAK_CHANNEL_ID}/feeds/last.json?api_key=${THINGSPEAK_READ_API_KEY}`;
-    
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const data = await response.json();
-    const ph = parseFloat(data.field1);
-    const voltage = parseFloat(data.field2) || 0;
-    const wifiRSSI = parseInt(data.field3) || -50;
-    const uptime = parseInt(data.field4) || 0;
-    
-    if (isNaN(ph) || ph < 0 || ph > 14) {
-      return null;
-    }
-    
-    // Verificar que los datos sean recientes (últimos 5 minutos)
-    const dataTime = new Date(data.created_at).getTime();
-    const now = Date.now();
-    const dataAge = now - dataTime;
-    
-    if (dataAge > 5 * 60 * 1000) {
-      logger.warn(`⚠️ Datos obsoletos (${Math.round(dataAge/60000)} minutos)`);
-      return null;
-    }
-    
-    // Retornar objeto completo con todos los datos
-    return {
-      ph,
-      voltage,
-      wifiRSSI,
-      uptime,
-      timestamp: dataTime,
-      dataAge: Math.round(dataAge / 1000),
-      isRecent: true
-    };
-    
-  } catch (error) {
-    logger.error('Error leyendo ThingSpeak:', error);
-    return null;
-  }
-}
-
-/**
- * Envía comando de dosificación al ESP32 vía ThingSpeak
- */
-async function sendDosingCommand(product, duration) {
-  try {
-    logger.info(`📤 Enviando comando: ${product}, ${duration}s`);
-    
-    const productCode = product === 'ph_plus' ? '1' : '2';
-    
-    // Leer contador actual de Field7
-    const currentCountUrl = `https://api.thingspeak.com/channels/${THINGSPEAK_CHANNEL_ID}/fields/7/last.txt`;
-    let currentCount = 0;
-    
-    try {
-      const countResponse = await fetch(currentCountUrl);
-      if (countResponse.ok) {
-        const countText = await countResponse.text();
-        currentCount = parseInt(countText) || 0;
-        logger.info(`📊 Contador actual: ${currentCount}`);
-      }
-    } catch (error) {
-      logger.warn('⚠️ No se pudo leer contador, usando 0');
-    }
-    
-    const newCount = currentCount + 1;
-    logger.info(`📊 Nuevo contador: ${newCount}`);
-    
-    // Enviar comando a ThingSpeak
-    const commandUrl = `https://api.thingspeak.com/update?api_key=${THINGSPEAK_WRITE_API_KEY}&field5=${productCode}&field6=${duration}&field7=${newCount}`;
-    
-    logger.info(`🌐 URL: ${commandUrl}`);
-    
-    const response = await fetch(commandUrl);
-    const entryId = await response.text();
-    
-    logger.info(`📥 Respuesta ThingSpeak: ${entryId}`);
-    
-    if (entryId !== '0') {
-      logger.info(`✅ Comando enviado exitosamente (Entry ID: ${entryId})`);
-      return true;
-    } else {
-      logger.error('❌ ThingSpeak rechazó el comando (rate limit o error)');
-      return false;
-    }
-    
-  } catch (error) {
-    logger.error('❌ Error enviando comando:', error);
-    return false;
-  }
-}
-
-/**
- * Registra evento de dosificación en el historial
- */
-async function logDosingEvent(userId, event) {
-  try {
-    const historyRef = realtimeDb.ref(`users/${userId}/dosingHistory`);
-    await historyRef.push(event);
-  } catch (error) {
-    logger.error('Error registrando evento:', error);
-  }
-}
-
-/**
- * Registra evento general (errores, alertas, etc.)
- */
-async function logEvent(userId, type, message) {
-  try {
-    const eventsRef = realtimeDb.ref(`users/${userId}/events`);
-    await eventsRef.push({
-      timestamp: Date.now(),
-      type: type,
-      message: message
-    });
-  } catch (error) {
-    logger.error('Error registrando evento:', error);
-  }
-}
+// =====================================================
+// FUNCIONES AUXILIARES
+// =====================================================
 
 /**
  * Actualiza el estado del sistema en tiempo real
@@ -528,6 +599,7 @@ exports.forceCheck = onRequest(async (req, res) => {
 
 /**
  * Función HTTP para enviar comandos manuales de dosificación
+ * NUEVO: Crea comando en Firebase, Arduino lo lee con getCommand
  */
 exports.sendManualDosingCommand = onRequest(async (req, res) => {
   // CORS
@@ -562,39 +634,38 @@ exports.sendManualDosingCommand = onRequest(async (req, res) => {
     
     logger.info(`📱 Comando manual recibido de app web: ${product}, ${duration}s`);
     
-    // Enviar comando a ThingSpeak
-    const success = await sendDosingCommand(product, duration);
+    // Crear comando en Firebase Realtime DB
+    const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
+    const newCommandRef = commandsRef.push();
     
-    if (success) {
-      // Registrar comando en Firebase
-      await realtimeDb.ref(`users/${userId}/manualCommands`).push({
-        product,
-        duration,
-        timestamp: Date.now(),
-        status: 'completed',
-        source: 'web-app'
-      });
-      
-      // Agregar log
-      await addLog(userId, 'success', `Comando manual enviado: ${product} por ${duration}s`, {
-        product,
-        duration,
-        source: 'web-app'
-      });
-      
-      res.json({
-        success: true,
-        message: 'Comando enviado exitosamente',
-        product,
-        duration,
-        timestamp: Date.now()
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: 'Error enviando comando a ThingSpeak'
-      });
-    }
+    await newCommandRef.set({
+      product: product,
+      duration: duration,
+      status: 'pending',
+      createdAt: Date.now(),
+      source: 'web-app'
+    });
+    
+    const commandId = newCommandRef.key;
+    
+    logger.info(`✅ Comando creado en Firebase: ${commandId}`);
+    
+    // Agregar log
+    await addLog(userId, 'info', `Comando manual creado: ${product} por ${duration}s`, {
+      commandId,
+      product,
+      duration,
+      source: 'web-app'
+    });
+    
+    res.json({
+      success: true,
+      message: 'Comando creado, Arduino lo procesará en máximo 5 segundos',
+      commandId: commandId,
+      product,
+      duration,
+      timestamp: Date.now()
+    });
     
   } catch (error) {
     logger.error('❌ Error en sendManualDosingCommand:', error);

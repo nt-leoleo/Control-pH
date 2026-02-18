@@ -309,20 +309,41 @@ function calculateAutomaticDosing(params) {
     };
   }
   
-  // Limitar al máximo permitido
-  if (result.volumeML > maxDoseVolume) {
-    result.volumeML = maxDoseVolume;
-    result.safetyWarning = `Dosis limitada a ${maxDoseVolume}ml por seguridad. Se requerirán múltiples dosificaciones.`;
+  // Si el volumen calculado es muy pequeño (< 1ml), usar duración mínima de 1 segundo
+  let volumeML = result.volumeML;
+  let duration;
+  
+  if (volumeML < 1 && volumeML > 0) {
+    // Para volúmenes muy pequeños, usar duración mínima
+    volumeML = 1;
+    duration = 1;
+    result.safetyWarning = 'Volumen muy pequeño, usando dosis mínima de 1ml por 1 segundo.';
+  } else if (volumeML === 0) {
+    // Si el cálculo da 0, usar dosis mínima
+    volumeML = 1;
+    duration = 1;
+    result.safetyWarning = 'Piscina muy pequeña, usando dosis mínima de 1ml por 1 segundo.';
+  } else {
+    // Limitar al máximo permitido
+    if (volumeML > maxDoseVolume) {
+      volumeML = maxDoseVolume;
+      result.safetyWarning = `Dosis limitada a ${maxDoseVolume}ml por seguridad. Se requerirán múltiples dosificaciones.`;
+    }
+    
+    // Calcular duración
+    duration = calculateDosingDuration(volumeML, pumpFlowRate);
   }
   
-  // Calcular duración
-  const duration = calculateDosingDuration(result.volumeML, pumpFlowRate);
+  // Asegurar duración mínima de 1 segundo
+  if (duration < 1) {
+    duration = 1;
+  }
   
   return {
     product: product,
-    volumeML: result.volumeML,
+    volumeML: volumeML,
     durationSeconds: duration,
-    shouldDose: result.volumeML > 0,
+    shouldDose: true, // Siempre dosificar si hay diferencia de pH
     safetyWarning: result.safetyWarning,
     details: result.details
   };
