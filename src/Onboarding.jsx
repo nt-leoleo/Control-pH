@@ -1,5 +1,8 @@
 import { useContext, useState } from 'react';
 import { PHContext } from './PHContext';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import { useAuth } from './useAuth';
 import './Onboarding.css';
 
 const Onboarding = () => {
@@ -13,6 +16,8 @@ const Onboarding = () => {
         setPhToleranceRange,
         setError
     } = useContext(PHContext);
+    
+    const { user } = useAuth();
 
     const [step, setStep] = useState(1);
     const [poolVol, setPoolVol] = useState('');
@@ -21,6 +26,10 @@ const Onboarding = () => {
     const [acdType, setAcdType] = useState('muriatic');
     const [idealPH, setIdealPH] = useState('7.4');
     const [tolerance, setTolerance] = useState('0.5');
+    const [deviceId, setDeviceId] = useState('');
+    const [deviceName, setDeviceName] = useState('Piscina Principal');
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [skipDevice, setSkipDevice] = useState(false);
 
     const handleNext = async () => {
         if (step === 1) {
@@ -34,13 +43,82 @@ const Onboarding = () => {
         } else if (step === 3) {
             setStep(4);
         } else if (step === 4) {
+            setStep(5); // Nuevo paso: registro de dispositivo
+        } else if (step === 5) {
             await finishOnboarding();
+        }
+    };
+
+    const handleSkipDevice = async () => {
+        setSkipDevice(true);
+        await finishOnboarding();
+    };
+
+    const registerDevice = async () => {
+        if (!deviceId.trim()) {
+            setError({ type: 'error', message: 'Ingresá el Device ID del ESP32' });
+            return false;
+        }
+
+        setIsRegistering(true);
+
+        try {
+            // Verificar si el dispositivo ya existe
+            const deviceDoc = await getDoc(doc(db, 'devices', deviceId.trim()));
+            
+            if (deviceDoc.exists()) {
+                const existingData = deviceDoc.data();
+                if (existingData.userId !== user.uid) {
+                    setError({
+                        type: 'error',
+                        message: 'Este dispositivo ya está registrado por otro usuario'
+                    });
+                    setIsRegistering(false);
+                    return false;
+                }
+            }
+
+            // Registrar dispositivo
+            await setDoc(doc(db, 'devices', deviceId.trim()), {
+                userId: user.uid,
+                name: deviceName.trim() || 'Piscina Principal',
+                createdAt: new Date(),
+                lastSeen: new Date(),
+                metadata: {
+                    registeredFrom: 'onboarding',
+                    userEmail: user.email
+                }
+            });
+
+            // Guardar en localStorage
+            localStorage.setItem('esp32_device_id', deviceId.trim());
+
+            console.log('✅ Dispositivo registrado:', deviceId.trim());
+            setIsRegistering(false);
+            return true;
+
+        } catch (error) {
+            console.error('Error registrando dispositivo:', error);
+            setError({
+                type: 'error',
+                message: `Error: ${error.message}`
+            });
+            setIsRegistering(false);
+            return false;
         }
     };
 
     const finishOnboarding = async () => {
         try {
             console.log('🎯 [Onboarding] Guardando configuración inicial...');
+            
+            // Si no se saltó el registro de dispositivo, registrarlo
+            if (step === 5 && !skipDevice) {
+                const deviceRegistered = await registerDevice();
+                if (!deviceRegistered) {
+                    return; // No continuar si falló el registro
+                }
+            }
             
             // Guardar toda la configuración de una vez
             await Promise.all([
@@ -204,18 +282,72 @@ const Onboarding = () => {
                     </div>
                 )}
 
+                {/* Step 5: Device Registration */}
+                {step === 5 && (
+                    <div className="onboardingStep">
+                        <div className="stepIcon">📱</div>
+                        <h2>Registrar Dispositivo ESP32</h2>
+                        <p>Conecta tu sensor de pH para comenzar el monitoreo</p>
+                        
+                        <div className="infoBox" style={{ marginBottom: '1.5rem' }}>
+                            <strong>📋 Instrucciones:</strong><br/>
+                            1. Conecta tu ESP32 a la computadora<br/>
+                            2. Abre el Serial Monitor (115200 baud)<br/>
+                            3. Presiona el botón RESET del ESP32<br/>
+                            4. Copia el Device ID que aparece
+                        </div>
+
+                        <div className="settingGroup">
+                            <label>Device ID del ESP32:</label>
+                            <input
+                                type="text"
+                                value={deviceId}
+                                onChange={(e) => setDeviceId(e.target.value.toUpperCase())}
+                                placeholder="Ej: A1B2C3D4E5F6"
+                                className="onboardingInput"
+                                style={{ fontFamily: 'monospace', letterSpacing: '1px' }}
+                                disabled={isRegistering}
+                            />
+                            <span className="inputHint">💡 Encuentra el Device ID en el Serial Monitor</span>
+                        </div>
+
+                        <div className="settingGroup">
+                            <label>Nombre del dispositivo:</label>
+                            <input
+                                type="text"
+                                value={deviceName}
+                                onChange={(e) => setDeviceName(e.target.value)}
+                                placeholder="Ej: Piscina Principal"
+                                className="onboardingInput"
+                                disabled={isRegistering}
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleSkipDevice}
+                            className="skipBtn"
+                            style={{ marginTop: '1rem', background: '#e2e8f0', color: '#4a5568' }}
+                        >
+                            Saltar por ahora (puedes hacerlo después en Settings)
+                        </button>
+                    </div>
+                )}
+
                 {/* Navigation */}
                 <div className="onboardingFooter">
                     <div className="stepIndicator">
-                        {[1, 2, 3, 4].map(s => (
+                        {[1, 2, 3, 4, 5].map(s => (
                             <div key={s} className={`dot ${s <= step ? 'active' : ''}`} />
                         ))}
                     </div>
                     <button
                         onClick={handleNext}
                         className="nextBtn"
+                        disabled={isRegistering}
                     >
-                        {step === 4 ? '✓ Comenzar' : 'Siguiente →'}
+                        {isRegistering ? '⏳ Registrando...' : 
+                         step === 5 ? '✓ Comenzar' : 
+                         'Siguiente →'}
                     </button>
                 </div>
             </div>

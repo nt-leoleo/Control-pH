@@ -50,17 +50,24 @@ export const ESP32_CONFIG = {
 // =====================================================
 
 /**
- * Verifica conexión del ESP32 a través de Firebase
- * @param {string} userId - ID del usuario (requerido)
+ * Verifica conexión del ESP32 a través de Firebase o ThingSpeak
+ * @param {string} userId - ID del usuario (opcional)
  */
 export const checkESP32Connection = async (userId = null) => {
+    // Si no hay userId, usar ThingSpeak directo
     if (!userId) {
-        console.warn('⚠️ checkESP32Connection requiere userId, usando método legacy');
-        // Fallback al método antiguo si no hay userId
+        console.log('ℹ️ Sin userId, verificando conexión con ThingSpeak directo');
         return await checkESP32ConnectionLegacy();
     }
     
-    return await checkESP32ConnectionFirebase(userId);
+    // Si hay userId, intentar Firebase primero
+    try {
+        const data = await getPHDataFromESP32(userId);
+        return data !== null && data.isRecent;
+    } catch (error) {
+        console.warn('⚠️ Error verificando con Firebase, usando ThingSpeak:', error.message);
+        return await checkESP32ConnectionLegacy();
+    }
 };
 
 // Método legacy para compatibilidad
@@ -97,19 +104,33 @@ async function checkESP32ConnectionLegacy() {
 // =====================================================
 
 /**
- * Obtiene datos de pH desde Firebase (método preferido)
+ * Obtiene datos de pH desde Firebase (método preferido) o ThingSpeak (fallback)
  * Mantiene compatibilidad con código existente
- * @param {string} userId - ID del usuario (requerido para Firebase)
+ * @param {string} userId - ID del usuario (opcional - si no se provee, usa ThingSpeak directo)
  */
 export const getPHDataFromESP32 = async (userId = null) => {
+    // Si no hay userId, usar ThingSpeak directo (método legacy)
     if (!userId) {
-        console.warn('⚠️ getPHDataFromESP32 requiere userId para usar Firebase, usando ThingSpeak legacy');
+        console.log('ℹ️ Sin userId, usando ThingSpeak directo');
         return await getPHDataFromThingSpeakLegacy();
     }
     
-    // Importar dinámicamente para evitar problemas de dependencias circulares
-    const { getPHDataFromFirebase } = await import('./esp32Communication-firebase.js');
-    return await getPHDataFromFirebase(userId);
+    // Si hay userId, intentar Firebase primero
+    try {
+        const { getPHDataFromFirebase } = await import('./esp32Communication-firebase.js');
+        const data = await getPHDataFromFirebase(userId);
+        
+        // Si Firebase no tiene datos, fallback a ThingSpeak
+        if (!data) {
+            console.log('⚠️ Firebase sin datos, usando ThingSpeak directo');
+            return await getPHDataFromThingSpeakLegacy();
+        }
+        
+        return data;
+    } catch (error) {
+        console.warn('⚠️ Error con Firebase, usando ThingSpeak directo:', error.message);
+        return await getPHDataFromThingSpeakLegacy();
+    }
 };
 
 // Método legacy que lee directamente de ThingSpeak
@@ -290,6 +311,152 @@ export const sendDosingCommand = async (dosingConfig) => {
             message: `Error: ${error.message}`,
             timestamp: new Date().toISOString(),
             config: dosingConfig
+        };
+    }
+};
+
+// =====================================================
+// COMANDOS DE DOSIFICACIÓN - DIRECTO A THINGSPEAK
+// =====================================================
+
+/**
+ * Espera confirmación del Arduino en ThingSpeak Field8
+ * @param {number} expectedCounter - Contador esperado
+ * @param {number} maxWaitTime - Tiempo máximo de espera en ms (default: 60000)
+ * @returns {Promise<boolean>} true si se recibió confirmación
+ */
+export const waitForDosingConfirmation = async (expectedCounter, maxWaitTime = 60000) => {
+    try {
+        console.log(`⏳ Esperando confirmación del Arduino (contador: ${expectedCounter})...`);
+        
+        const startTime = Date.now();
+        const channelId = '3249157';
+        const readApiKey = 'S7Q7FWREGP96KX04';
+        
+        // Polling cada 2 segundos
+        while (Date.now() - startTime < maxWaitTime) {
+            try {
+                // Leer Field8 de ThingSpeak
+                const url = `https://api.thingspeak.com/channels/${channelId}/fields/8/last.txt`;
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    const confirmationText = await response.text().then(t => t.trim());
+                    console.log(`📡 Field8 actual: "${confirmationText}"`);
+                    
+                    // Verificar si es la confirmación esperada
+                    const expectedConfirmation = `${expectedCounter}_OK`;
+                    if (confirmationText === expectedConfirmation) {
+                        console.log(`✅ Confirmación recibida del Arduino!`);
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Error leyendo confirmación:', error.message);
+            }
+            
+            // Esperar 2 segundos antes de volver a intentar
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+        console.warn(`⏱️ Timeout esperando confirmación (${maxWaitTime/1000}s)`);
+        return false;
+        
+    } catch (error) {
+        console.error('❌ Error esperando confirmación:', error);
+        return false;
+    }
+};
+
+/**
+ * Envía comando DIRECTAMENTE a ThingSpeak (sin Cloud Functions)
+ * Útil para debugging o cuando Cloud Functions no está disponible
+ * @param {string} product - Producto a dosificar
+ * @param {number} durationSeconds - Duración en segundos
+ * @returns {Promise<Object>} Resultado del comando
+ */
+export const sendDirectToThingSpeak = async (product, durationSeconds) => {
+    try {
+        console.log('💊 [DIRECTO] Enviando comando directo a ThingSpeak...');
+        console.log('📋 [DIRECTO] Producto:', product, 'Duración:', durationSeconds, 's');
+        
+        // Mapear productos a códigos
+        const productMap = {
+            'sodium-hypochlorite': 'ph_plus',
+            'calcium-hypochlorite': 'ph_plus',
+            'muriatic': 'ph_minus',
+            'bisulfate': 'ph_minus',
+            'chlorine-gas': 'ph_minus',
+            'ph_plus': 'ph_plus',
+            'ph_minus': 'ph_minus'
+        };
+        
+        const esp32Product = productMap[product] || 'ph_plus';
+        const productCode = esp32Product === 'ph_plus' ? '1' : '2';
+        
+        const writeApiKey = 'GQXD1DTF1D6DPUSG';
+        const channelId = '3249157';
+        
+        // Leer el contador actual de dosificaciones (Field7)
+        const currentCountUrl = `https://api.thingspeak.com/channels/${channelId}/fields/7/last.txt`;
+        let currentCount = 0;
+        
+        try {
+            const countResponse = await fetch(currentCountUrl);
+            if (countResponse.ok) {
+                const countText = await countResponse.text();
+                currentCount = parseInt(countText) || 0;
+            }
+        } catch (e) {
+            console.warn('⚠️ No se pudo leer contador, usando 0');
+        }
+        
+        console.log(`📊 [DIRECTO] Contador actual: ${currentCount}`);
+        
+        // Incrementar el contador para señalar nuevo comando
+        const newCount = currentCount + 1;
+        
+        console.log(`📊 [DIRECTO] Nuevo contador: ${newCount}`);
+        
+        // URL del comando SOLO con Field5, Field6, Field7
+        const commandUrl = `https://api.thingspeak.com/update?api_key=${writeApiKey}&field5=${productCode}&field6=${durationSeconds}&field7=${newCount}`;
+        
+        console.log('🔄 [DIRECTO] Enviando a ThingSpeak...');
+        
+        const response = await fetch(commandUrl, {
+            method: 'GET',
+            signal: AbortSignal.timeout(10000)
+        });
+        
+        if (response.ok) {
+            const entryId = await response.text();
+            
+            if (entryId !== '0') {
+                console.log('✅ [DIRECTO] Comando enviado (Entry ID: ' + entryId + ')');
+                console.log(`📡 [DIRECTO] El ESP32 leerá y ejecutará el comando en su próximo ciclo (máx 20s)`);
+                
+                return {
+                    success: true,
+                    message: `Comando enviado: ${esp32Product} por ${durationSeconds}s`,
+                    timestamp: new Date().toISOString(),
+                    method: 'thingspeak_direct',
+                    entryId: entryId,
+                    counter: newCount, // NUEVO: Retornar contador para esperar confirmación
+                    note: 'El ESP32 procesará el comando en su próximo ciclo (máx 20s)'
+                };
+            } else {
+                throw new Error('ThingSpeak rechazó el comando (rate limit). Espera 15 segundos e intenta de nuevo.');
+            }
+        } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('❌ [DIRECTO] Error:', error.message);
+        return {
+            success: false,
+            message: `Error: ${error.message}`,
+            timestamp: new Date().toISOString(),
+            method: 'failed'
         };
     }
 };
@@ -515,49 +682,106 @@ export const getPHHistory = async (results = 100) => {
 // =====================================================
 
 /**
- * Hook para conexión con ESP32 vía Firebase (tiempo real)
- * @param {string} userId - ID del usuario
+ * Hook para conexión con ESP32 vía Firebase (tiempo real) o ThingSpeak (polling)
+ * @param {string} userId - ID del usuario (opcional)
  * @param {Function} onDataReceived - Callback para datos recibidos
  * @param {Function} onConnectionChange - Callback para cambios de conexión
  */
 export const useESP32Connection = (userId, onDataReceived, onConnectionChange) => {
     let unsubscribe = null;
+    let pollingInterval = null;
     let isRunning = false;
     
     const startConnection = () => {
-        if (isRunning || !userId) {
-            console.warn('⚠️ Conexión ya iniciada o userId no proporcionado');
+        if (isRunning) {
+            console.warn('⚠️ Conexión ya iniciada');
             return;
         }
         
         isRunning = true;
-        console.log('🔌 Iniciando conexión Firebase en tiempo real...');
         
-        // Suscribirse a cambios en tiempo real
-        unsubscribe = subscribeToPHData(userId, (data) => {
-            onDataReceived(data);
-            onConnectionChange(data.isRecent);
-        });
+        // Si hay userId, usar Firebase (tiempo real)
+        if (userId) {
+            console.log('🔌 Iniciando conexión Firebase en tiempo real...');
+            
+            try {
+                unsubscribe = subscribeToPHData(userId, (data) => {
+                    onDataReceived(data);
+                    onConnectionChange(data.isRecent);
+                });
+            } catch (error) {
+                console.error('❌ Error con Firebase, usando polling a ThingSpeak:', error);
+                startThingSpeakPolling();
+            }
+        } else {
+            // Sin userId, usar ThingSpeak directo (polling)
+            console.log('🔌 Iniciando polling a ThingSpeak (sin userId)...');
+            startThingSpeakPolling();
+        }
+    };
+    
+    const startThingSpeakPolling = () => {
+        // Lectura inicial
+        setTimeout(async () => {
+            try {
+                const isConnected = await checkESP32ConnectionLegacy();
+                onConnectionChange(isConnected);
+                
+                if (isConnected) {
+                    const phData = await getPHDataFromThingSpeakLegacy();
+                    if (phData) {
+                        onDataReceived(phData);
+                    }
+                }
+            } catch (error) {
+                onConnectionChange(false);
+            }
+        }, 500);
+        
+        // Polling cada 15 segundos
+        pollingInterval = setInterval(async () => {
+            if (!isRunning) return;
+            
+            try {
+                const isConnected = await checkESP32ConnectionLegacy();
+                onConnectionChange(isConnected);
+                
+                if (isConnected) {
+                    const phData = await getPHDataFromThingSpeakLegacy();
+                    if (phData) {
+                        onDataReceived(phData);
+                    }
+                }
+            } catch (error) {
+                onConnectionChange(false);
+            }
+        }, ESP32_CONFIG.RETRY_INTERVAL);
     };
     
     const stopConnection = () => {
         if (!isRunning) return;
         
         isRunning = false;
-        console.log('🔌 Deteniendo conexión Firebase...');
+        console.log('🔌 Deteniendo conexión...');
         
         if (unsubscribe) {
             unsubscribe();
             unsubscribe = null;
+        }
+        
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
         }
     };
     
     const getStatus = () => {
         return {
             running: isRunning,
-            interval: false, // Firebase usa listeners, no polling
+            interval: pollingInterval !== null,
+            firebase: unsubscribe !== null,
             config: ESP32_CONFIG,
-            method: 'firebase-realtime'
+            method: unsubscribe ? 'firebase-realtime' : 'thingspeak-polling'
         };
     };
     

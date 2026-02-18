@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect } from 'react';
 import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
-import { useESP32Connection, getPHDataFromESP32, checkESP32Connection } from './esp32Communication';
+import { subscribeToPHData, checkESP32Connection, sendManualDosingCommand } from './esp32Communication-firebase';
 import { useAuth } from './useAuth';
 
 export const PHContext = createContext(null);
@@ -220,7 +220,7 @@ export const PHProvider = ({ children }) => {
         }
     };
 
-    // Verificar conexión ESP32
+    // Verificar conexión ESP32 vía Firebase
     const checkConnection = async () => {
         if (!user?.uid) return;
         
@@ -232,44 +232,21 @@ export const PHProvider = ({ children }) => {
         }
     };
 
-    // Función para obtener datos (ahora desde Firebase)
-    const fetchPHData = async () => {
-        if (!user?.uid) return;
-        
-        try {
-            const phData = await getPHDataFromESP32(user.uid);
-            
-            if (phData) {
-                safePHSet(phData.ph);
-                setLastDataReceived(new Date(phData.timestamp));
-                setEsp32Connected(true);
-                
-                // Actualizar historial
-                const now = new Date();
-                const hour = now.getHours().toString().padStart(2, '0');
-                const minutes = now.getMinutes().toString().padStart(2, '0');
-                const timeString = `${hour}:${minutes}`;
-                
-                setPhHistory(prev => {
-                    const newHistory = [...prev, { hour: timeString, value: phData.ph }];
-                    return newHistory.slice(-24);
-                });
-                
-            } else {
-                setEsp32Connected(false);
-            }
-        } catch (error) {
-            setEsp32Connected(false);
-            logError('FIREBASE_DATA_ERROR', error.message);
-        }
-    };
-
-    // Comunicación con ESP32 usando Firebase (tiempo real)
+    // Comunicación con ESP32 vía Firebase
     const handleDataReceived = (phData) => {
         try {
+            console.log('📊 [PHContext] Datos recibidos de Firebase:', phData);
+            
+            if (!phData || !phData.ph) {
+                console.warn('⚠️ [PHContext] Datos inválidos recibidos:', phData);
+                return;
+            }
+            
             safePHSet(phData.ph);
             setLastDataReceived(new Date(phData.timestamp));
-            setEsp32Connected(true);
+            setEsp32Connected(phData.isRecent);
+            
+            console.log('✅ [PHContext] pH actualizado:', phData.ph, 'Conectado:', phData.isRecent);
             
             // Actualizar historial
             const now = new Date();
@@ -283,41 +260,32 @@ export const PHProvider = ({ children }) => {
                 return newHistory.slice(-24);
             });
         } catch (error) {
+            console.error('❌ [PHContext] Error procesando datos:', error);
             logError('ESP32_DATA_ERROR', error.message, phData);
         }
     };
 
-    const handleConnectionChange = (isConnected) => {
-        setEsp32Connected(isConnected);
-        if (isConnected) {
-            setLastDataReceived(new Date());
-        }
-    };
-
-    const { startConnection, stopConnection } = useESP32Connection(
-        user?.uid, // Pasar userId para Firebase
-        handleDataReceived,
-        handleConnectionChange
-    );
-
-    // Inicializar sistema de datos con Firebase
+    // Inicializar suscripción a Firebase cuando el usuario esté disponible
     useEffect(() => {
         if (!user?.uid) {
             console.log('⏳ Esperando autenticación de usuario...');
             return;
         }
+
+        console.log('🔌 Iniciando suscripción a Firebase para usuario:', user.uid);
         
-        console.log('🔌 Iniciando conexión Firebase para usuario:', user.uid);
+        // Suscribirse a cambios en tiempo real
+        const unsubscribe = subscribeToPHData(user.uid, handleDataReceived);
         
-        // Verificación inicial
-        checkConnection();
-        
-        // Iniciar conexión automática con Firebase (tiempo real)
-        startConnection();
+        // Verificación inicial de conexión
+        checkESP32Connection(user.uid).then(isConnected => {
+            console.log('📡 Estado inicial de conexión:', isConnected);
+            setEsp32Connected(isConnected);
+        });
         
         return () => {
-            console.log('🔌 Cerrando conexión Firebase');
-            stopConnection();
+            console.log('🔌 Cerrando suscripción a Firebase');
+            unsubscribe();
         };
     }, [user?.uid]); // Reiniciar cuando cambie el usuario
 
@@ -380,7 +348,6 @@ export const PHProvider = ({ children }) => {
             setDosingHistory,
             
             // Funciones adicionales
-            fetchPHData,
             checkConnection,
             saveConfigToFirebase,
             

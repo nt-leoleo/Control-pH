@@ -92,9 +92,10 @@ const AdminPanel = ({ onClose }) => {
   }, [user]);
 
   const handleConfigChange = (key, value) => {
+    const numValue = parseFloat(value);
     setAdminConfig(prev => ({
       ...prev,
-      [key]: parseFloat(value) || value
+      [key]: isNaN(numValue) ? value : numValue
     }));
   };
 
@@ -187,6 +188,13 @@ const AdminPanel = ({ onClose }) => {
                   <button 
                     type="button"
                     className="quick-btn"
+                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 0)}
+                  >
+                    Sin espera
+                  </button>
+                  <button 
+                    type="button"
+                    className="quick-btn"
                     onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 0.016)}
                   >
                     1 min
@@ -235,10 +243,13 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.checkInterval}
                   onChange={(e) => handleConfigChange('checkInterval', e.target.value)}
-                  min="1"
+                  min="0"
                   max="60"
                 />
                 <span className="field-unit">minutos</span>
+                <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85em', display: 'block', marginTop: '4px' }}>
+                  Nota: Cloud Functions tiene un mínimo de 1 minuto. Valores menores se ajustarán automáticamente.
+                </small>
               </div>
 
               <div className="admin-field">

@@ -1,0 +1,237 @@
+.device-registration {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 2rem auto;
+}
+
+.registration-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.registration-header h3 {
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.registration-header p {
+    color: #718096;
+    font-size: 0.95rem;
+}
+
+.registration-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.95rem;
+}
+
+.form-group input {
+    padding: 0.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #4299e1;
+}
+
+.form-group input:disabled {
+    background: #f7fafc;
+    cursor: not-allowed;
+}
+
+.device-id-input {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.help-text {
+    color: #718096;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.register-btn {
+    padding: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.register-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.register-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.message {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+.message.success {
+    background: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.message.error {
+    background: #fed7d7;
+    color: #742a2a;
+    border: 1px solid #fc8181;
+}
+
+.message.info {
+    background: #bee3f8;
+    color: #2c5282;
+    border: 1px solid #90cdf4;
+}
+
+.registered-devices {
+    margin-bottom: 1.5rem;
+}
+
+.registered-devices h4 {
+    color: #2d3748;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.device-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.device-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.device-icon {
+    font-size: 2rem;
+}
+
+.device-info div {
+    display: flex;
+    flex-direction: column;
+}
+
+.device-info strong {
+    color: #2d3748;
+    font-size: 1rem;
+}
+
+.device-info small {
+    color: #718096;
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+}
+
+.device-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.device-status {
+    color: #38a169;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.delete-btn {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #fc8181;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delete-btn:hover {
+    background: #fc8181;
+    color: white;
+    transform: scale(1.1);
+}
+
+.registration-help {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #edf2f7;
+    border-radius: 8px;
+}
+
+.registration-help h4 {
+    color: #2d3748;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.registration-help ol {
+    margin-left: 1.5rem;
+    color: #4a5568;
+}
+
+.registration-help li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+    .device-registration {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+
+    .registration-header h3 {
+        font-size: 1.25rem;
+    }
+
+    .device-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+}

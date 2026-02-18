@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { PHContext } from './PHContext';
 import { getChemicalInfo } from './dosageCalculations';
 import { useAuth } from './useAuth';
@@ -19,6 +19,7 @@ const AutomaticDosing = () => {
     const [backendStatus, setBackendStatus] = useState(null);
     const [lastDosingEvent, setLastDosingEvent] = useState(null);
     const [dosingState, setDosingState] = useState(null);
+    const lastForceCheckRef = useRef(0);
     
     // Configuración por defecto del administrador
     const adminConfig = userConfig?.adminConfig || {
@@ -94,6 +95,57 @@ const AutomaticDosing = () => {
         };
     }, [user, dosingMode]);
 
+    // Verificación inmediata cuando pH está fuera de rango y minWaitTimeBetweenDoses es 0
+    useEffect(() => {
+        if (!user || dosingMode !== 'automatic') return;
+        if (!dosingState?.initialized) return;
+        
+        const minWaitHours = adminConfig.minWaitTimeBetweenDoses !== undefined 
+            ? adminConfig.minWaitTimeBetweenDoses 
+            : 0.5;
+        
+        // Solo activar verificación inmediata si minWaitTimeBetweenDoses es 0
+        if (minWaitHours !== 0) return;
+        
+        const deviation = ph - phTolerance;
+        const isOutOfRange = Math.abs(deviation) > phToleranceRange;
+        
+        if (!isOutOfRange) return;
+        
+        // Evitar llamadas muy frecuentes (máximo cada 10 segundos)
+        const now = Date.now();
+        if (now - lastForceCheckRef.current < 10000) return;
+        
+        lastForceCheckRef.current = now;
+        
+        console.log('🚀 pH fuera de rango con espera=0, forzando verificación inmediata...');
+        
+        // Llamar a forceCheck
+        const forceCheck = async () => {
+            try {
+                const response = await fetch(
+                    'https://us-central1-control-ph-82951.cloudfunctions.net/forceCheck',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.uid })
+                    }
+                );
+                
+                if (response.ok) {
+                    console.log('✅ Verificación forzada exitosa');
+                } else {
+                    console.error('❌ Error en verificación forzada:', await response.text());
+                }
+            } catch (error) {
+                console.error('❌ Error llamando forceCheck:', error);
+            }
+        };
+        
+        forceCheck();
+        
+    }, [user, dosingMode, ph, phTolerance, phToleranceRange, adminConfig.minWaitTimeBetweenDoses, dosingState?.initialized]);
+
     // No mostrar nada si no está en modo automático
     if (dosingMode !== 'automatic') return null;
 
@@ -124,10 +176,14 @@ const AutomaticDosing = () => {
             : null;
 
         // Calcular tiempo de espera desde la configuración del administrador
-        const waitTimeMs = (adminConfig.minWaitTimeBetweenDoses || 0.5) * 60 * 60 * 1000;
+        const minWaitHours = adminConfig.minWaitTimeBetweenDoses !== undefined 
+            ? adminConfig.minWaitTimeBetweenDoses 
+            : 0.5;
+        const waitTimeMs = minWaitHours * 60 * 60 * 1000;
 
         // Si dosificó hace menos del tiempo configurado, está en espera
-        if (timeSinceLastDosing && timeSinceLastDosing < waitTimeMs) {
+        // Solo mostrar espera si el tiempo configurado es mayor a 0
+        if (minWaitHours > 0 && timeSinceLastDosing && timeSinceLastDosing < waitTimeMs) {
             const remainingMinutes = Math.ceil((waitTimeMs - timeSinceLastDosing) / 60000);
             return { 
                 icon: '⏳', 
@@ -247,8 +303,19 @@ const AutomaticDosing = () => {
                 <h4>ℹ️ Información del Sistema</h4>
                 <ul>
                     <li>✅ Cloud Functions activas 24/7</li>
-                    <li>🔄 Verificación automática cada {adminConfig.checkInterval || 1} minuto(s)</li>
-                    <li>⏱️ Tiempo de espera entre dosificaciones: {adminConfig.minWaitTimeBetweenDoses || 0.5} hora(s)</li>
+                    <li>🔄 Verificación automática cada {
+                        adminConfig.checkInterval === 0 || adminConfig.checkInterval < 1 
+                            ? '1 minuto (mínimo de Cloud Functions)' 
+                            : `${adminConfig.checkInterval} minuto(s)`
+                    }</li>
+                    <li>⏱️ Tiempo de espera entre dosificaciones: {
+                        adminConfig.minWaitTimeBetweenDoses === 0 
+                            ? 'Sin espera (inmediato)' 
+                            : `${adminConfig.minWaitTimeBetweenDoses !== undefined ? adminConfig.minWaitTimeBetweenDoses : 0.5} hora(s)`
+                    }</li>
+                    {adminConfig.minWaitTimeBetweenDoses === 0 && (
+                        <li>⚡ Modo rápido: Verificación inmediata cuando pH está fuera de rango</li>
+                    )}
                     <li>🛡️ Límite diario: {adminConfig.maxDailyDoses || 10} dosificaciones</li>
                     <li>📊 Rango seguro de pH: {adminConfig.minPH || 6.0} - {adminConfig.maxPH || 8.5}</li>
                     <li>🌐 No requiere app abierta para funcionar</li>

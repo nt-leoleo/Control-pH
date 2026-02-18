@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import WiFiConfig from './WiFiConfig';
 import AdminPanel from './AdminPanel';
+import DeviceRegistration from './DeviceRegistration';
 import './SettingsPage.css';
 
 const SettingsPage = ({ onBack, theme, toggleTheme }) => {
@@ -14,11 +15,11 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     setDosingMode,
     esp32Connected,
     lastDataReceived,
-    fetchPHData,
     checkConnection
   } = useContext(PHContext);
   
   const [showWiFiConfig, setShowWiFiConfig] = useState(false);
+  const [showDeviceRegistration, setShowDeviceRegistration] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -111,7 +112,6 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     try {
       console.log('🧪 [Settings] Probando conexión manual...');
       await checkConnection();
-      await fetchPHData();
       console.log('✅ [Settings] Test de conexión completado');
     } catch (error) {
       console.error('❌ [Settings] Error en test de conexión:', error);
@@ -306,6 +306,22 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           
           <button 
             className="esp32-config-btn"
+            onClick={() => setShowDeviceRegistration(true)}
+          >
+            <div className="config-icon">📱</div>
+            <div className="config-info">
+              <div className="config-title">Registrar Dispositivo</div>
+              <div className="config-desc">Vincular ESP32 con tu cuenta</div>
+            </div>
+            <div className="config-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m9 18 6-6-6-6"/>
+              </svg>
+            </div>
+          </button>
+          
+          <button 
+            className="esp32-config-btn"
             onClick={() => setShowWiFiConfig(true)}
           >
             <div className="config-icon">📶</div>
@@ -487,6 +503,18 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
       {/* Panel de Administrador */}
       {showAdminPanel && (
         <AdminPanel onClose={() => setShowAdminPanel(false)} />
+      )}
+
+      {/* Modal de Registro de Dispositivo */}
+      {showDeviceRegistration && (
+        <div className="modal-overlay" onClick={() => setShowDeviceRegistration(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowDeviceRegistration(false)}>
+              ✕
+            </button>
+            <DeviceRegistration />
+          </div>
+        </div>
       )}
     </div>
   );

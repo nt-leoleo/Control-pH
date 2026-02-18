@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import { calculatePHChange, interpolatePhChange, validateDosage, getChemicalInfo } from './dosageCalculations';
-import { sendRealDosingCommand, getRealDosingStatus, stopRealDosing } from './esp32Communication';
+import { sendDosingCommandToFirebase, waitForCommandConfirmation } from './esp32Communication-firebase';
 import { useAuth } from './useAuth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
@@ -131,45 +131,73 @@ const ManualDosing = () => {
                 throw new Error('Duración máxima: 5 minutos (300 segundos)');
             }
 
-            setIsDosing(true);
-            setError({ type: 'info', message: '⏳ Dosificando... Esperando respuesta del ESP32' });
+            if (!user?.uid) {
+                throw new Error('Usuario no autenticado');
+            }
 
-            // Enviar comando real al ESP32 a través de Cloud Functions
-            const result = await sendRealDosingCommand(product, totalSeconds, user.uid);
+            setIsDosing(true);
+            setError({ type: 'info', message: '⏳ Enviando comando a Firebase...' });
+
+            console.log('🔧 [ManualDosing] Enviando comando vía Firebase');
+            
+            // Enviar comando a Firebase Realtime Database
+            const result = await sendDosingCommandToFirebase(user.uid, product, totalSeconds);
             
             if (result.success) {
-                // Calcular cambio de pH
-                const phChange = calculatePHChange(product, liters, poolVolume, alkalinity);
-                const chemInfo = getChemicalInfo(product);
+                const commandId = result.commandId;
+                console.log(`📤 [ManualDosing] Comando enviado (ID: ${commandId})`);
                 
-                // Registrar en historial
-                const now = new Date();
-                const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-                
-                const dosingRecord = {
-                    timestamp: timeString,
-                    product,
-                    productName: chemInfo.name,
-                    duration: { minutes, seconds },
-                    durationSeconds: totalSeconds,
-                    liters,
-                    phChangeBefore: ph,
-                    phChangeAfter: ph + phChange,
-                    expectedChange: phChange,
-                    status: 'completado',
-                    esp32Response: result.esp32Response,
-                    method: result.method
-                };
-
-                setDosingHistory(prev => [...prev, dosingRecord]);
-                
-                // Mensaje de éxito
-                const isPhPlus = product === 'sodium-hypochlorite' || product === 'calcium-hypochlorite';
-                const relayNum = isPhPlus ? '1' : '2';
                 setError({ 
-                    type: 'success', 
-                    message: `✅ Dosificación completada: ${liters}L de ${chemInfo.name} (Relé ${relayNum})` 
+                    type: 'info', 
+                    message: `⏳ Arduino ejecutando dosificación (${totalSeconds}s)... Esperando confirmación` 
                 });
+                
+                // Esperar confirmación del Arduino (máximo 60 segundos)
+                const confirmed = await waitForCommandConfirmation(user.uid, commandId, 60000);
+                
+                if (confirmed) {
+                    console.log('✅ [ManualDosing] Arduino confirmó que terminó la dosificación');
+                    
+                    // Calcular cambio de pH
+                    const phChange = calculatePHChange(product, liters, poolVolume, alkalinity);
+                    const chemInfo = getChemicalInfo(product);
+                    
+                    // Registrar en historial
+                    const now = new Date();
+                    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                    
+                    const dosingRecord = {
+                        timestamp: timeString,
+                        product,
+                        productName: chemInfo.name,
+                        duration: { minutes, seconds },
+                        durationSeconds: totalSeconds,
+                        liters,
+                        phChangeBefore: ph,
+                        phChangeAfter: ph + phChange,
+                        expectedChange: phChange,
+                        status: 'completado',
+                        confirmed: true,
+                        method: 'firebase',
+                        commandId: commandId
+                    };
+
+                    setDosingHistory(prev => [...prev, dosingRecord]);
+                    
+                    // Mensaje de éxito
+                    const isPhPlus = product === 'sodium-hypochlorite' || product === 'calcium-hypochlorite';
+                    const relayNum = isPhPlus ? '1' : '2';
+                    setError({ 
+                        type: 'success', 
+                        message: `✅ Dosificación completada y confirmada: ${liters}L de ${chemInfo.name} (Relé ${relayNum})` 
+                    });
+                } else {
+                    console.warn('⚠️ [ManualDosing] No se recibió confirmación del Arduino (timeout)');
+                    setError({ 
+                        type: 'warning', 
+                        message: `⚠️ Comando enviado pero no se recibió confirmación del Arduino. Verifica que esté conectado.` 
+                    });
+                }
                 
                 setIsDosing(false);
                 setDosingStatus(null);

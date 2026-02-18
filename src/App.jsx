@@ -11,6 +11,7 @@ import SettingsPage from "./SettingsPage";
 import PoolManager from "./PoolManager";
 import ErrorNotification from "./ErrorNotification";
 import LoginScreen from "./LoginScreen";
+import SplashScreen from "./SplashScreen";
 import { PHContext } from "./PHContext";
 import { useAuth } from "./useAuth";
 import "./App.css";
@@ -20,6 +21,15 @@ export default function App() {
   const { user, userConfig, loading } = useAuth();
   const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'pool-manager'
   const [theme, setTheme] = useState('dark'); // Modo nocturno por defecto
+  const [showSplash, setShowSplash] = useState(true); // Siempre mostrar al inicio
+
+  console.log('🎯 App render - showSplash:', showSplash, 'loading:', loading, 'user:', !!user, 'isConfigured:', isConfigured);
+
+  // Manejar fin del splash screen
+  const handleSplashFinish = () => {
+    console.log('✅ handleSplashFinish llamado - Ocultando splash');
+    setShowSplash(false);
+  };
 
   // Escuchar cambios en el hash para navegación
   useEffect(() => {
@@ -54,6 +64,11 @@ export default function App() {
     localStorage.setItem('theme', newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
   };
+
+  // Mostrar splash screen al inicio
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} />;
+  }
 
   // Mostrar loading mientras se verifica la autenticación
   if (loading) {
