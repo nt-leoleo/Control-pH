@@ -102,6 +102,7 @@ exports.getCommand = onRequest(async (req, res) => {
   
   try {
     const { deviceId } = req.query;
+    const isDosingInProgress = req.query.dosingInProgress === '1';
     
     if (!deviceId) {
       res.status(400).json({ error: 'deviceId required' });
@@ -118,34 +119,52 @@ exports.getCommand = onRequest(async (req, res) => {
     
     const userId = deviceDoc.data().userId;
     
-    // Buscar comando pendiente
+    // Buscar comandos pendientes
     const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
     const snapshot = await commandsRef
       .orderByChild('status')
       .equalTo('pending')
-      .limitToFirst(1)
       .once('value');
-    
+
     if (!snapshot.exists()) {
       res.json({ command: null });
       return;
     }
-    
-    const commandId = Object.keys(snapshot.val())[0];
-    const command = snapshot.val()[commandId];
-    
+
+    const pendingCommands = snapshot.val() || {};
+    const pendingEntries = Object.entries(pendingCommands);
+
+    // Prioridad absoluta para parada de emergencia.
+    const emergencyEntries = pendingEntries
+      .filter(([, command]) => command?.product === 'emergency_stop')
+      .sort((a, b) => a[0].localeCompare(b[0]));
+
+    let selectedEntry = null;
+    if (emergencyEntries.length > 0) {
+      selectedEntry = emergencyEntries[0];
+    } else if (!isDosingInProgress) {
+      selectedEntry = pendingEntries.sort((a, b) => a[0].localeCompare(b[0]))[0] || null;
+    }
+
+    if (!selectedEntry) {
+      res.json({ command: null });
+      return;
+    }
+
+    const [commandId, command] = selectedEntry;
+
     // Marcar como "processing"
     await commandsRef.child(commandId).update({
       status: 'processing',
       processedAt: Date.now()
     });
-    
-    logger.info(`📤 Comando enviado a ${deviceId}: ${command.product}, ${command.duration}s`);
-    
+
+    logger.info(`📤 Comando enviado a ${deviceId}: ${command.product}, ${command.duration || 0}s`);
+
     res.json({
       commandId: commandId,
       product: command.product,
-      duration: command.duration
+      duration: command.duration || 0
     });
     
   } catch (error) {

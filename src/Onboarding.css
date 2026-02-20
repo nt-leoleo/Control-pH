@@ -1,251 +1,191 @@
-.onboardingContainer {
-    width: 100%;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(135deg, rgb(22, 13, 36) 0%, rgb(30, 18, 50) 100%);
-    padding: 1em;
+.onboarding-container {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--gradient-bg);
 }
 
-.onboardingContent {
-    width: 100%;
-    max-width: 600px;
-    background-color: rgb(41, 25, 66);
-    border: 1px solid rgba(255, 255, 255, 0.158);
-    border-radius: 1.5em;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    padding: 2em;
-    animation: slideUp 0.5s ease;
+.onboarding-card {
+  width: min(680px, 100%);
+  background: linear-gradient(155deg, color-mix(in srgb, var(--bg-card) 94%, #0b1b29 6%), var(--bg-card));
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+  padding: 1.1rem;
 }
 
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.onboarding-header {
+  margin-bottom: 0.8rem;
 }
 
-.onboardingHeader {
-    text-align: center;
-    margin-bottom: 2em;
+.onboarding-kicker {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  padding: 0.24rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  color: var(--primary-light);
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.onboardingHeader h1 {
-    color: #22c55e;
-    margin: 0;
-    font-size: 2em;
+.onboarding-header h1 {
+  margin-bottom: 0.22rem;
+  font-size: clamp(1.3rem, 2.3vw, 1.85rem);
 }
 
-.onboardingHeader p {
-    color: rgba(255, 255, 255, 0.7);
-    margin: 0.5em 0 0 0;
-    font-size: 1em;
+.onboarding-header p {
+  color: var(--text-secondary);
 }
 
-.onboardingStep {
-    animation: fadeIn 0.3s ease;
+.onboarding-step {
+  border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  border-radius: 16px;
+  padding: 0.9rem;
+  background: linear-gradient(170deg, rgba(6, 182, 212, 0.06), transparent 50%);
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+.onboarding-step h2 {
+  font-size: 1.14rem;
+  margin-bottom: 0.4rem;
 }
 
-.stepIcon {
-    font-size: 3em;
-    text-align: center;
-    margin-bottom: 1em;
+.onboarding-help {
+  margin-bottom: 0.6rem;
+  color: var(--text-secondary);
 }
 
-.onboardingStep h2 {
-    color: whitesmoke;
-    text-align: center;
-    margin: 0 0 0.5em 0;
-    font-size: 1.5em;
+.onboarding-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 0.92rem;
 }
 
-.onboardingStep p {
-    color: rgba(255, 255, 255, 0.7);
-    text-align: center;
-    margin: 0 0 1.5em 0;
+.onboarding-input {
+  width: 100%;
+  margin-bottom: 0.74rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-secondary) 65%, var(--bg-card));
+  color: var(--text-primary);
+  padding: 0.72rem 0.8rem;
+  font-size: 0.96rem;
 }
 
-.infoBox {
-    background-color: rgba(34, 197, 94, 0.1);
-    border-left: 4px solid #22c55e;
-    padding: 1em;
-    border-radius: 0.5em;
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.95em;
-    margin-bottom: 1.5em;
-    line-height: 1.6;
+.onboarding-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.24);
 }
 
-.onboardingInput {
-    width: 100%;
-    padding: 0.8em;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.5em;
-    background-color: rgba(127, 255, 212, 0.08);
-    color: whitesmoke;
-    font-size: 1em;
-    text-align: center;
-    margin-bottom: 0.5em;
-    transition: all 0.2s;
+.onboarding-summary {
+  margin: 0.2rem 0 0.74rem;
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  border-radius: 10px;
+  background: rgba(20, 184, 166, 0.13);
+  color: var(--success-light);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.55rem 0.65rem;
 }
 
-.onboardingInput:focus {
-    outline: none;
-    border-color: #22c55e;
-    background-color: rgba(34, 197, 94, 0.15);
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+.onboarding-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 0.65rem;
 }
 
-.inputHint {
-    display: block;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.85em;
-    text-align: center;
-    margin-top: 0.3em;
+.onboarding-check input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--primary-color);
 }
 
-.radioGroup {
-    display: flex;
+.onboarding-device-box {
+  border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 68%, transparent);
+  padding: 0.72rem;
+}
+
+.onboarding-footer {
+  margin-top: 0.85rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.onboarding-dots {
+  display: flex;
+  gap: 0.34rem;
+}
+
+.onboarding-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  transition: width 0.22s ease, background-color 0.22s ease;
+}
+
+.onboarding-dot.active {
+  width: 21px;
+  background: var(--primary-color);
+}
+
+.onboarding-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.onboarding-btn {
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  padding: 0.66rem 0.95rem;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.onboarding-btn.primary {
+  color: #f8fafc;
+  border-color: transparent;
+  background: var(--gradient-primary);
+}
+
+.onboarding-btn.secondary {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-secondary) 74%, transparent);
+}
+
+.onboarding-btn:disabled {
+  opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .onboarding-card {
+    border-radius: 16px;
+    padding: 0.85rem;
+  }
+
+  .onboarding-footer {
     flex-direction: column;
-    gap: 1em;
-    margin-bottom: 1.5em;
-}
+    align-items: stretch;
+  }
 
-.radioGroup label {
-    display: flex;
-    align-items: center;
-    gap: 0.7em;
-    color: whitesmoke;
-    cursor: pointer;
-    padding: 0.7em;
-    border-radius: 0.5em;
-    transition: all 0.2s;
-}
+  .onboarding-actions {
+    width: 100%;
+  }
 
-.radioGroup label:hover {
-    background-color: rgba(34, 197, 94, 0.1);
-}
-
-.radioGroup input[type="radio"] {
-    cursor: pointer;
-    width: 18px;
-    height: 18px;
-    accent-color: #22c55e;
-}
-
-.chemicalSection {
-    margin-bottom: 1.5em;
-    padding: 1em;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5em;
-}
-
-.chemicalSection h3 {
-    color: #22c55e;
-    margin: 0 0 1em 0;
-    font-size: 1em;
-}
-
-.settingGroup {
-    margin-bottom: 1.5em;
-}
-
-.settingGroup label {
-    display: block;
-    color: whitesmoke;
-    font-weight: 500;
-    margin-bottom: 0.5em;
-}
-
-.onboardingFooter {
-    margin-top: 2em;
-    padding-top: 1.5em;
-    border-top: 1px solid rgba(255, 255, 255, 0.158);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1em;
-}
-
-.stepIndicator {
-    display: flex;
-    gap: 0.5em;
-}
-
-.dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.2);
-    transition: all 0.3s;
-}
-
-.dot.active {
-    background-color: #22c55e;
-    width: 24px;
-    border-radius: 4px;
-}
-
-.nextBtn {
-    padding: 0.8em 1.5em;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    border: none;
-    border-radius: 0.5em;
-    color: rgb(22, 13, 36);
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.95em;
-    transition: all 0.2s;
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-}
-
-.nextBtn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(34, 197, 94, 0.5);
-}
-
-.nextBtn:active {
-    transform: translateY(0);
-}
-
-@media (max-width: 600px) {
-    .onboardingContent {
-        padding: 1.5em;
-        border-radius: 1em;
-    }
-
-    .onboardingHeader h1 {
-        font-size: 1.5em;
-    }
-
-    .onboardingStep h2 {
-        font-size: 1.2em;
-    }
-
-    .stepIcon {
-        font-size: 2em;
-    }
-
-    .onboardingFooter {
-        flex-direction: column;
-        gap: 1em;
-    }
-
-    .nextBtn {
-        width: 100%;
-    }
+  .onboarding-btn {
+    flex: 1;
+  }
 }

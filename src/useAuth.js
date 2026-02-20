@@ -116,6 +116,10 @@ export const useAuth = () => {
       // Auth: eliminar credenciales del usuario
       await deleteUser(currentUser);
 
+      localStorage.removeItem('poolConfig');
+      localStorage.removeItem('esp32_device_id');
+      window.location.hash = '';
+
       setUser(null);
       setUserConfig(null);
     } catch (error) {

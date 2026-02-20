@@ -153,10 +153,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
     try {
       await deleteAccount();
-      localStorage.removeItem('poolConfig');
-      localStorage.removeItem('esp32_device_id');
+      alert('Cuenta eliminada correctamente. Volveras al login.');
       window.location.hash = '';
-      alert('Cuenta eliminada correctamente');
+      window.location.replace(window.location.pathname);
     } catch (error) {
       console.error('Error eliminando cuenta:', error);
       alert(`No se pudo eliminar la cuenta: ${error.message}`);
