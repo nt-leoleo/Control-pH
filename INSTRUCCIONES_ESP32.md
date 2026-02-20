@@ -3,10 +3,10 @@
 ## 🔧 Hardware Necesario
 
 - **ESP32** (cualquier modelo)
-- **Sensor pH analógico** (conectado a GPIO34)
+- **Sensor pH analógico** (conectado a GPIO36)
 - **LCD 20x4 I2C** (dirección 0x27)
 - **4 Botones** (GPIO 2, 4, 5, 18)
-- **2 Relés** (GPIO 19 y 21)
+- **2 Relés** (GPIO 4 y 5)
 - **Fuente de alimentación** 5V
 
 ## 📌 Conexiones
@@ -14,7 +14,7 @@
 ### Sensor pH
 - **VCC** → 3.3V
 - **GND** → GND
-- **OUT** → GPIO34 (ADC1_CH6)
+- **OUT** → GPIO36 (ADC1_CH0)
 
 ### LCD 20x4 I2C
 - **VCC** → 5V
@@ -29,8 +29,8 @@
 - **Botón 4** (pH-) → GPIO18 → GND
 
 ### Relés
-- **Relé pH+** (Base/Cloro) → GPIO19
-- **Relé pH-** (Ácido) → GPIO21
+- **Relé pH+** (Base/Cloro) → GPIO4
+- **Relé pH-** (Ácido) → GPIO5
 
 ## 📚 Librerías Necesarias
 
@@ -193,7 +193,7 @@ Sistema Control pH v1.0
 - Ajustar phSlope y phOffset en el código
 
 ### Relés no activan
-- Verificar conexiones GPIO19 y GPIO21
+- Verificar conexiones GPIO4 y GPIO5
 - Verificar alimentación de los relés (5V)
 - Verificar que los relés sean de 3.3V o 5V trigger
 - Medir voltaje en los pines GPIO con multímetro

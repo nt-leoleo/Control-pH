@@ -1,11 +1,5 @@
-import { useState } from "react";
-
-const HandleAdmin = () => {
-    const [admin, setAdmin] = useState(false);
-
-    const handleAdmin = () => {
-        setAdmin(prev => !prev)
-    }
-}
+﻿const HandleAdmin = () => {
+    return null;
+};
 
 export default HandleAdmin;

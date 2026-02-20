@@ -53,7 +53,7 @@ const AdminPanel = ({ onClose }) => {
     const logsRef = ref(database, `users/${user.uid}/logs`);
 
     // Escuchar cambios en el estado del sistema
-    const unsubscribeStatus = onValue(systemStatusRef, (snapshot) => {
+    onValue(systemStatusRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         setBackendStatus(prev => ({
@@ -70,7 +70,7 @@ const AdminPanel = ({ onClose }) => {
     });
 
     // Escuchar logs en tiempo real
-    const unsubscribeLogs = onValue(logsRef, (snapshot) => {
+    onValue(logsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const logsArray = Object.entries(data)

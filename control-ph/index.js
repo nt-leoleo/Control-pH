@@ -538,13 +538,28 @@ exports.getSystemStatus = onRequest(async (req, res) => {
   }
   
   try {
-    const currentPH = await readPHFromThingSpeak();
+    const userId = req.query.userId;
+
+    if (!userId) {
+      res.status(400).json({ error: 'userId required' });
+      return;
+    }
+
+    const sensorDataRef = realtimeDb.ref(`users/${userId}/sensorData`);
+    const sensorDataSnapshot = await sensorDataRef.once('value');
+    const sensorData = sensorDataSnapshot.val();
+    const lastTimestamp = sensorData?.timestamp || 0;
+    const dataAgeMs = lastTimestamp ? (Date.now() - lastTimestamp) : null;
+    const sensorConnected = dataAgeMs !== null && dataAgeMs <= (2 * 60 * 1000);
     
     const status = {
       status: 'online',
       timestamp: Date.now(),
-      currentPH: currentPH,
-      thingspeakConnected: currentPH !== null,
+      userId,
+      currentPH: sensorData?.ph ?? null,
+      sensorConnected,
+      dataAgeSeconds: dataAgeMs !== null ? Math.round(dataAgeMs / 1000) : null,
+      source: 'firebase-realtime',
       cloudFunctionsActive: true
     };
     

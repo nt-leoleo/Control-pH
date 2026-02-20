@@ -4,13 +4,9 @@ import './PoolManager.css';
 
 const PoolManager = ({ onBack }) => {
     const { 
-        poolVolume, 
         setPoolVolume, 
-        alkalinity, 
         setAlkalinity,
-        chlorineType,
         setChlorineType,
-        acidType,
         setAcidType,
         saveConfigToFirebase,
         userConfig
@@ -46,8 +42,13 @@ const PoolManager = ({ onBack }) => {
             return;
         }
 
+        const nextPoolId = (pools.reduce((maxId, pool) => {
+            const parsedId = Number.parseInt(pool.id, 10);
+            return Number.isNaN(parsedId) ? maxId : Math.max(maxId, parsedId);
+        }, 0) + 1).toString();
+
         const newPool = {
-            id: Date.now().toString(),
+            id: nextPoolId,
             name: formData.name,
             volume: parseFloat(formData.volume),
             alkalinity: parseFloat(formData.alkalinity),

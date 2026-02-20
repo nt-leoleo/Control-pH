@@ -1,37 +1,32 @@
-import { useContext, useState, useEffect } from "react";
-import Header from "./Header";
-import ShowpH from "./ShowpH";
-import HandleAdmin from "./HandleAdmin";
-import PHBar from "./PHBar";
-import PHChart from "./PHChart";
-import ManualDosing from "./ManualDosing";
-import AutomaticDosing from "./AutomaticDosing";
-import Onboarding from "./Onboarding";
-import SettingsPage from "./SettingsPage";
-import PoolManager from "./PoolManager";
-import ErrorNotification from "./ErrorNotification";
-import LoginScreen from "./LoginScreen";
-import SplashScreen from "./SplashScreen";
-import { PHContext } from "./PHContext";
-import { useAuth } from "./useAuth";
-import "./App.css";
+import { useContext, useState, useEffect } from 'react';
+import Header from './Header';
+import ShowpH from './ShowpH';
+import HandleAdmin from './HandleAdmin';
+import PHBar from './PHBar';
+import PHChart from './PHChart';
+import ManualDosing from './ManualDosing';
+import AutomaticDosing from './AutomaticDosing';
+import Onboarding from './Onboarding';
+import SettingsPage from './SettingsPage';
+import PoolManager from './PoolManager';
+import ErrorNotification from './ErrorNotification';
+import LoginScreen from './LoginScreen';
+import SplashScreen from './SplashScreen';
+import { PHContext } from './PHContext';
+import { useAuth } from './useAuth';
+import './App.css';
 
 export default function App() {
-  const { ph, setPH, phTolerance, phToleranceRange, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
-  const { user, userConfig, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'pool-manager'
-  const [theme, setTheme] = useState('dark'); // Modo nocturno por defecto
-  const [showSplash, setShowSplash] = useState(true); // Siempre mostrar al inicio
+  const { ph, error, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
+  const { user, loading } = useAuth();
+  const [currentView, setCurrentView] = useState('main');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [showSplash, setShowSplash] = useState(true);
 
-  console.log('🎯 App render - showSplash:', showSplash, 'loading:', loading, 'user:', !!user, 'isConfigured:', isConfigured);
-
-  // Manejar fin del splash screen
   const handleSplashFinish = () => {
-    console.log('✅ handleSplashFinish llamado - Ocultando splash');
     setShowSplash(false);
   };
 
-  // Escuchar cambios en el hash para navegación
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
@@ -45,19 +40,14 @@ export default function App() {
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // Verificar hash inicial
-
+    handleHashChange();
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Cargar tema guardado al iniciar
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
-  // Función para cambiar tema
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -65,17 +55,15 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 
-  // Mostrar splash screen al inicio
   if (showSplash) {
     return <SplashScreen onFinish={handleSplashFinish} />;
   }
 
-  // Mostrar loading mientras se verifica la autenticación
   if (loading) {
     return (
       <div className="loading-screen">
         <div className="loading-container">
-          <h1>🧪 Control Pileta pH</h1>
+          <h1>Control Pileta pH</h1>
           <div className="loading-spinner"></div>
           <p>Cargando...</p>
         </div>
@@ -83,20 +71,17 @@ export default function App() {
     );
   }
 
-  // Si no hay usuario autenticado, mostrar pantalla de login
   if (!user) {
     return <LoginScreen />;
   }
 
-  // Si no está configurado, mostrar onboarding
   if (!isConfigured) {
     return <Onboarding />;
   }
 
-  // Si está en vista de configuración, mostrar página de configuración
   if (currentView === 'settings') {
     return (
-      <SettingsPage 
+      <SettingsPage
         onBack={() => {
           setCurrentView('main');
           window.location.hash = '';
@@ -107,10 +92,9 @@ export default function App() {
     );
   }
 
-  // Si está en vista de administrador de piscinas
   if (currentView === 'pool-manager') {
     return (
-      <PoolManager 
+      <PoolManager
         onBack={() => {
           setCurrentView('settings');
           window.location.hash = 'settings';
@@ -121,76 +105,57 @@ export default function App() {
     );
   }
 
-  const handlePHChange = (e) => {
-    try {
-      setPH(parseFloat(e.target.value));
-    } catch (err) {
-      setError({ type: 'error', message: err.message });
-    }
-  };
-
-  // Validación visual para el input de pH
-  const isOutOfRange = Math.abs(ph - phTolerance) > phToleranceRange;
-
   return (
     <>
-      <Header onConfigClick={() => {
-        setCurrentView('settings');
-        window.location.hash = 'settings';
-      }} />
-      <main className="fade-in">
-        <ShowpH />
-        <HandleAdmin />
-        <PHBar ph={ph} />
-        <PHChart />
-        <input 
-          type="number" 
-          value={ph} 
-          onChange={handlePHChange}
-          min="0"
-          max="14"
-          step="0.1"
-          className={`ph-input ${isOutOfRange ? 'ph-input--out-of-range' : 'ph-input--in-range'}`}
-          title={isOutOfRange ? `pH fuera del rango ideal (${phTolerance} ± ${phToleranceRange})` : 'pH dentro del rango ideal'}
-          placeholder="Ingresa valor de pH"
-        />
-        
+      <Header
+        onConfigClick={() => {
+          setCurrentView('settings');
+          window.location.hash = 'settings';
+        }}
+      />
+
+      <main className="fade-in app-main">
+        <div className="dashboard-stack">
+          <ShowpH />
+          <HandleAdmin />
+          <PHBar ph={ph} />
+          <PHChart />
+        </div>
+
         {dosingMode === 'manual' && (
-          <div className="scale-in">
+          <div className="scale-in dashboard-module">
             <ManualDosing />
           </div>
         )}
 
         {dosingMode === 'automatic' && (
-          <div className="scale-in">
+          <div className="scale-in dashboard-module">
             <AutomaticDosing />
           </div>
         )}
 
         <div className="mode-toggle-container">
-          <button 
+          <button
             onClick={async () => {
               try {
                 const newMode = dosingMode === 'automatic' ? 'manual' : 'automatic';
                 await setDosingMode(newMode);
-              } catch (error) {
-                console.error('❌ [App] Error cambiando modo de dosificación:', error);
+              } catch (toggleError) {
+                console.error('Error cambiando modo de dosificacion:', toggleError);
               }
             }}
-            className={`mode-toggle-button ${dosingMode === 'automatic' ? 'mode-toggle-button--automatic' : 'mode-toggle-button--manual'}`}
+            className={`mode-toggle-button ${
+              dosingMode === 'automatic' ? 'mode-toggle-button--automatic' : 'mode-toggle-button--manual'
+            }`}
           >
-            <span>🔧 Modo: {dosingMode === 'automatic' ? 'AUTOMÁTICO' : 'MANUAL'}</span>
-            <small>Toca para cambiar a {dosingMode === 'automatic' ? 'MANUAL' : 'AUTOMÁTICO'}</small>
+            <span>Modo {dosingMode === 'automatic' ? 'automatico' : 'manual'}</span>
+            <small>Toca para cambiar a {dosingMode === 'automatic' ? 'manual' : 'automatico'}</small>
           </button>
         </div>
       </main>
 
       {error && (
-        <ErrorNotification 
-          message={error.message} 
-          type={error.type || 'error'} 
-          duration={5000}
-        />
+        <ErrorNotification message={error.message} type={error.type || 'error'} duration={5000} />
       )}
     </>
   );

@@ -3,6 +3,7 @@ import { PHContext } from './PHContext';
 import WiFiConfig from './WiFiConfig';
 import AdminPanel from './AdminPanel';
 import DeviceRegistration from './DeviceRegistration';
+import { useAuth } from './useAuth';
 import './SettingsPage.css';
 
 const SettingsPage = ({ onBack, theme, toggleTheme }) => {
@@ -17,10 +18,12 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     lastDataReceived,
     checkConnection
   } = useContext(PHContext);
+  const { user, deleteAccount } = useAuth();
   
   const [showWiFiConfig, setShowWiFiConfig] = useState(false);
   const [showDeviceRegistration, setShowDeviceRegistration] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
@@ -128,6 +131,37 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     } else {
       alert('Usuario o contrasena incorrectos');
       setAdminCredentials({ username: '', password: '' });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || isDeletingAccount) return;
+
+    const confirmDelete = window.confirm(
+      'Vas a eliminar tu cuenta y todos tus datos del sistema. Esta accion no se puede deshacer. Quieres continuar?'
+    );
+
+    if (!confirmDelete) return;
+
+    const confirmFinal = window.confirm(
+      'Confirmacion final: tambien se eliminaran historial, configuraciones y dispositivos registrados. Eliminar cuenta?'
+    );
+
+    if (!confirmFinal) return;
+
+    setIsDeletingAccount(true);
+
+    try {
+      await deleteAccount();
+      localStorage.removeItem('poolConfig');
+      localStorage.removeItem('esp32_device_id');
+      window.location.hash = '';
+      alert('Cuenta eliminada correctamente');
+    } catch (error) {
+      console.error('Error eliminando cuenta:', error);
+      alert(`No se pudo eliminar la cuenta: ${error.message}`);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -357,6 +391,34 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
             </div>
           </button>
         </div>
+        <div className="settings-section scale-in account-settings-section">
+          <h3>Cuenta</h3>
+
+          <div className="system-info account-info-list">
+            <div className="info-item">
+              <span className="info-label">Nombre:</span>
+              <span className="info-value">{user?.displayName || 'Sin nombre'}</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">Email:</span>
+              <span className="info-value">{user?.email || 'Sin email'}</span>
+            </div>
+          </div>
+
+          <p className="account-warning-text">
+            Si eliminas tu cuenta, se borran configuracion, historial y dispositivos vinculados.
+          </p>
+
+          <button
+            className="action-btn btn-danger delete-account-btn"
+            onClick={handleDeleteAccount}
+            disabled={isDeletingAccount}
+          >
+            <span>{isDeletingAccount ? '...' : '!'}</span>
+            {isDeletingAccount ? 'Eliminando cuenta...' : 'Eliminar cuenta'}
+          </button>
+        </div>
+
 
         {/* Información del Sistema */}
         <div className="settings-section scale-in">
@@ -521,3 +583,4 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 };
 
 export default SettingsPage;
+

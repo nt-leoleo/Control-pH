@@ -46,11 +46,11 @@ const PHChart = () => {
 
     const getStatus = () => {
         if (ph < phTolerance - phToleranceRange) {
-            return { color: '#ef4444', label: 'Bajo' };
+            return { color: '#fb7185', label: 'Bajo' };
         } else if (ph > phTolerance + phToleranceRange) {
             return { color: '#f59e0b', label: 'Alto' };
         } else {
-            return { color: '#22c55e', label: 'OK' };
+            return { color: '#14b8a6', label: 'OK' };
         }
     };
 
@@ -62,35 +62,39 @@ const PHChart = () => {
             <div className="chartHeader">
                 <h3>Seguimiento de pH por Hora</h3>
                 {showWarning && (
-                    <div className="warningBadge" style={{ color: status.color }}>
+                    <div
+                        className={`warningBadge warningBadge--active warningBadge--${status.label.toLowerCase()}`}
+                        style={{ '--warning-color': status.color }}
+                        title={`Alerta: pH ${status.label}`}
+                    >
                         <WarningIcon />
                     </div>
                 )}
             </div>
             <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={phHistory}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.25)" />
                     <XAxis 
                         dataKey="hour" 
-                        stroke="rgba(255, 255, 255, 0.6)"
+                        stroke="rgba(148, 163, 184, 0.9)"
                         tick={{ fontSize: 12 }}
                     />
                     <YAxis 
                         domain={yAxisDomain} 
-                        stroke="rgba(255, 255, 255, 0.6)"
+                        stroke="rgba(148, 163, 184, 0.9)"
                         tick={{ fontSize: 12 }}
                         tickFormatter={(value) => value.toFixed(1)}
                     />
                     <Tooltip 
                         contentStyle={{
-                            backgroundColor: 'rgba(41, 25, 66, 0.95)',
-                            border: '1px solid rgba(255, 255, 255, 0.158)',
-                            borderRadius: '0.5em',
-                            color: 'whitesmoke'
+                            backgroundColor: 'rgba(17, 34, 49, 0.96)',
+                            border: '1px solid rgba(148, 163, 184, 0.35)',
+                            borderRadius: '0.75rem',
+                            color: '#e2e8f0'
                         }}
                         formatter={(value) => value.toFixed(2)}
                     />
-                    <Legend wrapperStyle={{ color: 'whitesmoke' }} />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                     <Line 
                         type="monotone" 
                         dataKey="value" 

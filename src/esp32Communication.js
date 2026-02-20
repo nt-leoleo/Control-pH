@@ -16,7 +16,7 @@
  * =====================================================
  */
 
-import { subscribeToPHData, sendManualDosingCommand as sendManualDosingCommandFirebase, checkESP32Connection as checkESP32ConnectionFirebase } from './esp32Communication-firebase';
+import { subscribeToPHData, sendManualDosingCommand as sendManualDosingCommandFirebase } from './esp32Communication-firebase';
 
 // =====================================================
 // CONFIGURACIÓN
@@ -221,7 +221,7 @@ function getPHStatus(ph) {
         return {
             status: 'acidic',
             label: 'Ácido',
-            description: 'pH bajo - Necesita agregar pH+',
+            description: 'pH bajo - Necesita subir pH',
             color: '#FF5722',
             icon: '🔴'
         };
@@ -229,7 +229,7 @@ function getPHStatus(ph) {
         return {
             status: 'basic',
             label: 'Básico',
-            description: 'pH alto - Necesita agregar pH-',
+            description: 'pH alto - Necesita bajar pH',
             color: '#9C27B0',
             icon: '🟣'
         };
@@ -331,8 +331,6 @@ export const waitForDosingConfirmation = async (expectedCounter, maxWaitTime = 6
         
         const startTime = Date.now();
         const channelId = '3249157';
-        const readApiKey = 'S7Q7FWREGP96KX04';
-        
         // Polling cada 2 segundos
         while (Date.now() - startTime < maxWaitTime) {
             try {

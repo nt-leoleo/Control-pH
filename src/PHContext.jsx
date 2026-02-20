@@ -1,9 +1,10 @@
 import { createContext, useState, useEffect } from 'react';
 import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
-import { subscribeToPHData, checkESP32Connection, sendManualDosingCommand } from './esp32Communication-firebase';
+import { subscribeToPHData, checkESP32Connection } from './esp32Communication-firebase';
 import { useAuth } from './useAuth';
 
 export const PHContext = createContext(null);
+const THINGSPEAK_WRITE_API_KEY = import.meta.env.VITE_THINGSPEAK_WRITE_API_KEY || '';
 
 export const PHProvider = ({ children }) => {
     const { user, userConfig, updateUserConfig } = useAuth();
@@ -211,7 +212,12 @@ export const PHProvider = ({ children }) => {
             const autoMode = mode === 'automatic' ? '1' : '0';
             const configStr = `phTarget:${phTarget},tolerance:${tolerance},autoMode:${autoMode}`;
             
-            const url = `https://api.thingspeak.com/update?api_key=GQXD1DTF1D6DPUSG&field8=${encodeURIComponent(configStr)}`;
+            if (!THINGSPEAK_WRITE_API_KEY) {
+                console.warn('⚠️ VITE_THINGSPEAK_WRITE_API_KEY no configurada, no se envia config a ThingSpeak');
+                return;
+            }
+
+            const url = `https://api.thingspeak.com/update?api_key=${THINGSPEAK_WRITE_API_KEY}&field8=${encodeURIComponent(configStr)}`;
             
             await fetch(url, { method: 'GET' });
             console.log('✅ Configuración enviada a ThingSpeak:', configStr);
