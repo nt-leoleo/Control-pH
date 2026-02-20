@@ -1,7 +1,6 @@
 import './ShowpH.css';
 import { useContext, useMemo, useRef, useState } from 'react';
 import { PHContext } from './PHContext';
-import { getConfiguredProducts } from './chemicalLabels';
 
 const SWIPE_THRESHOLD = 42;
 const GAUGE_MIN = 6.0;
@@ -31,11 +30,12 @@ const ShowpH = () => {
   const [slideIndex, setSlideIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
-  const { raiseName, lowerName } = getConfiguredProducts(chlorineType, acidType);
+  void chlorineType;
+  void acidType;
 
   const getStatus = () => {
-    if (ph < phTolerance - phToleranceRange) return { text: `pH bajo: usar ${raiseName}`, status: 'low' };
-    if (ph > phTolerance + phToleranceRange) return { text: `pH alto: usar ${lowerName}`, status: 'high' };
+    if (ph < phTolerance - phToleranceRange) return { text: 'pH bajo', status: 'low' };
+    if (ph > phTolerance + phToleranceRange) return { text: 'pH alto', status: 'high' };
     return { text: 'pH en rango ideal', status: 'ok' };
   };
 
