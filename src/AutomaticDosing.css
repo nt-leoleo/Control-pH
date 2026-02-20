@@ -142,6 +142,19 @@
   font-size: 0.76rem;
 }
 
+[data-theme='light'] .auto-status {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme='light'] .simple-summary {
+  background: rgba(14, 165, 233, 0.08);
+}
+
+[data-theme='light'] .summary-item {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #d6e4ee;
+}
+
 @media (max-width: 520px) {
   .summary-grid {
     grid-template-columns: 1fr;

@@ -21,6 +21,7 @@ const WarningIcon = () => (
 
 const PHChart = () => {
     const { phHistory, ph, phTolerance, phToleranceRange } = useContext(PHContext);
+    const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
 
     // Calcular el rango dinámico del eje Y basado en los datos
     const calculateYAxisDomain = () => {
@@ -56,6 +57,15 @@ const PHChart = () => {
 
     const status = getStatus();
     const showWarning = status.label !== 'OK';
+    const axisColor = isLightTheme ? '#475569' : 'rgba(148, 163, 184, 0.9)';
+    const gridColor = isLightTheme ? 'rgba(100, 116, 139, 0.24)' : 'rgba(148, 163, 184, 0.25)';
+    const legendColor = isLightTheme ? '#334155' : '#cbd5e1';
+    const tooltipStyles = {
+        backgroundColor: isLightTheme ? 'rgba(255, 255, 255, 0.98)' : 'rgba(17, 34, 49, 0.96)',
+        border: isLightTheme ? '1px solid rgba(148, 163, 184, 0.45)' : '1px solid rgba(148, 163, 184, 0.35)',
+        borderRadius: '0.75rem',
+        color: isLightTheme ? '#0f172a' : '#e2e8f0'
+    };
 
     return (
         <div className="chartContainer">
@@ -73,28 +83,23 @@ const PHChart = () => {
             </div>
             <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={phHistory}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.25)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                     <XAxis 
                         dataKey="hour" 
-                        stroke="rgba(148, 163, 184, 0.9)"
+                        stroke={axisColor}
                         tick={{ fontSize: 12 }}
                     />
                     <YAxis 
                         domain={yAxisDomain} 
-                        stroke="rgba(148, 163, 184, 0.9)"
+                        stroke={axisColor}
                         tick={{ fontSize: 12 }}
                         tickFormatter={(value) => value.toFixed(1)}
                     />
                     <Tooltip 
-                        contentStyle={{
-                            backgroundColor: 'rgba(17, 34, 49, 0.96)',
-                            border: '1px solid rgba(148, 163, 184, 0.35)',
-                            borderRadius: '0.75rem',
-                            color: '#e2e8f0'
-                        }}
+                        contentStyle={tooltipStyles}
                         formatter={(value) => value.toFixed(2)}
                     />
-                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Legend wrapperStyle={{ color: legendColor }} />
                     <Line 
                         type="monotone" 
                         dataKey="value" 

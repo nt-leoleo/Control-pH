@@ -130,22 +130,22 @@ const ShowpH = () => {
               <svg viewBox="0 0 200 150" className="ph-gauge" role="img" aria-label={`Medidor de pH ${ph.toFixed(2)}`}>
                 <defs>
                   <linearGradient id="gaugeBezelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#15384d" />
-                    <stop offset="50%" stopColor="#0c2232" />
-                    <stop offset="100%" stopColor="#081622" />
+                    <stop offset="0%" stopColor="var(--gauge-bezel-top)" />
+                    <stop offset="50%" stopColor="var(--gauge-bezel-mid)" />
+                    <stop offset="100%" stopColor="var(--gauge-bezel-bottom)" />
                   </linearGradient>
                   <radialGradient id="gaugeDialGradient" cx="50%" cy="35%" r="65%">
-                    <stop offset="0%" stopColor="#12344a" />
-                    <stop offset="60%" stopColor="#0b2435" />
-                    <stop offset="100%" stopColor="#091826" />
+                    <stop offset="0%" stopColor="var(--gauge-dial-top)" />
+                    <stop offset="60%" stopColor="var(--gauge-dial-mid)" />
+                    <stop offset="100%" stopColor="var(--gauge-dial-bottom)" />
                   </radialGradient>
                   <linearGradient id="needleGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#e2f3ff" />
-                    <stop offset="100%" stopColor="#8bd8ff" />
+                    <stop offset="0%" stopColor="var(--gauge-needle-top)" />
+                    <stop offset="100%" stopColor="var(--gauge-needle-bottom)" />
                   </linearGradient>
                   <linearGradient id="valuePanelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#12364c" />
-                    <stop offset="100%" stopColor="#0c2434" />
+                    <stop offset="0%" stopColor="var(--gauge-panel-top)" />
+                    <stop offset="100%" stopColor="var(--gauge-panel-bottom)" />
                   </linearGradient>
                   <filter id="needleGlow">
                     <feGaussianBlur stdDeviation="1.8" result="coloredBlur" />

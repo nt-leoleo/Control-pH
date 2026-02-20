@@ -54,6 +54,12 @@
     #f4fbff;
 }
 
+html[data-theme='light'],
+html[data-theme='light'] body,
+html[data-theme='light'] #root {
+  background: #f4fbff;
+}
+
 * {
   box-sizing: border-box;
 }
