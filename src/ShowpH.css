@@ -1,4 +1,14 @@
 .ph-hero {
+  --gauge-bezel-top: #15384d;
+  --gauge-bezel-mid: #0c2232;
+  --gauge-bezel-bottom: #081622;
+  --gauge-dial-top: #12344a;
+  --gauge-dial-mid: #0b2435;
+  --gauge-dial-bottom: #091826;
+  --gauge-needle-top: #e2f3ff;
+  --gauge-needle-bottom: #8bd8ff;
+  --gauge-panel-top: #12364c;
+  --gauge-panel-bottom: #0c2434;
   width: min(560px, 100%);
   margin: 0 auto;
   padding: 1rem 1rem 0.85rem;
@@ -279,6 +289,129 @@
   color: #99f6e4;
   background: rgba(20, 184, 166, 0.18);
   border: 1px solid rgba(20, 184, 166, 0.34);
+}
+
+[data-theme='light'] .ph-hero {
+  --gauge-bezel-top: #e6f2fa;
+  --gauge-bezel-mid: #caddea;
+  --gauge-bezel-bottom: #b9cfdf;
+  --gauge-dial-top: #f8fcff;
+  --gauge-dial-mid: #e7f2f9;
+  --gauge-dial-bottom: #d7e8f4;
+  --gauge-needle-top: #ffffff;
+  --gauge-needle-bottom: #68b7ea;
+  --gauge-panel-top: #f9fdff;
+  --gauge-panel-bottom: #dcedf8;
+  background: linear-gradient(145deg, #f8fdff, #eaf5fc);
+  border-color: #b9d1df;
+}
+
+[data-theme='light'] .ph-label {
+  color: #334155;
+}
+
+[data-theme='light'] .ph-meta span {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1e293b;
+  border-color: #bfd3e1;
+}
+
+[data-theme='light'] .ph-swipe-hint {
+  color: #475569;
+}
+
+[data-theme='light'] .ph-dot {
+  background: rgba(71, 85, 105, 0.28);
+}
+
+[data-theme='light'] .ph-dot.active {
+  background: #0ea5a8;
+}
+
+[data-theme='light'] .ph-hero[data-ph-status='low'] .ph-status {
+  color: #9f1239;
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(225, 29, 72, 0.36);
+}
+
+[data-theme='light'] .ph-hero[data-ph-status='high'] .ph-status {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(217, 119, 6, 0.34);
+}
+
+[data-theme='light'] .ph-hero[data-ph-status='ok'] .ph-status {
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.14);
+  border-color: rgba(13, 148, 136, 0.34);
+}
+
+[data-theme='light'] .gauge-rim-outer {
+  stroke: rgba(71, 85, 105, 0.25);
+}
+
+[data-theme='light'] .gauge-rim-inner {
+  fill: #e6f1f8;
+  stroke: rgba(148, 163, 184, 0.6);
+}
+
+[data-theme='light'] .gauge-dial-surface {
+  stroke: rgba(14, 165, 233, 0.2);
+}
+
+[data-theme='light'] .gauge-base-arc {
+  stroke: rgba(100, 116, 139, 0.2);
+}
+
+[data-theme='light'] .gauge-neon-base {
+  stroke: rgba(14, 165, 233, 0.45);
+}
+
+[data-theme='light'] .gauge-tick {
+  stroke: rgba(71, 85, 105, 0.35);
+}
+
+[data-theme='light'] .gauge-tick.major {
+  stroke: rgba(51, 65, 85, 0.75);
+}
+
+[data-theme='light'] .gauge-ideal-label {
+  fill: #0f766e;
+}
+
+[data-theme='light'] .gauge-limit-label {
+  fill: #334155;
+  text-shadow: none;
+}
+
+[data-theme='light'] .gauge-needle {
+  stroke: #e2f4ff;
+}
+
+[data-theme='light'] .gauge-center-outer {
+  fill: #c0d4e3;
+  stroke: #7a8fa0;
+}
+
+[data-theme='light'] .gauge-center-inner {
+  fill: #7c91a3;
+}
+
+[data-theme='light'] .gauge-center-dot {
+  fill: #eef6ff;
+}
+
+[data-theme='light'] .gauge-value-panel {
+  stroke: rgba(14, 116, 144, 0.32);
+  filter: none;
+}
+
+[data-theme='light'] .gauge-value {
+  fill: #0f172a;
+}
+
+[data-theme='light'] .gauge-unit {
+  fill: #334155;
 }
 
 @media (max-width: 768px) {
