@@ -576,6 +576,52 @@ export const sendDosingCommandToFirebase = async (userId, product, durationSecon
 };
 
 /**
+ * Envia comando prioritario de parada de emergencia a Firebase.
+ * Usa una clave fija lexicograficamente menor para que getCommand lo entregue primero.
+ *
+ * @param {string} userId - ID del usuario
+ * @returns {Promise<Object>} Resultado con commandId
+ */
+export const sendEmergencyStopCommand = async (userId) => {
+    try {
+        if (!userId) {
+            throw new Error('userId es requerido');
+        }
+
+        const commandId = '!emergency_stop';
+        const emergencyRef = ref(database, `users/${userId}/commands/${commandId}`);
+
+        const commandData = {
+            product: 'emergency_stop',
+            duration: 0,
+            status: 'pending',
+            priority: 'critical',
+            source: 'web-app',
+            createdAt: Date.now(),
+            timestamp: Date.now()
+        };
+
+        await set(emergencyRef, commandData);
+
+        console.log('[EMERGENCY] Comando de parada enviado:', `users/${userId}/commands/${commandId}`);
+
+        return {
+            success: true,
+            commandId,
+            product: 'emergency_stop',
+            message: 'Parada de emergencia enviada al ESP32'
+        };
+    } catch (error) {
+        console.error('[EMERGENCY] Error enviando parada de emergencia:', error);
+        return {
+            success: false,
+            error: error.message,
+            message: 'No se pudo enviar la parada de emergencia'
+        };
+    }
+};
+
+/**
  * Espera confirmación de que el comando fue ejecutado
  * Monitorea el estado del comando en Firebase
  * 

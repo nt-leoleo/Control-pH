@@ -14,14 +14,16 @@ import LoginScreen from './LoginScreen';
 import SplashScreen from './SplashScreen';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
+import { sendEmergencyStopCommand } from './esp32Communication-firebase';
 import './App.css';
 
 export default function App() {
-  const { ph, error, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
+  const { ph, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(true);
+  const [isSendingEmergencyStop, setIsSendingEmergencyStop] = useState(false);
 
   const handleSplashFinish = () => {
     setShowSplash(false);
@@ -53,6 +55,40 @@ export default function App() {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
+  };
+
+  const handleEmergencyStop = async () => {
+    if (!user?.uid || isSendingEmergencyStop) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Parada de emergencia: se apagaran bombas, sensor y LCD del ESP32. Continuar?'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsSendingEmergencyStop(true);
+      const result = await sendEmergencyStopCommand(user.uid);
+
+      if (result.success) {
+        setError({
+          type: 'success',
+          message: 'Parada de emergencia enviada. El ESP32 apagara todo en su siguiente lectura.'
+        });
+      } else {
+        throw new Error(result.error || result.message || 'No se pudo enviar la parada de emergencia');
+      }
+    } catch (emergencyError) {
+      setError({
+        type: 'error',
+        message: emergencyError.message || 'Error enviando parada de emergencia'
+      });
+    } finally {
+      setIsSendingEmergencyStop(false);
+    }
   };
 
   if (showSplash) {
@@ -151,6 +187,17 @@ export default function App() {
             <span>Modo {dosingMode === 'automatic' ? 'automatico' : 'manual'}</span>
             <small>Toca para cambiar a {dosingMode === 'automatic' ? 'manual' : 'automatico'}</small>
           </button>
+        </div>
+
+        <div className="emergency-stop-container">
+          <button
+            onClick={handleEmergencyStop}
+            disabled={isSendingEmergencyStop}
+            className="emergency-stop-button"
+          >
+            {isSendingEmergencyStop ? 'Enviando parada...' : 'PARADA DE EMERGENCIA'}
+          </button>
+          <small className="emergency-stop-hint">Apaga todo el sistema de inmediato.</small>
         </div>
       </main>
 
