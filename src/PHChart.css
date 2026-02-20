@@ -24,13 +24,75 @@
 }
 
 .warningBadge {
+  --warning-color: #fb7185;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 30px;
   border-radius: 999px;
+  color: var(--warning-color);
   background: rgba(15, 23, 42, 0.35);
+  border: 1px solid currentColor;
+}
+
+.warningBadge::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  opacity: 0;
+}
+
+.warningBadge--active {
+  animation: warningPulse 1.35s ease-in-out infinite;
+}
+
+.warningBadge--active svg {
+  animation: warningBlink 0.95s ease-in-out infinite;
+}
+
+.warningBadge--active::after {
+  animation: warningHalo 1.35s ease-out infinite;
+}
+
+.warningBadge--bajo {
+  animation-duration: 1.1s;
+}
+
+@keyframes warningPulse {
+  0% {
+    transform: scale(1);
+  }
+  65% {
+    transform: scale(1.11);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes warningBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes warningHalo {
+  0% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
 }
 
 @media (max-width: 480px) {
