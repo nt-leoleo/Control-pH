@@ -1,5 +1,5 @@
 import { useContext, useMemo, useState } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { arrayUnion, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { PHContext } from './PHContext';
 import { db } from './firebase';
 import { useAuth } from './useAuth';
@@ -27,7 +27,6 @@ const Onboarding = () => {
   const [acdType, setAcdType] = useState('muriatic');
   const [idealPH, setIdealPH] = useState('7.4');
   const [tolerance, setTolerance] = useState('0.3');
-  const [registerNow, setRegisterNow] = useState(false);
   const [deviceId, setDeviceId] = useState('');
   const [deviceName, setDeviceName] = useState('Piscina principal');
   const [isSaving, setIsSaving] = useState(false);
@@ -64,8 +63,8 @@ const Onboarding = () => {
         return false;
       }
 
-      if (registerNow && !deviceId.trim()) {
-        setError({ type: 'error', message: 'Si deseas registrar ahora, ingresa el Device ID.' });
+      if (!deviceId.trim()) {
+        setError({ type: 'error', message: 'Ingresa el Device ID para continuar.' });
         return false;
       }
     }
@@ -79,33 +78,36 @@ const Onboarding = () => {
       return true;
     }
 
-    const deviceDoc = await getDoc(doc(db, 'devices', trimmedDeviceId));
+    const deviceRef = doc(db, 'devices', trimmedDeviceId);
+    const deviceDoc = await getDoc(deviceRef);
     if (deviceDoc.exists()) {
-      const existingData = deviceDoc.data();
-      if (existingData.userId !== user.uid) {
-        throw new Error('Ese Device ID ya esta vinculado a otra cuenta.');
-      }
+      await updateDoc(deviceRef, {
+        userIds: arrayUnion(user.uid),
+        updatedAt: new Date(),
+        lastSeen: new Date()
+      });
+    } else {
+      await setDoc(deviceRef, {
+        userId: user.uid,
+        userIds: [user.uid],
+        name: deviceName.trim() || 'Piscina principal',
+        createdAt: new Date(),
+        lastSeen: new Date(),
+        metadata: {
+          registeredFrom: 'onboarding',
+          userEmail: user.email || ''
+        }
+      });
     }
-
-    await setDoc(doc(db, 'devices', trimmedDeviceId), {
-      userId: user.uid,
-      name: deviceName.trim() || 'Piscina principal',
-      createdAt: new Date(),
-      lastSeen: new Date(),
-      metadata: {
-        registeredFrom: 'onboarding',
-        userEmail: user.email || ''
-      }
-    });
 
     localStorage.setItem('esp32_device_id', trimmedDeviceId);
     return true;
   };
 
-  const finishOnboarding = async () => {
+  const finishOnboarding = async (skipDeviceRegistration = false) => {
     setIsSaving(true);
     try {
-      if (registerNow) {
+      if (!skipDeviceRegistration) {
         await registerDevice();
       }
 
@@ -134,7 +136,12 @@ const Onboarding = () => {
       return;
     }
 
-    await finishOnboarding();
+    await finishOnboarding(false);
+  };
+
+  const handleConfigureLater = async () => {
+    if (step !== 3 || isSaving) return;
+    await finishOnboarding(true);
   };
 
   const handleBack = () => {
@@ -254,42 +261,35 @@ const Onboarding = () => {
               Rango automatico: {summaryRange.min} - {summaryRange.max}
             </div>
 
-            <label className="onboarding-check">
+            <div className="onboarding-device-box">
+              <label className="onboarding-label" htmlFor="deviceIdInput">
+                Device ID (obligatorio)
+              </label>
               <input
-                type="checkbox"
-                checked={registerNow}
-                onChange={(e) => setRegisterNow(e.target.checked)}
+                id="deviceIdInput"
+                className="onboarding-input"
+                type="text"
+                value={deviceId}
+                onChange={(e) => setDeviceId(e.target.value.toUpperCase())}
+                placeholder="Ej: A1B2C3D4E5F6"
               />
-              Registrar mi ESP32 ahora
-            </label>
 
-            {registerNow && (
-              <div className="onboarding-device-box">
-                <label className="onboarding-label" htmlFor="deviceIdInput">
-                  Device ID
-                </label>
-                <input
-                  id="deviceIdInput"
-                  className="onboarding-input"
-                  type="text"
-                  value={deviceId}
-                  onChange={(e) => setDeviceId(e.target.value.toUpperCase())}
-                  placeholder="Ej: A1B2C3D4E5F6"
-                />
+              <label className="onboarding-label" htmlFor="deviceNameInput">
+                Nombre del dispositivo
+              </label>
+              <input
+                id="deviceNameInput"
+                className="onboarding-input"
+                type="text"
+                value={deviceName}
+                onChange={(e) => setDeviceName(e.target.value)}
+                placeholder="Ej: Piscina principal"
+              />
 
-                <label className="onboarding-label" htmlFor="deviceNameInput">
-                  Nombre del dispositivo
-                </label>
-                <input
-                  id="deviceNameInput"
-                  className="onboarding-input"
-                  type="text"
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  placeholder="Ej: Piscina principal"
-                />
-              </div>
-            )}
+              <button type="button" className="onboarding-skip-link" onClick={handleConfigureLater} disabled={isSaving}>
+                Quiero configurar despues
+              </button>
+            </div>
           </section>
         )}
 

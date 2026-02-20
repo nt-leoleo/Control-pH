@@ -1,38 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Reglas para la colección de dispositivos
     match /devices/{deviceId} {
-      // Permitir lectura a usuarios autenticados
       allow read: if request.auth != null;
-      
-      // Permitir crear dispositivo si está autenticado
-      allow create: if request.auth != null 
-                    && request.resource.data.userId == request.auth.uid;
-      
-      // Permitir actualizar solo si es el dueño
-      allow update: if request.auth != null 
-                    && resource.data.userId == request.auth.uid;
-      
-      // Permitir eliminar solo si es el dueño
-      allow delete: if request.auth != null 
-                    && resource.data.userId == request.auth.uid;
+      // Sin restriccion de propietario para vincular el mismo dispositivo en varias cuentas.
+      allow create, update, delete: if request.auth != null;
     }
-    
-    // Reglas para la colección de usuarios
+
     match /users/{userId} {
-      // Solo el usuario puede leer y escribir sus propios datos
-      allow read, write: if request.auth != null 
-                         && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Reglas para configuración de administrador (opcional)
+
     match /adminConfig/{document=**} {
-      // Solo administradores pueden leer/escribir
-      // Por ahora, permitir a usuarios autenticados
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
   }
 }
