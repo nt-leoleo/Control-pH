@@ -7,6 +7,7 @@ import {
   reauthenticateWithPopup
 } from 'firebase/auth';
 import {
+  arrayRemove,
   collection,
   doc,
   getDoc,
@@ -32,20 +33,23 @@ export const useAuth = () => {
 
       if (userSnap.exists()) {
         setUserConfig(userSnap.data());
+      } else {
+        setUserConfig(null);
       }
     } catch (error) {
       console.error('Error cargando configuracion:', error);
+      setUserConfig(null);
     }
   }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setLoading(true);
       setUser(currentUser);
+      setUserConfig(null);
 
       if (currentUser) {
         await loadUserConfig(currentUser.uid);
-      } else {
-        setUserConfig(null);
       }
 
       setLoading(false);
@@ -98,13 +102,34 @@ export const useAuth = () => {
       const userRef = doc(db, 'users', uid);
       batch.delete(userRef);
 
-      const devicesQuery = query(
-        collection(db, 'devices'),
-        where('userId', '==', uid)
-      );
-      const devicesSnapshot = await getDocs(devicesQuery);
-      devicesSnapshot.forEach((deviceDoc) => {
-        batch.delete(deviceDoc.ref);
+      const [legacyDevicesSnapshot, linkedDevicesSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'devices'), where('userId', '==', uid))),
+        getDocs(query(collection(db, 'devices'), where('userIds', 'array-contains', uid)))
+      ]);
+
+      const devicesMap = new Map();
+      legacyDevicesSnapshot.forEach((deviceDoc) => devicesMap.set(deviceDoc.id, deviceDoc));
+      linkedDevicesSnapshot.forEach((deviceDoc) => devicesMap.set(deviceDoc.id, deviceDoc));
+
+      devicesMap.forEach((deviceDoc) => {
+        const deviceData = deviceDoc.data();
+        const linkedUserIds = Array.isArray(deviceData.userIds) ? deviceData.userIds : [];
+
+        if (linkedUserIds.length > 1) {
+          const remaining = linkedUserIds.filter((id) => id !== uid);
+          const updateData = {
+            userIds: arrayRemove(uid),
+            updatedAt: new Date()
+          };
+
+          if (deviceData.userId === uid && remaining.length > 0) {
+            updateData.userId = remaining[0];
+          }
+
+          batch.update(deviceDoc.ref, updateData);
+        } else {
+          batch.delete(deviceDoc.ref);
+        }
       });
 
       await batch.commit();

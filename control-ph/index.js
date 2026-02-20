@@ -26,6 +26,29 @@ setGlobalOptions({ maxInstances: 10 });
 const firestore = admin.firestore();
 const realtimeDb = admin.database();
 
+function getDeviceUserIds(deviceData = {}) {
+  const userIds = Array.isArray(deviceData.userIds) ? deviceData.userIds.filter(Boolean) : [];
+  if (userIds.length > 0) {
+    return [...new Set(userIds)];
+  }
+  if (deviceData.userId) {
+    return [deviceData.userId];
+  }
+  return [];
+}
+
+function sortCommandCandidates(a, b) {
+  const aCreated = Number(a.command?.createdAt || a.command?.timestamp || 0);
+  const bCreated = Number(b.command?.createdAt || b.command?.timestamp || 0);
+  if (aCreated !== bCreated) {
+    return aCreated - bCreated;
+  }
+  if (a.userId !== b.userId) {
+    return a.userId.localeCompare(b.userId);
+  }
+  return a.commandId.localeCompare(b.commandId);
+}
+
 // =====================================================
 // CLOUD FUNCTIONS - COMUNICACIÓN DIRECTA CON ARDUINO
 // =====================================================
@@ -66,15 +89,17 @@ exports.receiveSensorData = onRequest(async (req, res) => {
     }
     
     const deviceData = deviceDoc.data();
-    const userId = deviceData.userId;
+    const userIds = getDeviceUserIds(deviceData);
+
+    if (userIds.length === 0) {
+      logger.error(`❌ Dispositivo sin cuentas vinculadas: ${deviceId}`);
+      res.status(404).json({ error: 'Device has no linked users' });
+      return;
+    }
     
-    logger.info(`✅ Dispositivo encontrado. userId: ${userId}`);
-    
-    // Guardar en Firebase Realtime DB
-    const dataPath = `users/${userId}/sensorData`;
-    logger.info(`💾 Guardando en: ${dataPath}`);
-    
-    await realtimeDb.ref(dataPath).set({
+    logger.info(`✅ Dispositivo encontrado. cuentas vinculadas: ${userIds.join(', ')}`);
+
+    const sensorPayload = {
       ph: parseFloat(ph),
       voltage: parseFloat(voltage) || 0,
       wifiRSSI: parseInt(wifiRSSI) || -50,
@@ -82,11 +107,17 @@ exports.receiveSensorData = onRequest(async (req, res) => {
       timestamp: Date.now(),
       deviceId: deviceId,
       isRecent: true
-    });
+    };
+
+    await Promise.all(userIds.map(async (userId) => {
+      const dataPath = `users/${userId}/sensorData`;
+      logger.info(`💾 Guardando en: ${dataPath}`);
+      await realtimeDb.ref(dataPath).set(sensorPayload);
+    }));
     
-    logger.info(`✅ Datos guardados correctamente en ${dataPath}`);
+    logger.info(`✅ Datos guardados correctamente para ${userIds.length} cuenta(s)`);
     
-    res.json({ success: true, message: 'Data received', userId: userId });
+    res.json({ success: true, message: 'Data received', userIds });
     
   } catch (error) {
     logger.error('❌ Error:', error);
@@ -117,33 +148,50 @@ exports.getCommand = onRequest(async (req, res) => {
       return;
     }
     
-    const userId = deviceDoc.data().userId;
-    
-    // Buscar comandos pendientes
-    const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
-    const snapshot = await commandsRef
-      .orderByChild('status')
-      .equalTo('pending')
-      .once('value');
+    const userIds = getDeviceUserIds(deviceDoc.data());
 
-    if (!snapshot.exists()) {
+    if (userIds.length === 0) {
+      res.status(404).json({ error: 'Device has no linked users' });
+      return;
+    }
+
+    const commandCandidates = [];
+
+    for (const userId of userIds) {
+      const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
+      const snapshot = await commandsRef
+        .orderByChild('status')
+        .equalTo('pending')
+        .once('value');
+
+      if (!snapshot.exists()) {
+        continue;
+      }
+
+      const pendingCommands = snapshot.val() || {};
+      Object.entries(pendingCommands).forEach(([commandId, command]) => {
+        commandCandidates.push({
+          userId,
+          commandId,
+          command: command || {}
+        });
+      });
+    }
+
+    if (commandCandidates.length === 0) {
       res.json({ command: null });
       return;
     }
 
-    const pendingCommands = snapshot.val() || {};
-    const pendingEntries = Object.entries(pendingCommands);
-
-    // Prioridad absoluta para parada de emergencia.
-    const emergencyEntries = pendingEntries
-      .filter(([, command]) => command?.product === 'emergency_stop')
-      .sort((a, b) => a[0].localeCompare(b[0]));
+    const emergencyCandidates = commandCandidates
+      .filter((entry) => entry.command?.product === 'emergency_stop')
+      .sort(sortCommandCandidates);
 
     let selectedEntry = null;
-    if (emergencyEntries.length > 0) {
-      selectedEntry = emergencyEntries[0];
+    if (emergencyCandidates.length > 0) {
+      selectedEntry = emergencyCandidates[0];
     } else if (!isDosingInProgress) {
-      selectedEntry = pendingEntries.sort((a, b) => a[0].localeCompare(b[0]))[0] || null;
+      selectedEntry = commandCandidates.sort(sortCommandCandidates)[0];
     }
 
     if (!selectedEntry) {
@@ -151,18 +199,20 @@ exports.getCommand = onRequest(async (req, res) => {
       return;
     }
 
-    const [commandId, command] = selectedEntry;
+    const { userId, commandId, command } = selectedEntry;
+    const selectedCommandRef = realtimeDb.ref(`users/${userId}/commands/${commandId}`);
 
     // Marcar como "processing"
-    await commandsRef.child(commandId).update({
+    await selectedCommandRef.update({
       status: 'processing',
       processedAt: Date.now()
     });
 
-    logger.info(`📤 Comando enviado a ${deviceId}: ${command.product}, ${command.duration || 0}s`);
+    logger.info(`📤 Comando enviado a ${deviceId} (${userId}): ${command.product}, ${command.duration || 0}s`);
 
     res.json({
       commandId: commandId,
+      userId,
       product: command.product,
       duration: command.duration || 0
     });
@@ -187,7 +237,7 @@ exports.confirmCommand = onRequest(async (req, res) => {
   }
   
   try {
-    const { commandId, deviceId, status } = req.body;
+    const { commandId, deviceId, status, userId: requestedUserId } = req.body;
     
     if (!commandId || !deviceId || !status) {
       res.status(400).json({ error: 'Missing required fields' });
@@ -202,23 +252,54 @@ exports.confirmCommand = onRequest(async (req, res) => {
       return;
     }
     
-    const userId = deviceDoc.data().userId;
+    const deviceUserIds = getDeviceUserIds(deviceDoc.data());
+
+    if (deviceUserIds.length === 0) {
+      res.status(404).json({ error: 'Device has no linked users' });
+      return;
+    }
+
+    let commandUserId = null;
+
+    if (requestedUserId && deviceUserIds.includes(requestedUserId)) {
+      const requestedSnapshot = await realtimeDb
+        .ref(`users/${requestedUserId}/commands/${commandId}`)
+        .once('value');
+      if (requestedSnapshot.exists()) {
+        commandUserId = requestedUserId;
+      }
+    } else {
+      for (const candidateUserId of deviceUserIds) {
+        const commandSnapshot = await realtimeDb
+          .ref(`users/${candidateUserId}/commands/${commandId}`)
+          .once('value');
+        if (commandSnapshot.exists()) {
+          commandUserId = candidateUserId;
+          break;
+        }
+      }
+    }
+
+    if (!commandUserId) {
+      res.status(404).json({ error: 'Command owner not found for this device' });
+      return;
+    }
     
     // Actualizar comando
-    await realtimeDb.ref(`users/${userId}/commands/${commandId}`).update({
+    await realtimeDb.ref(`users/${commandUserId}/commands/${commandId}`).update({
       status: status,
       completedAt: Date.now()
     });
     
     // Registrar en historial
-    await realtimeDb.ref(`users/${userId}/dosingHistory`).push({
+    await realtimeDb.ref(`users/${commandUserId}/dosingHistory`).push({
       commandId: commandId,
       status: status,
       timestamp: Date.now(),
       deviceId: deviceId
     });
     
-    logger.info(`✅ Comando ${commandId} confirmado: ${status}`);
+    logger.info(`✅ Comando ${commandId} confirmado (${commandUserId}): ${status}`);
     
     res.json({ success: true });
     

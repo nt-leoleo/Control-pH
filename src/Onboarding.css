@@ -92,26 +92,23 @@
   padding: 0.55rem 0.65rem;
 }
 
-.onboarding-check {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-primary);
-  font-weight: 600;
-  margin-bottom: 0.65rem;
-}
-
-.onboarding-check input {
-  width: 17px;
-  height: 17px;
-  accent-color: var(--primary-color);
-}
-
 .onboarding-device-box {
   border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--bg-secondary) 68%, transparent);
   padding: 0.72rem;
+}
+
+.onboarding-skip-link {
+  margin-top: 0.18rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0.15rem 0;
 }
 
 .onboarding-footer {

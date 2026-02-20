@@ -116,6 +116,25 @@ export const PHProvider = ({ children }) => {
         }
     }, [userConfig, user]);
 
+    // Evita que quede estado viejo de otra cuenta cuando no hay configuracion cargada
+    useEffect(() => {
+        if (!user) {
+            setIsConfigured(false);
+            return;
+        }
+
+        if (!userConfig) {
+            try {
+                const localConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
+                if (Object.keys(localConfig).length === 0) {
+                    setIsConfigured(false);
+                }
+            } catch (error) {
+                setIsConfigured(false);
+            }
+        }
+    }, [user?.uid, userConfig]);
+
     // Función para guardar configuración en Firebase
     const saveConfigToFirebase = async (configUpdate) => {
         if (!user) return;
