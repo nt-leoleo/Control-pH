@@ -329,6 +329,43 @@
   background: rgba(244, 63, 94, 0.1);
 }
 
+.action-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.account-settings-section {
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.account-info-list .info-item {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.account-info-list .info-value {
+  text-align: right;
+  word-break: break-word;
+}
+
+.account-warning-text {
+  margin: 1rem 0 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.08);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.delete-account-btn {
+  width: 100%;
+  justify-content: center;
+  font-weight: 700;
+}
+
 /* ===== MODAL WIFI ===== */
 .wifi-modal-overlay {
   position: fixed;

@@ -1,27 +1,49 @@
-import { useContext, useState, useEffect } from 'react';
+﻿import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
-import { calculatePHChange, interpolatePhChange, validateDosage, getChemicalInfo } from './dosageCalculations';
+import { calculatePHChange, validateDosage, getChemicalInfo } from './dosageCalculations';
 import { sendDosingCommandToFirebase, waitForCommandConfirmation } from './esp32Communication-firebase';
 import { useAuth } from './useAuth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { getConfiguredProducts, getChemicalName } from './chemicalLabels';
 import './ManualDosing.css';
 
 const ManualDosing = () => {
-    const { manualDosingConfig, setManualDosingConfig, dosingHistory, setDosingHistory, setError, ph, setPH, poolVolume, alkalinity, esp32Connected } = useContext(PHContext);
+    const {
+        manualDosingConfig,
+        setManualDosingConfig,
+        setDosingHistory,
+        setError,
+        ph,
+        poolVolume,
+        alkalinity,
+        esp32Connected,
+        chlorineType,
+        acidType
+    } = useContext(PHContext);
     const { user } = useAuth();
-    const [isAnimating, setIsAnimating] = useState(false);
+    const [isAnimating] = useState(false);
     const [isDosing, setIsDosing] = useState(false);
-    const [dosingStatus, setDosingStatus] = useState(null);
     const [isInitialized, setIsInitialized] = useState(false);
+    const { raiseCode, lowerCode, raiseName, lowerName } = getConfiguredProducts(chlorineType, acidType);
+    const allowedProducts = Array.from(new Set([raiseCode, lowerCode]));
 
-    // Marcar como inicializado después del primer render
+    // Marcar como inicializado despuÃ©s del primer render
     useEffect(() => {
         const timer = setTimeout(() => setIsInitialized(true), 2000);
         return () => clearTimeout(timer);
     }, []);
 
-    // Guardar configuración en Firebase cuando cambie (solo después de inicializar)
+    useEffect(() => {
+        if (!allowedProducts.includes(manualDosingConfig.product)) {
+            setManualDosingConfig(prev => ({
+                ...prev,
+                product: raiseCode
+            }));
+        }
+    }, [allowedProducts, manualDosingConfig.product, raiseCode, setManualDosingConfig]);
+
+    // Guardar configuraciÃ³n en Firebase cuando cambie (solo despuÃ©s de inicializar)
     useEffect(() => {
         if (!isInitialized) return; // No guardar durante la carga inicial
         
@@ -38,14 +60,14 @@ const ManualDosing = () => {
                             lastUpdated: new Date().toISOString()
                         }
                     }, { merge: true });
-                    console.log('💾 Configuración de dosificación guardada:', {
+                    console.log('ðŸ’¾ ConfiguraciÃ³n de dosificaciÃ³n guardada:', {
                         product: manualDosingConfig.product,
                         minutes: manualDosingConfig.minutes,
                         seconds: manualDosingConfig.seconds,
                         liters: manualDosingConfig.liters
                     });
                 } catch (error) {
-                    console.error('❌ Error guardando configuración:', error);
+                    console.error('âŒ Error guardando configuraciÃ³n:', error);
                 }
             }
         };
@@ -55,7 +77,7 @@ const ManualDosing = () => {
         return () => clearTimeout(timeoutId);
     }, [user, manualDosingConfig, isInitialized]);
 
-    // Calcular el pH estimado después de la dosificación
+    // Calcular el pH estimado despuÃ©s de la dosificaciÃ³n
     const calculateEstimatedPH = () => {
         const { product, liters } = manualDosingConfig;
         
@@ -113,22 +135,22 @@ const ManualDosing = () => {
                 throw new Error('Volumen de piscina no configurado');
             }
 
-            // Validar dosificación
+            // Validar dosificaciÃ³n
             const validation = validateDosage(product, liters, poolVolume, ph);
             if (!validation.valid) {
                 setError({ type: 'warning', message: validation.message });
                 return;
             }
 
-            // Calcular duración total en segundos
+            // Calcular duraciÃ³n total en segundos
             const totalSeconds = (minutes * 60) + seconds;
             
             if (totalSeconds <= 0) {
-                throw new Error('La duración debe ser mayor a 0 segundos');
+                throw new Error('La duraciÃ³n debe ser mayor a 0 segundos');
             }
 
             if (totalSeconds > 300) {
-                throw new Error('Duración máxima: 5 minutos (300 segundos)');
+                throw new Error('DuraciÃ³n mÃ¡xima: 5 minutos (300 segundos)');
             }
 
             if (!user?.uid) {
@@ -136,27 +158,27 @@ const ManualDosing = () => {
             }
 
             setIsDosing(true);
-            setError({ type: 'info', message: '⏳ Enviando comando a Firebase...' });
+            setError({ type: 'info', message: 'â³ Enviando comando a Firebase...' });
 
-            console.log('🔧 [ManualDosing] Enviando comando vía Firebase');
+            console.log('ðŸ”§ [ManualDosing] Enviando comando vÃ­a Firebase');
             
             // Enviar comando a Firebase Realtime Database
             const result = await sendDosingCommandToFirebase(user.uid, product, totalSeconds);
             
             if (result.success) {
                 const commandId = result.commandId;
-                console.log(`📤 [ManualDosing] Comando enviado (ID: ${commandId})`);
+                console.log(`ðŸ“¤ [ManualDosing] Comando enviado (ID: ${commandId})`);
                 
                 setError({ 
                     type: 'info', 
-                    message: `⏳ Arduino ejecutando dosificación (${totalSeconds}s)... Esperando confirmación` 
+                    message: `â³ Arduino ejecutando dosificaciÃ³n (${totalSeconds}s)... Esperando confirmaciÃ³n` 
                 });
                 
-                // Esperar confirmación del Arduino (máximo 60 segundos)
+                // Esperar confirmaciÃ³n del Arduino (mÃ¡ximo 60 segundos)
                 const confirmed = await waitForCommandConfirmation(user.uid, commandId, 60000);
                 
                 if (confirmed) {
-                    console.log('✅ [ManualDosing] Arduino confirmó que terminó la dosificación');
+                    console.log('âœ… [ManualDosing] Arduino confirmÃ³ que terminÃ³ la dosificaciÃ³n');
                     
                     // Calcular cambio de pH
                     const phChange = calculatePHChange(product, liters, poolVolume, alkalinity);
@@ -184,90 +206,70 @@ const ManualDosing = () => {
 
                     setDosingHistory(prev => [...prev, dosingRecord]);
                     
-                    // Mensaje de éxito
+                    // Mensaje de Ã©xito
                     const isPhPlus = product === 'sodium-hypochlorite' || product === 'calcium-hypochlorite';
                     const relayNum = isPhPlus ? '1' : '2';
                     setError({ 
                         type: 'success', 
-                        message: `✅ Dosificación completada y confirmada: ${liters}L de ${chemInfo.name} (Relé ${relayNum})` 
+                        message: `âœ… DosificaciÃ³n completada y confirmada: ${liters}L de ${chemInfo.name} (RelÃ© ${relayNum})` 
                     });
                 } else {
-                    console.warn('⚠️ [ManualDosing] No se recibió confirmación del Arduino (timeout)');
+                    console.warn('âš ï¸ [ManualDosing] No se recibiÃ³ confirmaciÃ³n del Arduino (timeout)');
                     setError({ 
                         type: 'warning', 
-                        message: `⚠️ Comando enviado pero no se recibió confirmación del Arduino. Verifica que esté conectado.` 
+                        message: `âš ï¸ Comando enviado pero no se recibiÃ³ confirmaciÃ³n del Arduino. Verifica que estÃ© conectado.` 
                     });
                 }
                 
                 setIsDosing(false);
-                setDosingStatus(null);
 
             } else {
-                throw new Error(result.message || 'Error enviando comando de dosificación');
+                throw new Error(result.message || 'Error enviando comando de dosificaciÃ³n');
             }
 
         } catch (err) {
-            console.error('❌ [ManualDosing] Error en dosificación:', err);
+            console.error('âŒ [ManualDosing] Error en dosificaciÃ³n:', err);
             setError({ type: 'error', message: err.message });
             setIsDosing(false);
-            setDosingStatus(null);
         }
+    };
+
+    const productDirectionLabel = (product) => {
+        if (product === raiseCode) return 'Subir pH';
+        if (product === lowerCode) return 'Bajar pH';
+        return 'Correccion';
+    };
+
+    const productRelayLabel = (product) => {
+        return ['muriatic', 'bisulfate', 'chlorine-gas'].includes(product)
+            ? 'Relay 2 (GPIO 5)'
+            : 'Relay 1 (GPIO 4)';
     };
 
     return (
         <div className="manualDosingContainer">
-            <h3>Dosificación Manual</h3>
+            <h3>DosificaciÃ³n Manual</h3>
             
             <div className="dosingSection">
                 <label>Producto a aplicar:</label>
                 <div className="productButtons">
-                    <button 
-                        className={`productBtn ${manualDosingConfig.product === 'sodium-hypochlorite' ? 'active' : ''}`}
-                        onClick={() => handleProductChange('sodium-hypochlorite')}
-                        disabled={isAnimating}
-                    >
-                        ↑ Hipoclorito de Sodio (Sube pH)
-                        <small style={{ display: 'block', fontSize: '0.75em', marginTop: '0.3em', opacity: 0.8 }}>
-                            🔌 Relé 1 (GPIO 4)
-                        </small>
-                    </button>
-                    <button 
-                        className={`productBtn ${manualDosingConfig.product === 'muriatic' ? 'active' : ''}`}
-                        onClick={() => handleProductChange('muriatic')}
-                        disabled={isAnimating}
-                    >
-                        ↓ Ácido Muriático (Baja pH)
-                        <small style={{ display: 'block', fontSize: '0.75em', marginTop: '0.3em', opacity: 0.8 }}>
-                            🔌 Relé 2 (GPIO 5)
-                        </small>
-                    </button>
+                    {allowedProducts.map((product) => (
+                        <button 
+                            key={product}
+                            className={`productBtn ${manualDosingConfig.product === product ? 'active' : ''}`}
+                            onClick={() => handleProductChange(product)}
+                            disabled={isAnimating}
+                        >
+                            {productDirectionLabel(product)} - {getChemicalName(product)}
+                            <small style={{ display: 'block', fontSize: '0.75em', marginTop: '0.3em', opacity: 0.8 }}>
+                                {productRelayLabel(product)}
+                            </small>
+                        </button>
+                    ))}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5em' }}>
-                    <button 
-                        className={`productBtn small ${manualDosingConfig.product === 'calcium-hypochlorite' ? 'active' : ''}`}
-                        onClick={() => handleProductChange('calcium-hypochlorite')}
-                        disabled={isAnimating}
-                        title="Relé 1 (GPIO 4)"
-                    >
-                        Hipoclorito Ca
-                    </button>
-                    <button 
-                        className={`productBtn small ${manualDosingConfig.product === 'bisulfate' ? 'active' : ''}`}
-                        onClick={() => handleProductChange('bisulfate')}
-                        disabled={isAnimating}
-                        title="Relé 2 (GPIO 5)"
-                    >
-                        Bisulfato
-                    </button>
-                    <button 
-                        className={`productBtn small ${manualDosingConfig.product === 'chlorine-gas' ? 'active' : ''}`}
-                        onClick={() => handleProductChange('chlorine-gas')}
-                        disabled={isAnimating}
-                        title="Relé 2 (GPIO 5)"
-                    >
-                        Cloro Gas
-                    </button>
-                </div>
+                <small style={{ display: 'block', marginTop: '0.5em', opacity: 0.75 }}>
+                    Productos configurados: subir pH con {raiseName} y bajar pH con {lowerName}.
+                </small>
             </div>
 
             <div className="dosingSection">
@@ -315,7 +317,7 @@ const ManualDosing = () => {
             {phEstimate && (
                 <div className="phEstimateSection">
                     <div className="estimateHeader">
-                        <span>📊 Estimado después de dosificar:</span>
+                        <span>ðŸ“Š Estimado despuÃ©s de dosificar:</span>
                     </div>
                     <div className={`phEstimate ${phEstimate.isValid ? 'valid' : 'warning'}`}>
                         <div className="estimateRow">
@@ -336,20 +338,20 @@ const ManualDosing = () => {
                         </div>
                         {!phEstimate.isValid && (
                             <div className="warningText">
-                                ⚠️ pH fuera del rango seguro (6.0 - 8.5)
+                                âš ï¸ pH fuera del rango seguro (6.0 - 8.5)
                             </div>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* Indicador de conexión ESP32 */}
+            {/* Indicador de conexiÃ³n ESP32 */}
             <div className="esp32-connection-status">
                 <span className={`connection-indicator ${esp32Connected ? 'connected' : 'disconnected'}`}>
-                    {esp32Connected ? '🟢 ESP32 Conectado' : '🔴 ESP32 Desconectado'}
+                    {esp32Connected ? 'ðŸŸ¢ ESP32 Conectado' : 'ðŸ”´ ESP32 Desconectado'}
                 </span>
                 {!esp32Connected && (
-                    <small>Los comandos de dosificación requieren conexión con el ESP32</small>
+                    <small>Los comandos de dosificaciÃ³n requieren conexiÃ³n con el ESP32</small>
                 )}
             </div>
 
@@ -358,9 +360,9 @@ const ManualDosing = () => {
                 onClick={handleDosify}
                 disabled={isAnimating || isDosing || !esp32Connected}
             >
-                {isDosing ? '⏳ Dosificando... Esperando ESP32' : 
-                 isAnimating ? '📊 Simulando cambio...' : 
-                 !esp32Connected ? '🔴 ESP32 Desconectado' :
+                {isDosing ? 'â³ Dosificando... Esperando ESP32' : 
+                 isAnimating ? 'ðŸ“Š Simulando cambio...' : 
+                 !esp32Connected ? 'ðŸ”´ ESP32 Desconectado' :
                  'DOSIFICAR'}
             </button>
         </div>
@@ -368,3 +370,4 @@ const ManualDosing = () => {
 };
 
 export default ManualDosing;
+

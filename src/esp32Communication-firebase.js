@@ -121,7 +121,7 @@ export const subscribeToPHData = (userId, callback) => {
     console.log('🔌 [Firebase] Suscribiéndose a:', `users/${userId}/sensorData`);
     const sensorDataRef = ref(database, `users/${userId}/sensorData`);
     
-    const unsubscribe = onValue(sensorDataRef, (snapshot) => {
+    onValue(sensorDataRef, (snapshot) => {
         console.log('📡 [Firebase] Snapshot recibido, existe:', snapshot.exists());
         
         if (snapshot.exists()) {
@@ -334,7 +334,7 @@ export const subscribeToSystemStatus = (userId, callback) => {
 
     const statusRef = ref(database, `users/${userId}/systemStatus`);
     
-    const unsubscribe = onValue(statusRef, (snapshot) => {
+    onValue(statusRef, (snapshot) => {
         if (snapshot.exists()) {
             callback(snapshot.val());
         }
@@ -354,7 +354,7 @@ function getPHStatus(ph) {
         return {
             status: 'acidic',
             label: 'Ácido',
-            description: 'pH bajo - Necesita agregar pH+',
+            description: 'pH bajo - Necesita subir pH',
             color: '#FF5722',
             icon: '🔴'
         };
@@ -362,7 +362,7 @@ function getPHStatus(ph) {
         return {
             status: 'basic',
             label: 'Básico',
-            description: 'pH alto - Necesita agregar pH-',
+            description: 'pH alto - Necesita bajar pH',
             color: '#9C27B0',
             icon: '🟣'
         };

@@ -1,10 +1,59 @@
 .configButton {
-	background: transparent;
-	border: none;
-	padding: 0.4em;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 10px;
+  min-height: 38px;
+  padding: 0.45rem 0.62rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.8rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
 }
-.configButton:active { background-color: rgba(127, 255, 212, 0.082); }
+
+.configButton:hover {
+  color: var(--text-primary);
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 20px rgba(6, 182, 212, 0.18);
+}
+
+.configButton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -140%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  transform: skewX(-16deg);
+  transition: left 0.45s ease;
+}
+
+.configButton:hover::after {
+  left: 150%;
+}
+
+.configButton .icon {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.configButtonLabel {
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 480px) {
+  .configButtonLabel {
+    display: none;
+  }
+
+  .configButton {
+    min-height: 34px;
+    padding: 0.42rem 0.52rem;
+  }
+}

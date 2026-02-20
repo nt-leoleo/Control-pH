@@ -1,67 +1,49 @@
-import './PHBar.css'
+import './PHBar.css';
 import { useContext } from 'react';
 import { PHContext } from './PHContext';
 
-const PHBar = ({ph}) => {
-    const { phTolerance, phToleranceRange } = useContext(PHContext);
-    const minPH = 0;  // Rango completo de pH
-    const maxPH = 14; // Rango completo de pH
-    const cursorPosition = () => ((ph - minPH) / (maxPH - minPH)) * 100
-    const minRangePH = phTolerance - phToleranceRange;
-    const maxRangePH = phTolerance + phToleranceRange;
-    const minRangePosition = ((minRangePH - minPH) / (maxPH - minPH)) * 100;
-    const maxRangePosition = ((maxRangePH - minPH) / (maxPH - minPH)) * 100;
+const PHBar = ({ ph }) => {
+  const { phTolerance, phToleranceRange } = useContext(PHContext);
+  const minPH = 0;
+  const maxPH = 14;
 
-    // Generar gradiente dinámico basado en la configuración
-    const gradientStyle = {
-        background: `linear-gradient(
-            to right,
-            #ef4444 0%,
-            #ef4444 ${Math.max(0, minRangePosition)}%,
-            #22c55e ${Math.max(0, minRangePosition)}%,
-            #22c55e ${Math.min(100, maxRangePosition)}%,
-            #f59e0b ${Math.min(100, maxRangePosition)}%,
-            #f59e0b 100%
-        )`
-    };
+  const markerPosition = Math.min(100, Math.max(0, ((ph - minPH) / (maxPH - minPH)) * 100));
 
-    return (
-        <div className="barContainer">
-            <div className="barLabels">
-                <span 
-                    className="label" 
-                    style={{left: `0`}}
-                >
-                    0
-                </span>
-                <span 
-                    className="label" 
-                    style={{left: `${(7 / 14) * 100}%`}}
-                >
-                    7 (Neutro)
-                </span>
-                <span 
-                    className="label ideal" 
-                    style={{left: `${((phTolerance - minPH) / (maxPH - minPH)) * 100}%`}}
-                >
-                    {phTolerance.toFixed(1)} (Ideal)
-                </span>
-                <span 
-                    className="label" 
-                    style={{right: `0`}}
-                >
-                    14
-                </span>
-            </div>
-            <div className="bar">
-                <div className="gradientBg" style={gradientStyle} />
-                <div 
-                    className="indicatorCursor" 
-                    style={{left: `${cursorPosition()}%`}}
-                />
-            </div>
-        </div>
-    );
-}
+  const idealMin = phTolerance - phToleranceRange;
+  const idealMax = phTolerance + phToleranceRange;
+  const idealLeft = Math.max(0, ((idealMin - minPH) / (maxPH - minPH)) * 100);
+  const idealRight = Math.min(100, ((idealMax - minPH) / (maxPH - minPH)) * 100);
+
+  return (
+    <section className="ph-scale">
+      <div className="ph-scale-header">
+        <h3>Escala de pH</h3>
+        <span className="ph-scale-current">Actual {ph.toFixed(2)}</span>
+      </div>
+
+      <div className="ph-scale-track">
+        <div className="ph-scale-gradient"></div>
+        <div
+          className="ph-scale-target"
+          style={{
+            left: `${idealLeft}%`,
+            width: `${Math.max(0, idealRight - idealLeft)}%`,
+          }}
+        ></div>
+        <div className="ph-scale-marker" style={{ left: `${markerPosition}%` }}></div>
+      </div>
+
+      <div className="ph-scale-labels">
+        <span>0</span>
+        <span>7</span>
+        <span>14</span>
+      </div>
+
+      <p className="ph-scale-range">
+        Rango ideal configurado: {idealMin.toFixed(1)} - {idealMax.toFixed(1)}
+      </p>
+    </section>
+  );
+};
 
 export default PHBar;

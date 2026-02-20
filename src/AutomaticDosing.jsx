@@ -1,334 +1,290 @@
 import { useContext, useEffect, useState, useRef } from 'react';
 import { PHContext } from './PHContext';
-import { getChemicalInfo } from './dosageCalculations';
 import { useAuth } from './useAuth';
 import { ref, onValue } from 'firebase/database';
 import { database } from './firebase';
+import { getChemicalName, getConfiguredProducts } from './chemicalLabels';
 import './AutomaticDosing.css';
 
 const AutomaticDosing = () => {
-    const { 
-        ph, 
-        phTolerance, 
-        phToleranceRange, 
-        dosingMode,
-        userConfig
-    } = useContext(PHContext);
+  const { ph, phTolerance, phToleranceRange, dosingMode, userConfig, chlorineType, acidType } =
+    useContext(PHContext);
+  const { user } = useAuth();
 
-    const { user } = useAuth();
-    const [backendStatus, setBackendStatus] = useState(null);
-    const [lastDosingEvent, setLastDosingEvent] = useState(null);
-    const [dosingState, setDosingState] = useState(null);
-    const lastForceCheckRef = useRef(0);
-    
-    // Configuración por defecto del administrador
-    const adminConfig = userConfig?.adminConfig || {
-        minWaitTimeBetweenDoses: 0.5,
-        maxDailyDoses: 10,
-        checkInterval: 1,
-        minPH: 6.0,
-        maxPH: 8.5
+  const [lastDosingEvent, setLastDosingEvent] = useState(null);
+  const [dosingState, setDosingState] = useState(null);
+  const lastForceCheckRef = useRef(0);
+
+  const adminConfig = userConfig?.adminConfig || {
+    minWaitTimeBetweenDoses: 0.5,
+    maxDailyDoses: 10,
+    checkInterval: 1,
+    minPH: 6.0,
+    maxPH: 8.5,
+  };
+
+  useEffect(() => {
+    if (!user || dosingMode !== 'automatic') return;
+
+    const timeoutId = setTimeout(() => {
+      if (!dosingState) {
+        setDosingState({
+          initialized: false,
+          message: 'Conectando...',
+        });
+      }
+    }, 2000);
+
+    const dosingStateRef = ref(database, `users/${user.uid}/dosingState`);
+    const unsubscribeState = onValue(
+      dosingStateRef,
+      (snapshot) => {
+        clearTimeout(timeoutId);
+        if (snapshot.exists()) {
+          setDosingState({ ...snapshot.val(), initialized: true });
+        } else {
+          setDosingState({
+            initialized: true,
+            message: 'Sin correcciones previas',
+          });
+        }
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        setDosingState({
+          initialized: true,
+          error: error.message,
+        });
+      }
+    );
+
+    const historyRef = ref(database, `users/${user.uid}/dosingHistory`);
+    const unsubscribeHistory = onValue(historyRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      const history = snapshot.val();
+      const events = Object.values(history);
+      const lastEvent = events.sort((a, b) => b.timestamp - a.timestamp)[0];
+      setLastDosingEvent(lastEvent);
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribeState();
+      unsubscribeHistory();
     };
+  }, [user, dosingMode]);
 
-    // Escuchar estado del backend (Cloud Functions)
-    useEffect(() => {
-        if (!user || dosingMode !== 'automatic') return;
+  useEffect(() => {
+    if (!user || dosingMode !== 'automatic') return;
+    if (!dosingState?.initialized) return;
 
-        console.log('🔌 Conectando con Firebase Realtime Database...');
-        
-        // Inicializar estado vacío después de 2 segundos si no hay datos
-        const timeoutId = setTimeout(() => {
-            if (!dosingState) {
-                console.log('⚠️ No hay datos del backend aún, mostrando estado inicial');
-                setDosingState({
-                    initialized: false,
-                    message: 'Backend iniciando...'
-                });
-            }
-        }, 2000);
+    const minWaitHours =
+      adminConfig.minWaitTimeBetweenDoses !== undefined ? adminConfig.minWaitTimeBetweenDoses : 0.5;
 
-        // Escuchar estado de dosificación
-        const dosingStateRef = ref(database, `users/${user.uid}/dosingState`);
-        const unsubscribeState = onValue(dosingStateRef, (snapshot) => {
-            clearTimeout(timeoutId);
-            if (snapshot.exists()) {
-                const state = snapshot.val();
-                setDosingState({ ...state, initialized: true });
-                console.log('📊 Estado de dosificación actualizado:', state);
-            } else {
-                console.log('ℹ️ No hay estado de dosificación guardado');
-                setDosingState({
-                    initialized: true,
-                    message: 'Sin dosificaciones previas'
-                });
-            }
-        }, (error) => {
-            console.error('❌ Error leyendo dosingState:', error);
-            clearTimeout(timeoutId);
-            setDosingState({
-                initialized: true,
-                error: error.message
-            });
-        });
+    if (minWaitHours !== 0) return;
 
-        // Escuchar último evento de dosificación
-        const historyRef = ref(database, `users/${user.uid}/dosingHistory`);
-        const unsubscribeHistory = onValue(historyRef, (snapshot) => {
-            if (snapshot.exists()) {
-                const history = snapshot.val();
-                const events = Object.values(history);
-                // Obtener el último evento
-                const lastEvent = events.sort((a, b) => b.timestamp - a.timestamp)[0];
-                setLastDosingEvent(lastEvent);
-                console.log('📝 Último evento de dosificación:', lastEvent);
-            } else {
-                console.log('ℹ️ No hay historial de dosificación');
-            }
-        }, (error) => {
-            console.error('❌ Error leyendo historial:', error);
-        });
-
-        return () => {
-            clearTimeout(timeoutId);
-            unsubscribeState();
-            unsubscribeHistory();
-        };
-    }, [user, dosingMode]);
-
-    // Verificación inmediata cuando pH está fuera de rango y minWaitTimeBetweenDoses es 0
-    useEffect(() => {
-        if (!user || dosingMode !== 'automatic') return;
-        if (!dosingState?.initialized) return;
-        
-        const minWaitHours = adminConfig.minWaitTimeBetweenDoses !== undefined 
-            ? adminConfig.minWaitTimeBetweenDoses 
-            : 0.5;
-        
-        // Solo activar verificación inmediata si minWaitTimeBetweenDoses es 0
-        if (minWaitHours !== 0) return;
-        
-        const deviation = ph - phTolerance;
-        const isOutOfRange = Math.abs(deviation) > phToleranceRange;
-        
-        if (!isOutOfRange) return;
-        
-        // Evitar llamadas muy frecuentes (máximo cada 10 segundos)
-        const now = Date.now();
-        if (now - lastForceCheckRef.current < 10000) return;
-        
-        lastForceCheckRef.current = now;
-        
-        console.log('🚀 pH fuera de rango con espera=0, forzando verificación inmediata...');
-        
-        // Llamar a forceCheck
-        const forceCheck = async () => {
-            try {
-                const response = await fetch(
-                    'https://us-central1-control-ph-82951.cloudfunctions.net/forceCheck',
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: user.uid })
-                    }
-                );
-                
-                if (response.ok) {
-                    console.log('✅ Verificación forzada exitosa');
-                } else {
-                    console.error('❌ Error en verificación forzada:', await response.text());
-                }
-            } catch (error) {
-                console.error('❌ Error llamando forceCheck:', error);
-            }
-        };
-        
-        forceCheck();
-        
-    }, [user, dosingMode, ph, phTolerance, phToleranceRange, adminConfig.minWaitTimeBetweenDoses, dosingState?.initialized]);
-
-    // No mostrar nada si no está en modo automático
-    if (dosingMode !== 'automatic') return null;
-
-    // Calcular desviación actual
     const deviation = ph - phTolerance;
     const isOutOfRange = Math.abs(deviation) > phToleranceRange;
+    if (!isOutOfRange) return;
 
-    // Determinar estado del sistema
-    const getSystemStatus = () => {
-        if (!dosingState) {
-            return { icon: '🔄', text: 'Conectando con backend...', status: 'connecting' };
-        }
+    const now = Date.now();
+    if (now - lastForceCheckRef.current < 10000) return;
+    lastForceCheckRef.current = now;
 
-        if (!dosingState.initialized) {
-            return { icon: '🔄', text: dosingState.message || 'Inicializando...', status: 'connecting' };
-        }
-
-        if (dosingState.error) {
-            return { 
-                icon: '❌', 
-                text: `Error: ${dosingState.error}`, 
-                status: 'error' 
-            };
-        }
-
-        const timeSinceLastDosing = dosingState.lastDosingTime 
-            ? Date.now() - dosingState.lastDosingTime 
-            : null;
-
-        // Calcular tiempo de espera desde la configuración del administrador
-        const minWaitHours = adminConfig.minWaitTimeBetweenDoses !== undefined 
-            ? adminConfig.minWaitTimeBetweenDoses 
-            : 0.5;
-        const waitTimeMs = minWaitHours * 60 * 60 * 1000;
-
-        // Si dosificó hace menos del tiempo configurado, está en espera
-        // Solo mostrar espera si el tiempo configurado es mayor a 0
-        if (minWaitHours > 0 && timeSinceLastDosing && timeSinceLastDosing < waitTimeMs) {
-            const remainingMinutes = Math.ceil((waitTimeMs - timeSinceLastDosing) / 60000);
-            return { 
-                icon: '⏳', 
-                text: `Esperando mezcla (${remainingMinutes} min)`, 
-                status: 'waiting' 
-            };
-        }
-
-        // Si el pH está fuera de rango
-        if (isOutOfRange) {
-            return { 
-                icon: '⚠️', 
-                text: 'pH fuera de rango - Backend dosificará pronto', 
-                status: 'alert' 
-            };
-        }
-
-        // pH en rango, monitoreando
-        return { 
-            icon: '✅', 
-            text: 'pH en rango - Monitoreando', 
-            status: 'monitoring' 
-        };
+    const forceCheck = async () => {
+      try {
+        await fetch('https://us-central1-control-ph-82951.cloudfunctions.net/forceCheck', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid }),
+        });
+      } catch (error) {
+        console.error('Error llamando forceCheck:', error);
+      }
     };
 
-    const systemStatus = getSystemStatus();
+    forceCheck();
+  }, [
+    user,
+    dosingMode,
+    ph,
+    phTolerance,
+    phToleranceRange,
+    adminConfig.minWaitTimeBetweenDoses,
+    dosingState?.initialized,
+  ]);
 
-    return (
-        <div className="automatic-dosing-container">
-            <h3>🤖 Modo Automático - Backend 24/7</h3>
-            
-            <div className={`auto-status ${systemStatus.status}`}>
-                <div className="status-indicator">
-                    <span className="status-icon">{systemStatus.icon}</span>
-                    <span className="status-text">{systemStatus.text}</span>
-                </div>
+  if (dosingMode !== 'automatic') return null;
 
-                <div className="status-details">
-                    <div className="detail-row">
-                        <span>pH Objetivo:</span>
-                        <span className="value">{phTolerance.toFixed(1)} ± {phToleranceRange.toFixed(1)}</span>
-                    </div>
-                    <div className="detail-row">
-                        <span>pH Actual:</span>
-                        <span className={`value ${isOutOfRange ? 'out-of-range' : 'in-range'}`}>
-                            {ph.toFixed(2)}
-                        </span>
-                    </div>
-                    <div className="detail-row">
-                        <span>Desviación:</span>
-                        <span className={`value ${isOutOfRange ? 'warning' : 'ok'}`}>
-                            {deviation >= 0 ? '+' : ''}{deviation.toFixed(2)}
-                        </span>
-                    </div>
-                </div>
+  const deviation = ph - phTolerance;
+  const isOutOfRange = Math.abs(deviation) > phToleranceRange;
+  const minIdeal = (phTolerance - phToleranceRange).toFixed(1);
+  const maxIdeal = (phTolerance + phToleranceRange).toFixed(1);
+  const { raiseName, lowerName } = getConfiguredProducts(chlorineType, acidType);
 
-                {dosingState && dosingState.initialized && !dosingState.error && (
-                    <div className="backend-info">
-                        <h4>📊 Estado del Backend</h4>
-                        {dosingState.message ? (
-                            <p style={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', padding: '1em' }}>
-                                {dosingState.message}
-                            </p>
-                        ) : (
-                            <div className="info-grid">
-                                {dosingState.lastDosingTime && (
-                                    <div className="info-item">
-                                        <span className="info-label">Última dosificación:</span>
-                                        <span className="info-value">
-                                            {new Date(dosingState.lastDosingTime).toLocaleString()}
-                                        </span>
-                                    </div>
-                                )}
-                                {dosingState.lastProduct && (
-                                    <div className="info-item">
-                                        <span className="info-label">Producto usado:</span>
-                                        <span className="info-value">
-                                            {dosingState.lastProduct === 'ph_plus' ? 'pH+ (Soda Ash)' : 'pH- (Acido)'}
-                                        </span>
-                                    </div>
-                                )}
-                                {dosingState.lastDuration && (
-                                    <div className="info-item">
-                                        <span className="info-label">Duración:</span>
-                                        <span className="info-value">{dosingState.lastDuration}s</span>
-                                    </div>
-                                )}
-                                {dosingState.dosingCountToday !== undefined && (
-                                    <div className="info-item">
-                                        <span className="info-label">Dosificaciones hoy:</span>
-                                        <span className="info-value">
-                                            {dosingState.dosingCountToday} / {adminConfig.maxDailyDoses || 10}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
+  const getProductLabel = (product) => {
+    if (!product) return '-';
+    if (product === 'ph_plus') return `Subio pH (${raiseName})`;
+    if (product === 'ph_minus') return `Bajo pH (${lowerName})`;
+    return getChemicalName(product);
+  };
 
-                {lastDosingEvent && (
-                    <div className="last-event">
-                        <h4>📝 Último Evento</h4>
-                        <div className="event-details">
-                            <p><strong>Fecha:</strong> {new Date(lastDosingEvent.timestamp).toLocaleString()}</p>
-                            <p><strong>Producto:</strong> {lastDosingEvent.product === 'ph_plus' ? 'pH+' : 'pH-'}</p>
-                            <p><strong>Duración:</strong> {lastDosingEvent.duration}s</p>
-                            <p><strong>pH antes:</strong> {lastDosingEvent.phBefore?.toFixed(2)}</p>
-                            <p><strong>pH objetivo:</strong> {lastDosingEvent.phTarget?.toFixed(2)}</p>
-                            <p><strong>Desviación:</strong> {lastDosingEvent.deviation?.toFixed(2)}</p>
-                        </div>
-                    </div>
-                )}
-            </div>
+  const getPHDeviationLevel = () => {
+    const absDeviation = Math.abs(deviation);
+    const veryThreshold = Math.max(phToleranceRange * 2, 0.8);
 
-            <div className="auto-info">
-                <h4>ℹ️ Información del Sistema</h4>
-                <ul>
-                    <li>✅ Cloud Functions activas 24/7</li>
-                    <li>🔄 Verificación automática cada {
-                        adminConfig.checkInterval === 0 || adminConfig.checkInterval < 1 
-                            ? '1 minuto (mínimo de Cloud Functions)' 
-                            : `${adminConfig.checkInterval} minuto(s)`
-                    }</li>
-                    <li>⏱️ Tiempo de espera entre dosificaciones: {
-                        adminConfig.minWaitTimeBetweenDoses === 0 
-                            ? 'Sin espera (inmediato)' 
-                            : `${adminConfig.minWaitTimeBetweenDoses !== undefined ? adminConfig.minWaitTimeBetweenDoses : 0.5} hora(s)`
-                    }</li>
-                    {adminConfig.minWaitTimeBetweenDoses === 0 && (
-                        <li>⚡ Modo rápido: Verificación inmediata cuando pH está fuera de rango</li>
-                    )}
-                    <li>🛡️ Límite diario: {adminConfig.maxDailyDoses || 10} dosificaciones</li>
-                    <li>📊 Rango seguro de pH: {adminConfig.minPH || 6.0} - {adminConfig.maxPH || 8.5}</li>
-                    <li>🌐 No requiere app abierta para funcionar</li>
-                </ul>
-                <div className="backend-status">
-                    <p>
-                        <strong>Estado:</strong> El backend está monitoreando tu piscina continuamente.
-                        Cuando el pH salga del rango configurado, dosificará automáticamente.
-                    </p>
-                </div>
-            </div>
+    if (deviation < 0) {
+      return {
+        title: absDeviation >= veryThreshold ? 'pH muy bajo' : 'pH bajo',
+        actionText: 'El sistema va a subir el pH automaticamente.',
+      };
+    }
+
+    return {
+      title: absDeviation >= veryThreshold ? 'pH muy alto' : 'pH alto',
+      actionText: 'El sistema va a bajar el pH automaticamente.',
+    };
+  };
+
+  const getSystemStatus = () => {
+    if (!dosingState) {
+      return {
+        icon: '⏳',
+        title: 'Conectando',
+        text: 'Estamos preparando el modo automatico.',
+        status: 'connecting',
+      };
+    }
+
+    if (!dosingState.initialized) {
+      return {
+        icon: '⏳',
+        title: 'Conectando',
+        text: dosingState.message || 'Estamos preparando el modo automatico.',
+        status: 'connecting',
+      };
+    }
+
+    if (dosingState.error) {
+      return {
+        icon: '⚠️',
+        title: 'No pudimos conectar',
+        text: 'Vamos a reintentar automaticamente.',
+        status: 'error',
+      };
+    }
+
+    const timeSinceLastDosing = dosingState.lastDosingTime
+      ? Date.now() - dosingState.lastDosingTime
+      : null;
+    const minWaitHours =
+      adminConfig.minWaitTimeBetweenDoses !== undefined ? adminConfig.minWaitTimeBetweenDoses : 0.5;
+    const waitTimeMs = minWaitHours * 60 * 60 * 1000;
+
+    if (minWaitHours > 0 && timeSinceLastDosing && timeSinceLastDosing < waitTimeMs) {
+      const remainingMinutes = Math.ceil((waitTimeMs - timeSinceLastDosing) / 60000);
+      return {
+        icon: '🕒',
+        title: 'Esperando mezcla',
+        text: `Faltan ${remainingMinutes} min antes de volver a corregir.`,
+        status: 'waiting',
+      };
+    }
+
+    if (isOutOfRange) {
+      const level = getPHDeviationLevel();
+      return {
+        icon: '!',
+        title: level.title,
+        text: level.actionText,
+        status: 'alert',
+      };
+    }
+
+    return {
+      icon: '✅',
+      title: 'Todo en orden',
+      text: 'El pH esta en rango y el sistema sigue monitoreando.',
+      status: 'ok',
+    };
+  };
+
+  const systemStatus = getSystemStatus();
+
+  const lastActionTime =
+    dosingState?.lastDosingTime || lastDosingEvent?.timestamp
+      ? new Date(dosingState?.lastDosingTime || lastDosingEvent?.timestamp).toLocaleString()
+      : 'Sin correcciones aun';
+
+  const lastActionProduct = dosingState?.lastProduct || lastDosingEvent?.product;
+  const lastActionDuration = dosingState?.lastDuration || lastDosingEvent?.duration;
+  const dailyCount =
+    dosingState?.dosingCountToday !== undefined ? dosingState.dosingCountToday : lastDosingEvent ? 1 : 0;
+
+  return (
+    <div className="automatic-dosing-container">
+      <h3>Modo automatico</h3>
+
+      <div className={`auto-status ${systemStatus.status}`}>
+        <div className="status-head">
+          <span className="status-icon">{systemStatus.icon}</span>
+          <div>
+            <p className="status-title">{systemStatus.title}</p>
+            <p className="status-text">{systemStatus.text}</p>
+          </div>
         </div>
-    );
+
+        <div className="status-details">
+          <div className="detail-row">
+            <span>Objetivo</span>
+            <span className="value">
+              {phTolerance.toFixed(1)} (ideal {minIdeal} - {maxIdeal})
+            </span>
+          </div>
+
+          <div className="detail-row">
+            <span>pH ahora</span>
+            <span className={`value ${isOutOfRange ? 'out-of-range' : 'in-range'}`}>{ph.toFixed(2)}</span>
+          </div>
+
+          <div className="detail-row">
+            <span>Diferencia</span>
+            <span className={`value ${isOutOfRange ? 'warning' : 'ok'}`}>
+              {deviation >= 0 ? '+' : ''}
+              {deviation.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="simple-summary">
+        <h4>Ultima correccion</h4>
+        <div className="summary-grid">
+          <div className="summary-item">
+            <span className="label">Cuando</span>
+            <span className="value">{lastActionTime}</span>
+          </div>
+          <div className="summary-item">
+            <span className="label">Que hizo</span>
+            <span className="value">{getProductLabel(lastActionProduct)}</span>
+          </div>
+          <div className="summary-item">
+            <span className="label">Tiempo</span>
+            <span className="value">{lastActionDuration ? `${lastActionDuration}s` : '-'}</span>
+          </div>
+          <div className="summary-item">
+            <span className="label">Hoy</span>
+            <span className="value">
+              {dailyCount} de {adminConfig.maxDailyDoses || 10}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <p className="auto-help">No hace falta dejar la app abierta: el sistema sigue funcionando solo.</p>
+    </div>
+  );
 };
 
 export default AutomaticDosing;
+

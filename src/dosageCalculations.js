@@ -82,7 +82,6 @@ export const calculatePHChange = (
  * @param steps - Número de pasos de animación (defecto 20 para ~10 segundos a 500ms)
  */
 export const interpolatePhChange = (currentPH, targetPhChange, steps = 20) => {
-    const targetPH = currentPH + targetPhChange;
     const values = [];
     
     for (let i = 0; i <= steps; i++) {
