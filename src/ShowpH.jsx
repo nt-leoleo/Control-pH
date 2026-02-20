@@ -26,12 +26,10 @@ const describeArc = (cx, cy, radius, startAngle, endAngle) => {
 };
 
 const ShowpH = () => {
-  const { ph, phTolerance, phToleranceRange, chlorineType, acidType } = useContext(PHContext);
+  const { ph, phTolerance, phToleranceRange } = useContext(PHContext);
   const [slideIndex, setSlideIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
-  void chlorineType;
-  void acidType;
 
   const getStatus = () => {
     if (ph < phTolerance - phToleranceRange) return { text: 'pH bajo', status: 'low' };
