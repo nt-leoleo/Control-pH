@@ -1,4 +1,4 @@
-import { useCallback, useContext, useState, useEffect } from 'react';
+import { useCallback, useContext, useState, useEffect, useRef } from 'react';
 import Header from './Header';
 import ShowpH from './ShowpH';
 import HandleAdmin from './HandleAdmin';
@@ -15,14 +15,29 @@ import SplashScreen from './SplashScreen';
 import DeviceRegistration from './DeviceRegistration';
 import AppTutorial from './AppTutorial';
 import InfoHint from './InfoHint';
+import ConfirmDialog from './ConfirmDialog';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
 import './App.css';
 
 export default function App() {
-  const { ph, error, setError, dosingMode, setDosingMode, isConfigured, ensureDeviceConfigured } =
-    useContext(PHContext);
+  const {
+    ph,
+    phTolerance,
+    phToleranceRange,
+    error,
+    setError,
+    dosingMode,
+    setDosingMode,
+    esp32Connected,
+    lastDataReceived,
+    hasConfiguredDevice,
+    checkConnection,
+    openDeviceRegistrationModal,
+    isConfigured,
+    ensureDeviceConfigured
+  } = useContext(PHContext);
   const { user, loading, userConfig, updateUserConfig } = useAuth();
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
@@ -32,8 +47,33 @@ export default function App() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialCheckedForUser, setTutorialCheckedForUser] = useState(false);
   const [tutorialDemoPh, setTutorialDemoPh] = useState(null);
+  const [showEmergencyStopConfirm, setShowEmergencyStopConfirm] = useState(false);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
+  const [diagnosticStep, setDiagnosticStep] = useState(0);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState(null);
+  const [systemEvents, setSystemEvents] = useState([]);
 
   const displayedPh = typeof tutorialDemoPh === 'number' ? tutorialDemoPh : ph;
+  const phDeviation = displayedPh - phTolerance;
+  const isOutOfRange = Math.abs(phDeviation) > phToleranceRange;
+  const previousConnectionRef = useRef(esp32Connected);
+  const previousOutOfRangeRef = useRef(isOutOfRange);
+  const previousModeRef = useRef(dosingMode);
+  const hasBootEventRef = useRef(false);
+  const eventCounterRef = useRef(0);
+
+  const addSystemEvent = useCallback((event) => {
+    eventCounterRef.current += 1;
+    const now = new Date();
+    const nextEvent = {
+      id: `${now.getTime()}-${eventCounterRef.current}`,
+      createdAt: now.toISOString(),
+      ...event
+    };
+
+    setSystemEvents((previous) => [nextEvent, ...previous].slice(0, 15));
+  }, []);
 
   const getTutorialStorageKey = useCallback(
     () => (user?.uid ? `control-pileta:tutorial-completed:${user.uid}` : null),
@@ -83,6 +123,11 @@ export default function App() {
   useEffect(() => {
     setTutorialCheckedForUser(false);
     setShowTutorial(false);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    hasBootEventRef.current = false;
+    setSystemEvents([]);
   }, [user?.uid]);
 
   const openTutorial = useCallback(() => {
@@ -154,7 +199,7 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 
-  const handleEmergencyStop = async () => {
+  const requestEmergencyStop = () => {
     if (!user?.uid || isSendingEmergencyStop) {
       return;
     }
@@ -163,12 +208,11 @@ export default function App() {
       return;
     }
 
-    const confirmed = window.confirm(
-      'Parada de emergencia: se apagaran bombas, sensor y LCD del ESP32. Continuar?'
-    );
-    if (!confirmed) {
-      return;
-    }
+    setShowEmergencyStopConfirm(true);
+  };
+
+  const handleEmergencyStop = async () => {
+    setShowEmergencyStopConfirm(false);
 
     try {
       setIsSendingEmergencyStop(true);
@@ -191,6 +235,174 @@ export default function App() {
       setIsSendingEmergencyStop(false);
     }
   };
+
+  const startOfflineDiagnostic = () => {
+    setIsDiagnosticOpen(true);
+    setDiagnosticStep(0);
+    setDiagnosticResult(null);
+  };
+
+  const closeOfflineDiagnostic = () => {
+    setIsDiagnosticOpen(false);
+    setDiagnosticStep(0);
+    setDiagnosticResult(null);
+  };
+
+  const runConnectionCheck = async () => {
+    try {
+      setIsCheckingConnection(true);
+      const connected = await checkConnection();
+      if (connected) {
+        setDiagnosticResult('online');
+        setDiagnosticStep(4);
+        return;
+      }
+
+      setDiagnosticResult('offline');
+      setDiagnosticStep(4);
+    } finally {
+      setIsCheckingConnection(false);
+    }
+  };
+
+  const getSystemSummary = () => {
+    if (!esp32Connected) {
+      return {
+        status: 'needs-action',
+        title: 'Necesita accion',
+        text: 'No llegan lecturas recientes del sensor. Conviene ejecutar el diagnostico guiado.',
+        nextAction: 'Iniciar diagnostico'
+      };
+    }
+
+    if (isOutOfRange) {
+      if (dosingMode === 'automatic') {
+        return {
+          status: 'correcting',
+          title: 'Corrigiendo',
+          text: 'El pH esta fuera de rango y el modo automatico va a corregirlo.',
+          nextAction: 'Esperar y revisar en unos minutos'
+        };
+      }
+
+      return {
+        status: 'needs-action',
+        title: 'Necesita accion',
+        text: 'El pH esta fuera de rango. Cambia a automatico o realiza dosificacion manual.',
+        nextAction: 'Aplicar correccion manual o pasar a automatico'
+      };
+    }
+
+    return {
+      status: 'ok',
+      title: 'Todo bien',
+      text: 'Sensor conectado y pH dentro del rango objetivo.',
+      nextAction: 'No hace falta intervenir'
+    };
+  };
+
+  const systemSummary = getSystemSummary();
+
+  useEffect(() => {
+    if (!isDiagnosticOpen) {
+      return;
+    }
+
+    if (esp32Connected) {
+      setDiagnosticResult('online');
+      setDiagnosticStep(4);
+    }
+  }, [esp32Connected, isDiagnosticOpen]);
+
+  useEffect(() => {
+    if (!user?.uid || hasBootEventRef.current) {
+      return;
+    }
+
+    hasBootEventRef.current = true;
+    addSystemEvent({
+      type: 'info',
+      title: 'Sesion iniciada',
+      detail: 'Sistema listo para monitoreo de pH.',
+      action: 'Revisar estado general'
+    });
+  }, [addSystemEvent, user?.uid]);
+
+  useEffect(() => {
+    const previousConnection = previousConnectionRef.current;
+    if (previousConnection !== esp32Connected) {
+      if (esp32Connected) {
+        addSystemEvent({
+          type: 'ok',
+          title: 'Sensor online',
+          detail: 'Se restablecio la comunicacion con el ESP32.',
+          action: 'Continuar monitoreo'
+        });
+      } else {
+        addSystemEvent({
+          type: 'warning',
+          title: 'Sensor offline',
+          detail: 'No llegan lecturas recientes del ESP32.',
+          action: 'Iniciar diagnostico guiado'
+        });
+      }
+    }
+
+    previousConnectionRef.current = esp32Connected;
+  }, [addSystemEvent, esp32Connected]);
+
+  useEffect(() => {
+    const previousOutOfRange = previousOutOfRangeRef.current;
+    if (previousOutOfRange !== isOutOfRange) {
+      if (isOutOfRange) {
+        addSystemEvent({
+          type: 'warning',
+          title: 'pH fuera de rango',
+          detail: `Lectura ${displayedPh.toFixed(2)} con objetivo ${phTolerance.toFixed(1)} ± ${phToleranceRange.toFixed(1)}.`,
+          action: dosingMode === 'automatic' ? 'Esperar correccion automatica' : 'Aplicar dosificacion manual'
+        });
+      } else {
+        addSystemEvent({
+          type: 'ok',
+          title: 'pH en rango',
+          detail: `Lectura ${displayedPh.toFixed(2)} dentro del objetivo configurado.`,
+          action: 'Sin intervencion necesaria'
+        });
+      }
+    }
+
+    previousOutOfRangeRef.current = isOutOfRange;
+  }, [addSystemEvent, displayedPh, dosingMode, isOutOfRange, phTolerance, phToleranceRange]);
+
+  useEffect(() => {
+    const previousMode = previousModeRef.current;
+    if (previousMode !== dosingMode) {
+      addSystemEvent({
+        type: 'info',
+        title: `Modo ${dosingMode === 'automatic' ? 'automatico' : 'manual'} activado`,
+        detail:
+          dosingMode === 'automatic'
+            ? 'El sistema corregira desbalances automaticamente.'
+            : 'Las correcciones se ejecutan solo cuando vos las envias.',
+        action: dosingMode === 'automatic' ? 'Monitorear resultados' : 'Configurar dosificacion manual'
+      });
+    }
+
+    previousModeRef.current = dosingMode;
+  }, [addSystemEvent, dosingMode]);
+
+  useEffect(() => {
+    if (!error?.message) {
+      return;
+    }
+
+    addSystemEvent({
+      type: error.type === 'success' ? 'ok' : 'warning',
+      title: error.type === 'success' ? 'Accion completada' : 'Aviso del sistema',
+      detail: error.message,
+      action: error.type === 'success' ? 'Continuar monitoreo' : 'Revisar detalle del aviso'
+    });
+  }, [addSystemEvent, error?.message, error?.type]);
 
   if (showSplash) {
     return <SplashScreen onFinish={handleSplashFinish} />;
@@ -259,6 +471,152 @@ export default function App() {
           <PHChart phOverride={displayedPh} />
         </div>
 
+        <section className={`system-status-card system-status-card--${systemSummary.status}`}>
+          <div className="module-help-label">
+            <span>Estado del sistema</span>
+            <InfoHint
+              size="sm"
+              title="Estado rapido"
+              text="Resume en lenguaje simple si todo esta bien, si el sistema esta corrigiendo o si necesitas intervenir."
+            />
+          </div>
+
+          <div className="system-status-head">
+            <strong>{systemSummary.title}</strong>
+            <span>{systemSummary.text}</span>
+          </div>
+
+          <div className="system-status-meta">
+            <div>
+              <small>pH actual</small>
+              <strong>{displayedPh.toFixed(2)}</strong>
+            </div>
+            <div>
+              <small>Objetivo</small>
+              <strong>
+                {phTolerance.toFixed(1)} ± {phToleranceRange.toFixed(1)}
+              </strong>
+            </div>
+            <div>
+              <small>Siguiente accion</small>
+              <strong>{systemSummary.nextAction}</strong>
+            </div>
+            <div>
+              <small>Ultima lectura</small>
+              <strong>{lastDataReceived ? new Date(lastDataReceived).toLocaleTimeString() : 'Sin datos'}</strong>
+            </div>
+          </div>
+
+          {!esp32Connected && !isDiagnosticOpen && (
+            <button className="system-status-action" onClick={startOfflineDiagnostic}>
+              Iniciar diagnostico guiado
+            </button>
+          )}
+
+          {isDiagnosticOpen && (
+            <div className="offline-diagnostic">
+              <div className="offline-diagnostic-header">
+                <h4>Diagnostico guiado</h4>
+                <button onClick={closeOfflineDiagnostic}>Cerrar</button>
+              </div>
+
+              {diagnosticStep === 0 && (
+                <div className="offline-diagnostic-step">
+                  <p>1. Revisa que el ESP32 tenga energia y este encendido.</p>
+                  <button onClick={() => setDiagnosticStep(1)}>Ya lo revise</button>
+                </div>
+              )}
+
+              {diagnosticStep === 1 && (
+                <div className="offline-diagnostic-step">
+                  <p>2. Verifica WiFi: el equipo debe estar en la misma red configurada.</p>
+                  <button onClick={() => setDiagnosticStep(2)}>Continuar</button>
+                </div>
+              )}
+
+              {diagnosticStep === 2 && (
+                <div className="offline-diagnostic-step">
+                  <p>
+                    3. Registro del dispositivo: {hasConfiguredDevice ? 'dispositivo vinculado' : 'no hay dispositivo vinculado'}.
+                  </p>
+                  <div className="offline-diagnostic-actions">
+                    {!hasConfiguredDevice && (
+                      <button
+                        onClick={() => {
+                          openDeviceRegistrationModal();
+                        }}
+                      >
+                        Abrir registro de dispositivo
+                      </button>
+                    )}
+                    <button onClick={() => setDiagnosticStep(3)}>Continuar</button>
+                  </div>
+                </div>
+              )}
+
+              {diagnosticStep === 3 && (
+                <div className="offline-diagnostic-step">
+                  <p>4. Ejecuta una prueba de conexion ahora mismo.</p>
+                  <button onClick={runConnectionCheck} disabled={isCheckingConnection}>
+                    {isCheckingConnection ? 'Probando...' : 'Probar conexion'}
+                  </button>
+                </div>
+              )}
+
+              {diagnosticStep >= 4 && (
+                <div className="offline-diagnostic-step">
+                  <p>
+                    {diagnosticResult === 'online'
+                      ? 'Resultado: sensor online. Ya llegan lecturas de nuevo.'
+                      : 'Resultado: sigue offline. Repite el diagnostico o vuelve a registrar el dispositivo.'}
+                  </p>
+                  <div className="offline-diagnostic-actions">
+                    <button onClick={startOfflineDiagnostic}>Repetir diagnostico</button>
+                    <button onClick={openDeviceRegistrationModal}>Ir a registro</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="system-events-card">
+          <div className="system-events-header">
+            <div className="module-help-label">
+              <span>Centro de eventos</span>
+              <InfoHint
+                size="sm"
+                title="Eventos recientes"
+                text="Explica que paso, que hizo el sistema y que conviene hacer ahora."
+              />
+            </div>
+            <button
+              className="system-events-clear"
+              onClick={() => setSystemEvents([])}
+              disabled={systemEvents.length === 0}
+            >
+              Limpiar
+            </button>
+          </div>
+
+          {systemEvents.length === 0 ? (
+            <p className="system-events-empty">Todavia no hay eventos para mostrar.</p>
+          ) : (
+            <ul className="system-events-list">
+              {systemEvents.slice(0, 8).map((event) => (
+                <li key={event.id} className={`system-event-item system-event-item--${event.type}`}>
+                  <div className="system-event-top">
+                    <span>{event.title}</span>
+                    <small>{new Date(event.createdAt).toLocaleTimeString()}</small>
+                  </div>
+                  <p>{event.detail}</p>
+                  <strong>{event.action}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         {dosingMode === 'manual' && (
           <div className="scale-in dashboard-module">
             <ManualDosing />
@@ -311,7 +669,7 @@ export default function App() {
             />
           </div>
           <button
-            onClick={handleEmergencyStop}
+            onClick={requestEmergencyStop}
             disabled={isSendingEmergencyStop}
             className="emergency-stop-button"
           >
@@ -346,6 +704,18 @@ export default function App() {
             markTutorialAsSeen();
           }
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={showEmergencyStopConfirm}
+        title="Confirmar parada de emergencia"
+        message="Se enviara una orden inmediata para detener bombas, sensor y LCD del ESP32."
+        details="Usa esta accion solo si notas una condicion insegura o comportamiento anormal."
+        confirmLabel="Enviar parada"
+        tone="danger"
+        isLoading={isSendingEmergencyStop}
+        onCancel={() => setShowEmergencyStopConfirm(false)}
+        onConfirm={handleEmergencyStop}
       />
     </>
   );

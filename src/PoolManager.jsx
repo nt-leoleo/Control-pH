@@ -1,5 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
+import ErrorNotification from './ErrorNotification';
+import ConfirmDialog from './ConfirmDialog';
 import './PoolManager.css';
 
 const PoolManager = ({ onBack }) => {
@@ -16,6 +18,8 @@ const PoolManager = ({ onBack }) => {
     const [currentPoolId, setCurrentPoolId] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingPool, setEditingPool] = useState(null);
+    const [uiMessage, setUiMessage] = useState(null);
+    const [poolIdToDelete, setPoolIdToDelete] = useState(null);
 
     // Formulario para nueva piscina
     const [formData, setFormData] = useState({
@@ -28,6 +32,14 @@ const PoolManager = ({ onBack }) => {
         notes: ''
     });
 
+    const notify = (type, message) => {
+        setUiMessage({
+            id: Date.now(),
+            type,
+            message
+        });
+    };
+
     // Cargar piscinas guardadas
     useEffect(() => {
         if (userConfig && userConfig.pools) {
@@ -38,7 +50,7 @@ const PoolManager = ({ onBack }) => {
 
     const handleAddPool = async () => {
         if (!formData.name || !formData.volume) {
-            alert('Por favor completa el nombre y volumen de la piscina');
+            notify('warning', 'Completa el nombre y el volumen de la piscina.');
             return;
         }
 
@@ -88,7 +100,7 @@ const PoolManager = ({ onBack }) => {
 
     const handleEditPool = async () => {
         if (!editingPool || !formData.name || !formData.volume) {
-            alert('Por favor completa el nombre y volumen de la piscina');
+            notify('warning', 'Completa el nombre y el volumen de la piscina.');
             return;
         }
 
@@ -114,9 +126,11 @@ const PoolManager = ({ onBack }) => {
         setShowAddModal(false);
     };
 
-    const handleDeletePool = async (poolId) => {
-        if (!confirm('¿Estás seguro de eliminar esta piscina?')) return;
+    const confirmDeletePool = async () => {
+        const poolId = poolIdToDelete;
+        if (!poolId) return;
 
+        setPoolIdToDelete(null);
         const updatedPools = pools.filter(pool => pool.id !== poolId);
         setPools(updatedPools);
 
@@ -134,6 +148,11 @@ const PoolManager = ({ onBack }) => {
             pools: updatedPools,
             currentPoolId: newCurrentId
         });
+        notify('success', 'Piscina eliminada correctamente.');
+    };
+
+    const requestDeletePool = (poolId) => {
+        setPoolIdToDelete(poolId);
     };
 
     const switchPool = async (poolId, poolsList = pools) => {
@@ -248,7 +267,7 @@ const PoolManager = ({ onBack }) => {
                                     </button>
                                     <button 
                                         className="pool-action-btn delete"
-                                        onClick={() => handleDeletePool(pool.id)}
+                                        onClick={() => requestDeletePool(pool.id)}
                                         title="Eliminar"
                                     >
                                         🗑️
@@ -400,8 +419,29 @@ const PoolManager = ({ onBack }) => {
                     </div>
                 </div>
             )}
+
+            {uiMessage && (
+                <ErrorNotification
+                    key={uiMessage.id}
+                    message={uiMessage.message}
+                    type={uiMessage.type}
+                    duration={4500}
+                />
+            )}
+
+            <ConfirmDialog
+                isOpen={Boolean(poolIdToDelete)}
+                title="Eliminar piscina"
+                message="Vas a eliminar esta piscina de tu cuenta."
+                details="Si era la piscina activa, el sistema cambiara automaticamente a otra disponible."
+                confirmLabel="Eliminar"
+                tone="danger"
+                onCancel={() => setPoolIdToDelete(null)}
+                onConfirm={confirmDeletePool}
+            />
         </div>
     );
 };
 
 export default PoolManager;
+

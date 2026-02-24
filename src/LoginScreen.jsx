@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import { useAuth } from './useAuth';
 import './LoginScreen.css';
 
 const LoginScreen = () => {
   const { loginWithGoogle, loading } = useAuth();
+  const [loginError, setLoginError] = useState('');
 
   const handleGoogleLogin = async () => {
+    setLoginError('');
     try {
       await loginWithGoogle();
     } catch (error) {
-      alert(`Error al iniciar sesion: ${error.message}`);
+      setLoginError(`No se pudo iniciar sesion: ${error.message}`);
     }
   };
 
@@ -46,6 +49,8 @@ const LoginScreen = () => {
             </svg>
             {loading ? 'Cargando...' : 'Continuar con Google'}
           </button>
+
+          {loginError && <p className="login-error">{loginError}</p>}
 
           <ul className="login-benefits">
             <li>Guarda tu configuracion de forma segura.</li>

@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './useAuth';
+import ConfirmDialog from './ConfirmDialog';
 import './DeviceRegistration.css';
 
 const DeviceRegistration = () => {
@@ -23,6 +24,7 @@ const DeviceRegistration = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [message, setMessage] = useState(null);
   const [registeredDevices, setRegisteredDevices] = useState([]);
+  const [deviceIdToDelete, setDeviceIdToDelete] = useState(null);
 
   const notifyDeviceState = (hasDevice) => {
     window.dispatchEvent(
@@ -71,13 +73,15 @@ const DeviceRegistration = () => {
     }
   };
 
-  const handleDelete = async (deviceIdToDelete) => {
-    if (!window.confirm('Estas seguro de que quieres desvincular este dispositivo?')) {
+  const confirmDelete = async () => {
+    const currentDeviceId = deviceIdToDelete;
+    if (!currentDeviceId) {
       return;
     }
 
+    setDeviceIdToDelete(null);
     try {
-      const deviceRef = doc(db, 'devices', deviceIdToDelete);
+      const deviceRef = doc(db, 'devices', currentDeviceId);
       const deviceSnap = await getDoc(deviceRef);
 
       if (!deviceSnap.exists()) {
@@ -101,7 +105,7 @@ const DeviceRegistration = () => {
         await deleteDoc(deviceRef);
       }
 
-      if (localStorage.getItem('esp32_device_id') === deviceIdToDelete) {
+      if (localStorage.getItem('esp32_device_id') === currentDeviceId) {
         localStorage.removeItem('esp32_device_id');
       }
 
@@ -111,6 +115,10 @@ const DeviceRegistration = () => {
       console.error('Error eliminando dispositivo:', error);
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     }
+  };
+
+  const requestDelete = (targetDeviceId) => {
+    setDeviceIdToDelete(targetDeviceId);
   };
 
   const handleRegister = async (event) => {
@@ -193,7 +201,7 @@ const DeviceRegistration = () => {
               </div>
               <div className="device-actions">
                 <span className="device-status">Activo</span>
-                <button className="delete-btn" onClick={() => handleDelete(device.id)} title="Desvincular dispositivo">
+                <button className="delete-btn" onClick={() => requestDelete(device.id)} title="Desvincular dispositivo">
                   🗑️
                 </button>
               </div>
@@ -243,6 +251,17 @@ const DeviceRegistration = () => {
           <li>Copia el Device ID y pegalo arriba.</li>
         </ol>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(deviceIdToDelete)}
+        title="Desvincular dispositivo"
+        message="Este dispositivo dejara de estar asociado a tu cuenta."
+        details="Podras volver a vincularlo en cualquier momento usando su Device ID."
+        confirmLabel="Desvincular"
+        tone="danger"
+        onCancel={() => setDeviceIdToDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };
