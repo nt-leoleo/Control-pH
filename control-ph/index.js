@@ -461,12 +461,19 @@ exports.checkAndDoseAutomatically = onSchedule("every 1 minutes", async (event) 
       return null;
     }
     
-    // Filtrar usuarios con modo automático
+    // Filtrar usuarios con modo automático.
+    // Compatibilidad: usuarios legacy pueden no tener "dosingMode",
+    // pero sí "autoDosingEnabled" (o ninguno, que por defecto era automático).
     const autoUsers = [];
     usersSnapshot.forEach(doc => {
-      const userData = doc.data();
-      if (userData.dosingMode === 'automatic') {
-        autoUsers.push({ uid: doc.id, ...userData });
+      const userData = doc.data() || {};
+      const configuredMode =
+        typeof userData.dosingMode === 'string' ? userData.dosingMode : '';
+      const fallbackAutoEnabled = userData.autoDosingEnabled !== false;
+      const resolvedMode = configuredMode || (fallbackAutoEnabled ? 'automatic' : 'manual');
+
+      if (resolvedMode === 'automatic') {
+        autoUsers.push({ uid: doc.id, ...userData, dosingMode: resolvedMode });
       }
     });
     
