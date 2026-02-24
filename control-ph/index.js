@@ -577,9 +577,21 @@ async function processUser(userId, userData) {
     const dosingStateRef = realtimeDb.ref(`users/${userId}/dosingState`);
     const dosingStateSnapshot = await dosingStateRef.once('value');
     const dosingState = dosingStateSnapshot.val() || {};
+    const setAutoState = async (patch = {}) => {
+      const nowTs = Date.now();
+      await dosingStateRef.update({
+        autoDosingActive: false,
+        autoCommandUpdatedAt: nowTs,
+        ...patch,
+      });
+    };
     
     // Validar configuración desde Firestore
     if (!userData.phTolerance || !userData.phToleranceRange) {
+      await setAutoState({
+        autoCommandStatus: 'misconfigured',
+        autoCommandMessage: 'Configuracion incompleta para modo automatico',
+      });
       logger.info('⚠️ Usuario sin configuración completa');
       return;
     }
@@ -616,6 +628,10 @@ async function processUser(userId, userData) {
         autoMode: true,
         error: 'No hay datos del sensor'
       });
+      await setAutoState({
+        autoCommandStatus: 'sensor_missing',
+        autoCommandMessage: 'Sin datos del sensor en Firebase',
+      });
       return;
     }
     
@@ -629,6 +645,10 @@ async function processUser(userId, userData) {
         targetPH: targetPH,
         autoMode: true,
         error: 'Datos del sensor obsoletos'
+      });
+      await setAutoState({
+        autoCommandStatus: 'sensor_stale',
+        autoCommandMessage: `Datos obsoletos (${Math.round(dataAge / 1000)}s)`,
       });
       return;
     }
@@ -654,6 +674,10 @@ async function processUser(userId, userData) {
     if (!needsDosing) {
       logger.info(`✅ pH en rango (${(targetPH - tolerance).toFixed(1)} - ${(targetPH + tolerance).toFixed(1)})`);
       await addLog(userId, 'info', `pH en rango: ${currentPH.toFixed(2)}`, { currentPH, targetPH, tolerance });
+      await setAutoState({
+        autoCommandStatus: 'idle_in_range',
+        autoCommandMessage: 'pH en rango. Sin correccion necesaria',
+      });
       return;
     }
     
@@ -667,6 +691,10 @@ async function processUser(userId, userData) {
       await updateSystemStatus(userId, {
         error: errorMsg
       });
+      await setAutoState({
+        autoCommandStatus: 'blocked_safety',
+        autoCommandMessage: errorMsg,
+      });
       return;
     }
     
@@ -677,6 +705,10 @@ async function processUser(userId, userData) {
       await addLog(userId, 'error', errorMsg, { deviation, MAX_PH_CHANGE, currentPH, targetPH });
       await updateSystemStatus(userId, {
         error: errorMsg
+      });
+      await setAutoState({
+        autoCommandStatus: 'blocked_step_limit',
+        autoCommandMessage: errorMsg,
       });
       return;
     }
@@ -782,6 +814,7 @@ async function processUser(userId, userData) {
       autoCommandDuration: duration,
       autoCommandCreatedAt: commandCreatedAt,
       autoCommandUpdatedAt: commandCreatedAt,
+      autoCommandMessage: `Comando automatico creado: ${product} por ${duration}s`,
       autoDosingActive: true,
     });
     

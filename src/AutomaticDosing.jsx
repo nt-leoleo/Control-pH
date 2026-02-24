@@ -314,6 +314,29 @@ const AutomaticDosing = () => {
       };
     }
 
+    const autoCommandStatus = String(dosingState.autoCommandStatus || '').toLowerCase();
+    const autoCommandMessage = String(dosingState.autoCommandMessage || '').trim();
+
+    if (autoCommandStatus.startsWith('blocked')) {
+      return {
+        icon: 'BLOCK',
+        title: 'Correccion automatica bloqueada',
+        text:
+          autoCommandMessage ||
+          'El sistema detecto una condicion de seguridad y no envio dosificacion.',
+        status: 'alert',
+      };
+    }
+
+    if (autoCommandStatus === 'sensor_missing' || autoCommandStatus === 'sensor_stale') {
+      return {
+        icon: 'SENSOR',
+        title: 'Esperando datos del sensor',
+        text: autoCommandMessage || 'Todavia no hay datos validos para dosificar.',
+        status: 'connecting',
+      };
+    }
+
     if (minWaitHours > 0 && remainingWaitSeconds > 0) {
       return {
         icon: 'WAIT',
