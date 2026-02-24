@@ -1,22 +1,15 @@
 import { useContext, useMemo, useState } from 'react';
-import { arrayUnion, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { PHContext } from './PHContext';
-import { db } from './firebase';
 import { useAuth } from './useAuth';
+import {
+  DEVICE_ID_REGEX,
+  normalizeDeviceId,
+  persistUserDeviceLink,
+  syncSharedDeviceLink
+} from './deviceLinking';
 import './Onboarding.css';
 
 const TOTAL_STEPS = 3;
-const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
-
-const normalizeDeviceId = (rawValue) => {
-  const upper = String(rawValue || '').toUpperCase();
-  const candidates = upper.match(/[A-Z0-9_-]{6,64}/g) || [];
-  if (candidates.length === 0) {
-    return '';
-  }
-
-  return candidates.sort((a, b) => b.length - a.length)[0];
-};
 
 const Onboarding = () => {
   const {
@@ -106,29 +99,24 @@ const Onboarding = () => {
       throw new Error('Device ID invalido. Verifica el valor del ESP32.');
     }
 
-    const deviceRef = doc(db, 'devices', trimmedDeviceId);
-    const deviceDoc = await getDoc(deviceRef);
-    if (deviceDoc.exists()) {
-      await updateDoc(deviceRef, {
-        userIds: arrayUnion(user.uid),
-        updatedAt: new Date(),
-        lastSeen: new Date()
-      });
-    } else {
-      await setDoc(deviceRef, {
-        userId: user.uid,
-        userIds: [user.uid],
-        name: deviceName.trim() || 'Piscina principal',
-        createdAt: new Date(),
-        lastSeen: new Date(),
-        metadata: {
-          registeredFrom: 'onboarding',
-          userEmail: user.email || ''
-        }
-      });
-    }
+    await persistUserDeviceLink({
+      uid: user.uid,
+      deviceId: trimmedDeviceId,
+      deviceName
+    });
+
+    const sharedSync = await syncSharedDeviceLink({
+      uid: user.uid,
+      userEmail: user.email,
+      deviceId: trimmedDeviceId,
+      deviceName,
+      source: 'onboarding'
+    });
 
     localStorage.setItem('esp32_device_id', trimmedDeviceId);
+    if (sharedSync.warning) {
+      setError({ type: 'info', message: sharedSync.warning });
+    }
     return true;
   };
 

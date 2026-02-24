@@ -1,33 +1,17 @@
 import { useEffect, useState } from 'react';
-import {
-  arrayRemove,
-  arrayUnion,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  setDoc,
-  updateDoc,
-  where
-} from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './useAuth';
+import {
+  DEVICE_ID_REGEX,
+  normalizeDeviceId,
+  persistUserDeviceLink,
+  removeUserDeviceLink,
+  syncSharedDeviceLink,
+  syncSharedDeviceUnlink
+} from './deviceLinking';
 import ConfirmDialog from './ConfirmDialog';
 import './DeviceRegistration.css';
-
-const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
-
-const normalizeDeviceId = (rawValue) => {
-  const upper = String(rawValue || '').toUpperCase();
-  const candidates = upper.match(/[A-Z0-9_-]{6,64}/g) || [];
-  if (candidates.length === 0) {
-    return '';
-  }
-
-  return candidates.sort((a, b) => b.length - a.length)[0];
-};
 
 const DeviceRegistration = () => {
   const { user } = useAuth();
@@ -58,18 +42,37 @@ const DeviceRegistration = () => {
     if (!user?.uid) return;
 
     try {
-      const [linkedByArray, linkedLegacy] = await Promise.all([
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.exists() ? userSnap.data() : {};
+      const linkedDeviceIds = Array.isArray(userData?.linkedDeviceIds) ? userData.linkedDeviceIds : [];
+      const linkedDeviceNames =
+        userData?.linkedDeviceNames && typeof userData.linkedDeviceNames === 'object' ? userData.linkedDeviceNames : {};
+
+      const merged = new Map();
+      linkedDeviceIds.forEach((id) => {
+        merged.set(id, {
+          id,
+          name: linkedDeviceNames[id] || 'Dispositivo'
+        });
+      });
+
+      const [linkedByArrayResult, linkedLegacyResult] = await Promise.allSettled([
         getDocs(query(collection(db, 'devices'), where('userIds', 'array-contains', user.uid))),
         getDocs(query(collection(db, 'devices'), where('userId', '==', user.uid)))
       ]);
 
-      const merged = new Map();
-      linkedByArray.forEach((snap) => {
-        merged.set(snap.id, { id: snap.id, ...snap.data() });
-      });
-      linkedLegacy.forEach((snap) => {
-        merged.set(snap.id, { id: snap.id, ...snap.data() });
-      });
+      if (linkedByArrayResult.status === 'fulfilled') {
+        linkedByArrayResult.value.forEach((snap) => {
+          merged.set(snap.id, { id: snap.id, ...merged.get(snap.id), ...snap.data() });
+        });
+      }
+
+      if (linkedLegacyResult.status === 'fulfilled') {
+        linkedLegacyResult.value.forEach((snap) => {
+          merged.set(snap.id, { id: snap.id, ...merged.get(snap.id), ...snap.data() });
+        });
+      }
 
       const devices = Array.from(merged.values());
       setRegisteredDevices(devices);
@@ -93,36 +96,25 @@ const DeviceRegistration = () => {
 
     setDeviceIdToDelete(null);
     try {
-      const deviceRef = doc(db, 'devices', currentDeviceId);
-      const deviceSnap = await getDoc(deviceRef);
+      await removeUserDeviceLink({
+        uid: user.uid,
+        deviceId: currentDeviceId
+      });
 
-      if (!deviceSnap.exists()) {
-        setMessage({ type: 'info', text: 'El dispositivo ya no existe.' });
-        await loadUserDevices();
-        return;
-      }
-
-      const deviceData = deviceSnap.data();
-      const linkedUserIds = Array.isArray(deviceData.userIds) ? deviceData.userIds : [];
-      const hasLinkedArray = linkedUserIds.length > 0;
-
-      if (hasLinkedArray && linkedUserIds.length > 1) {
-        await updateDoc(deviceRef, {
-          userIds: arrayRemove(user.uid),
-          updatedAt: new Date()
-        });
-      } else if (hasLinkedArray && linkedUserIds.length === 1) {
-        await deleteDoc(deviceRef);
-      } else if (deviceData.userId === user.uid) {
-        await deleteDoc(deviceRef);
-      }
+      const sharedSync = await syncSharedDeviceUnlink({
+        uid: user.uid,
+        deviceId: currentDeviceId
+      });
 
       if (localStorage.getItem('esp32_device_id') === currentDeviceId) {
         localStorage.removeItem('esp32_device_id');
       }
 
       await loadUserDevices();
-      setMessage({ type: 'success', text: 'Dispositivo desvinculado correctamente.' });
+      setMessage({
+        type: 'success',
+        text: sharedSync.warning || 'Dispositivo desvinculado correctamente.'
+      });
     } catch (error) {
       console.error('Error eliminando dispositivo:', error);
       setMessage({ type: 'error', text: `Error: ${error.message}` });
@@ -164,35 +156,31 @@ const DeviceRegistration = () => {
         setDeviceId(normalizedDeviceId);
       }
 
-      const deviceRef = doc(db, 'devices', normalizedDeviceId);
-      const deviceSnap = await getDoc(deviceRef);
+      await persistUserDeviceLink({
+        uid: user.uid,
+        deviceId: normalizedDeviceId,
+        deviceName
+      });
 
-      if (deviceSnap.exists()) {
-        await updateDoc(deviceRef, {
-          userIds: arrayUnion(user.uid),
-          updatedAt: new Date(),
-          lastSeen: new Date()
-        });
-      } else {
-        await setDoc(deviceRef, {
-          userId: user.uid,
-          userIds: [user.uid],
-          name: deviceName.trim() || 'Piscina Principal',
-          createdAt: new Date(),
-          lastSeen: new Date(),
-          metadata: {
-            registeredFrom: 'web-app',
-            userEmail: user.email || ''
-          }
-        });
-      }
+      const sharedSync = await syncSharedDeviceLink({
+        uid: user.uid,
+        userEmail: user.email,
+        deviceId: normalizedDeviceId,
+        deviceName,
+        source: 'web-app'
+      });
 
       localStorage.setItem('esp32_device_id', normalizedDeviceId);
       await loadUserDevices();
 
       setDeviceId('');
       setDeviceName('Piscina Principal');
-      setMessage({ type: 'success', text: `Dispositivo vinculado: ${normalizedDeviceId}` });
+      setMessage({
+        type: 'success',
+        text: sharedSync.warning
+          ? `Dispositivo vinculado: ${normalizedDeviceId}. ${sharedSync.warning}`
+          : `Dispositivo vinculado: ${normalizedDeviceId}`
+      });
     } catch (error) {
       console.error('Error registrando dispositivo:', error);
       setMessage({ type: 'error', text: `Error: ${error.message}` });

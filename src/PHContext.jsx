@@ -149,19 +149,31 @@ export const PHProvider = ({ children }) => {
                 return;
             }
 
+            const linkedDeviceIds = Array.isArray(userConfig?.linkedDeviceIds) ? userConfig.linkedDeviceIds : [];
+            if (linkedDeviceIds.length > 0) {
+                setHasConfiguredDevice(true);
+                return;
+            }
+
             try {
-                const [linkedByArray, linkedLegacy] = await Promise.all([
+                const [linkedByArrayResult, linkedLegacyResult] = await Promise.allSettled([
                     getDocs(query(collection(db, 'devices'), where('userIds', 'array-contains', user.uid))),
                     getDocs(query(collection(db, 'devices'), where('userId', '==', user.uid))),
                 ]);
-                setHasConfiguredDevice(!linkedByArray.empty || !linkedLegacy.empty);
+
+                const hasArrayDevices =
+                    linkedByArrayResult.status === 'fulfilled' && !linkedByArrayResult.value.empty;
+                const hasLegacyDevices =
+                    linkedLegacyResult.status === 'fulfilled' && !linkedLegacyResult.value.empty;
+
+                setHasConfiguredDevice(hasArrayDevices || hasLegacyDevices);
             } catch {
                 setHasConfiguredDevice(false);
             }
         };
 
         loadDeviceState();
-    }, [user?.uid]);
+    }, [user?.uid, userConfig?.linkedDeviceIds]);
 
     useEffect(() => {
         const handleDeviceStateUpdate = (event) => {
