@@ -1,6 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PHContext } from './PHContext';
-import tutorialAmbientTrack from './assets/tutorial-ambient.ogg';
 import './AppTutorial.css';
 
 const STEP_LIST = [
@@ -16,6 +15,7 @@ const STEP_LIST = [
     number: 1,
     title: 'Medidor de pH',
     description: 'Primero vemos el medidor principal y cada parte importante.',
+    overviewDescription: 'Este es el medidor principal. Desde aca ves estado actual, objetivo y el dial visual del pH.',
     selector: '[data-tutorial="ph-meter"]',
     parts: [
       {
@@ -61,6 +61,8 @@ const STEP_LIST = [
     number: 3,
     title: 'Escala de pH',
     description: 'Ahora vemos cada parte de la escala lineal.',
+    overviewDescription:
+      'Esta escala te ayuda a ubicar rapidamente el valor del pH dentro del rango total de 0 a 14.',
     selector: '[data-tutorial="ph-scale"]',
     parts: [
       {
@@ -94,6 +96,8 @@ const STEP_LIST = [
     number: 4,
     title: 'Grafico de pH',
     description: 'Vamos parte por parte del grafico historico.',
+    overviewDescription:
+      'Este grafico te da contexto historico. Sirve para detectar tendencias y validar si el sistema corrige bien.',
     selector: '[data-tutorial="ph-chart"]',
     parts: [
       {
@@ -117,6 +121,8 @@ const STEP_LIST = [
     number: 5,
     title: 'Modo automatico',
     description: 'En automatico, el sistema corrige solo. Veamos los bloques mas importantes.',
+    overviewDescription:
+      'Este modulo resume como esta actuando el control automatico y que decisiones esta tomando el sistema.',
     selector: '[data-tutorial="auto-module"]',
     requiredMode: 'automatic',
     parts: [
@@ -146,6 +152,8 @@ const STEP_LIST = [
     number: 6,
     title: 'Modo manual',
     description: 'En manual manejas toda la dosificacion paso a paso.',
+    overviewDescription:
+      'En este panel vos controlas la dosificacion. Elegis producto, cantidad y tiempo antes de ejecutar.',
     selector: '[data-tutorial="manual-module"]',
     requiredMode: 'manual',
     parts: [
@@ -200,9 +208,60 @@ const STEP_LIST = [
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const AMBIENT_TARGET_VOLUME = 0.16;
-const AMBIENT_FADE_IN_MS = 1800;
-const AMBIENT_FADE_OUT_MS = 2600;
+
+const YOUTUBE_VIDEO_ID = 'PQjgO6SIOas';
+const YOUTUBE_START_SECONDS = 9 * 60 + 30;
+const YOUTUBE_TARGET_VOLUME = 24;
+const YOUTUBE_FADE_IN_MS = 2200;
+const YOUTUBE_FADE_OUT_MS = 3000;
+
+const buildStepParts = (step) => {
+  if (!step?.parts?.length) return [];
+
+  return [
+    {
+      title: `Vista general: ${step.title}`,
+      description: step.overviewDescription || step.description,
+      selector: step.selector,
+      showMeterSlide: step.showMeterSlide,
+      isOverview: true,
+    },
+    ...step.parts,
+  ];
+};
+
+const loadYouTubeApi = () => {
+  if (window.YT && window.YT.Player) {
+    return Promise.resolve(window.YT);
+  }
+
+  if (window.__controlPiletaYouTubeApiPromise) {
+    return window.__controlPiletaYouTubeApiPromise;
+  }
+
+  window.__controlPiletaYouTubeApiPromise = new Promise((resolve, reject) => {
+    const existingScript = document.querySelector('script[data-youtube-api="true"]');
+
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof previousReady === 'function') {
+        previousReady();
+      }
+      resolve(window.YT);
+    };
+
+    if (!existingScript) {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      script.async = true;
+      script.dataset.youtubeApi = 'true';
+      script.onerror = () => reject(new Error('No se pudo cargar la API de YouTube'));
+      document.head.appendChild(script);
+    }
+  });
+
+  return window.__controlPiletaYouTubeApiPromise;
+};
 
 const getSpotlightRect = (element) => {
   if (!element) return null;
@@ -318,8 +377,8 @@ const getConnectorPoints = (cardPosition, cardWidth, cardHeight, targetRect) => 
 const AppTutorial = ({ isOpen, onClose }) => {
   const { dosingMode, setDosingMode } = useContext(PHContext);
   const cardRef = useRef(null);
-  const ambientAudioRef = useRef(null);
-  const fadeIntervalRef = useRef(null);
+  const youtubePlayerRef = useRef(null);
+  const youtubeVolumeIntervalRef = useRef(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [partIndex, setPartIndex] = useState(0);
@@ -330,7 +389,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
   const [needsAudioInteraction, setNeedsAudioInteraction] = useState(false);
 
   const step = STEP_LIST[stepIndex];
-  const parts = step?.parts || [];
+  const parts = useMemo(() => buildStepParts(step), [step]);
   const hasParts = parts.length > 0;
   const activePart = hasParts ? parts[Math.min(partIndex, parts.length - 1)] : null;
   const activeSelector = activePart?.selector || step?.selector;
@@ -339,107 +398,153 @@ const AppTutorial = ({ isOpen, onClose }) => {
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
 
-  const clearFadeInterval = useCallback(() => {
-    if (fadeIntervalRef.current) {
-      window.clearInterval(fadeIntervalRef.current);
-      fadeIntervalRef.current = null;
+  const clearYoutubeVolumeInterval = useCallback(() => {
+    if (youtubeVolumeIntervalRef.current) {
+      window.clearInterval(youtubeVolumeIntervalRef.current);
+      youtubeVolumeIntervalRef.current = null;
     }
   }, []);
 
-  const fadeAmbientTo = useCallback(
+  const ensureYouTubePlayer = useCallback(async () => {
+    if (youtubePlayerRef.current) {
+      return youtubePlayerRef.current;
+    }
+
+    await loadYouTubeApi();
+
+    const host = document.getElementById('tutorial-youtube-audio-host');
+    if (!host) {
+      throw new Error('No se encontro el contenedor del audio de YouTube');
+    }
+
+    const player = await new Promise((resolve, reject) => {
+      const fallbackTimeout = window.setTimeout(() => {
+        reject(new Error('Timeout inicializando YouTube Player'));
+      }, 9000);
+
+      const instance = new window.YT.Player(host, {
+        height: '0',
+        width: '0',
+        videoId: YOUTUBE_VIDEO_ID,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          rel: 0,
+          fs: 0,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          start: YOUTUBE_START_SECONDS,
+          playsinline: 1,
+        },
+        events: {
+          onReady: () => {
+            window.clearTimeout(fallbackTimeout);
+            resolve(instance);
+          },
+          onError: () => {
+            window.clearTimeout(fallbackTimeout);
+            reject(new Error('YouTube devolvio un error al crear el reproductor'));
+          },
+        },
+      });
+    });
+
+    youtubePlayerRef.current = player;
+    return player;
+  }, []);
+
+  const fadeYoutubeTo = useCallback(
     (targetVolume, durationMs, onComplete) => {
-      const audio = ambientAudioRef.current;
-      if (!audio) {
+      const player = youtubePlayerRef.current;
+      if (!player || typeof player.getVolume !== 'function') {
         if (onComplete) onComplete();
         return;
       }
 
-      clearFadeInterval();
+      clearYoutubeVolumeInterval();
 
-      const startVolume = audio.volume;
+      const startVolume = Number(player.getVolume()) || 0;
       const delta = targetVolume - startVolume;
-      if (Math.abs(delta) < 0.01 || durationMs <= 0) {
-        audio.volume = clamp(targetVolume, 0, 1);
+
+      if (Math.abs(delta) < 1 || durationMs <= 0) {
+        player.setVolume(clamp(targetVolume, 0, 100));
         if (onComplete) onComplete();
         return;
       }
 
-      const stepMs = 50;
+      const stepMs = 60;
       const totalSteps = Math.max(1, Math.round(durationMs / stepMs));
-      let step = 0;
+      let currentStep = 0;
 
-      fadeIntervalRef.current = window.setInterval(() => {
-        step += 1;
-        const progress = step / totalSteps;
-        audio.volume = clamp(startVolume + delta * progress, 0, 1);
+      youtubeVolumeIntervalRef.current = window.setInterval(() => {
+        currentStep += 1;
+        const progress = currentStep / totalSteps;
+        const nextVolume = clamp(Math.round(startVolume + delta * progress), 0, 100);
+        player.setVolume(nextVolume);
 
-        if (step >= totalSteps) {
-          clearFadeInterval();
-          audio.volume = clamp(targetVolume, 0, 1);
+        if (currentStep >= totalSteps) {
+          clearYoutubeVolumeInterval();
+          player.setVolume(clamp(targetVolume, 0, 100));
           if (onComplete) onComplete();
         }
       }, stepMs);
     },
-    [clearFadeInterval]
+    [clearYoutubeVolumeInterval]
   );
 
-  const ensureAmbientAudio = useCallback(() => {
-    if (!ambientAudioRef.current) {
-      const audio = new Audio(tutorialAmbientTrack);
-      audio.loop = true;
-      audio.preload = 'auto';
-      audio.volume = 0;
-      ambientAudioRef.current = audio;
-    }
-
-    return ambientAudioRef.current;
-  }, []);
-
-  const tryPlayAmbient = useCallback(async () => {
-    const audio = ensureAmbientAudio();
-    clearFadeInterval();
-
-    if (!audio.paused) {
-      fadeAmbientTo(AMBIENT_TARGET_VOLUME, AMBIENT_FADE_IN_MS);
-      setNeedsAudioInteraction(false);
-      return true;
-    }
-
-    audio.volume = 0;
-
+  const startYoutubeAmbient = useCallback(async () => {
     try {
-      await audio.play();
+      const player = await ensureYouTubePlayer();
+      clearYoutubeVolumeInterval();
+
+      player.seekTo(YOUTUBE_START_SECONDS, true);
+      player.setVolume(0);
+      player.playVideo();
+
+      await wait(600);
+      const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
+
+      if (state !== 1 && state !== 3) {
+        setNeedsAudioInteraction(true);
+        return false;
+      }
+
       setNeedsAudioInteraction(false);
-      fadeAmbientTo(AMBIENT_TARGET_VOLUME, AMBIENT_FADE_IN_MS);
+      fadeYoutubeTo(YOUTUBE_TARGET_VOLUME, YOUTUBE_FADE_IN_MS);
       return true;
     } catch (error) {
-      console.warn('[Tutorial] Audio bloqueado hasta interaccion del usuario:', error);
+      console.warn('[Tutorial] No se pudo iniciar audio de YouTube:', error);
       setNeedsAudioInteraction(true);
       return false;
     }
-  }, [clearFadeInterval, ensureAmbientAudio, fadeAmbientTo]);
+  }, [clearYoutubeVolumeInterval, ensureYouTubePlayer, fadeYoutubeTo]);
 
-  const stopAmbient = useCallback(
+  const stopYoutubeAmbient = useCallback(
     (withFade) => {
-      const audio = ambientAudioRef.current;
-      if (!audio) return;
+      const player = youtubePlayerRef.current;
+      if (!player) return;
 
       setNeedsAudioInteraction(false);
 
       if (withFade) {
-        fadeAmbientTo(0, AMBIENT_FADE_OUT_MS, () => {
-          audio.pause();
-          audio.currentTime = 0;
+        fadeYoutubeTo(0, YOUTUBE_FADE_OUT_MS, () => {
+          if (typeof player.pauseVideo === 'function') {
+            player.pauseVideo();
+          }
         });
         return;
       }
 
-      clearFadeInterval();
-      audio.pause();
-      audio.currentTime = 0;
-      audio.volume = 0;
+      clearYoutubeVolumeInterval();
+      if (typeof player.setVolume === 'function') {
+        player.setVolume(0);
+      }
+      if (typeof player.pauseVideo === 'function') {
+        player.pauseVideo();
+      }
     },
-    [clearFadeInterval, fadeAmbientTo]
+    [clearYoutubeVolumeInterval, fadeYoutubeTo]
   );
 
   const findTargetElement = useCallback(() => {
@@ -523,19 +628,19 @@ const AppTutorial = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
-      tryPlayAmbient();
+      startYoutubeAmbient();
       return undefined;
     }
 
-    stopAmbient(true);
+    stopYoutubeAmbient(true);
     return undefined;
-  }, [isOpen, stopAmbient, tryPlayAmbient]);
+  }, [isOpen, startYoutubeAmbient, stopYoutubeAmbient]);
 
   useEffect(() => {
     if (!isOpen || !needsAudioInteraction) return undefined;
 
     const unlockAudio = () => {
-      tryPlayAmbient();
+      startYoutubeAmbient();
     };
 
     window.addEventListener('pointerdown', unlockAudio);
@@ -547,14 +652,18 @@ const AppTutorial = ({ isOpen, onClose }) => {
       window.removeEventListener('keydown', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
     };
-  }, [isOpen, needsAudioInteraction, tryPlayAmbient]);
+  }, [isOpen, needsAudioInteraction, startYoutubeAmbient]);
 
   useEffect(
     () => () => {
-      stopAmbient(false);
-      ambientAudioRef.current = null;
+      stopYoutubeAmbient(false);
+      clearYoutubeVolumeInterval();
+      if (youtubePlayerRef.current && typeof youtubePlayerRef.current.destroy === 'function') {
+        youtubePlayerRef.current.destroy();
+      }
+      youtubePlayerRef.current = null;
     },
-    [stopAmbient]
+    [clearYoutubeVolumeInterval, stopYoutubeAmbient]
   );
 
   useEffect(() => {
@@ -689,6 +798,8 @@ const AppTutorial = ({ isOpen, onClose }) => {
     <div className="tutorial-overlay" role="dialog" aria-modal="true" aria-label="Tutorial de uso">
       {!spotlightRect && <div className="tutorial-full-shade" />}
 
+      <div id="tutorial-youtube-audio-host" className="tutorial-youtube-host" aria-hidden="true" />
+
       {spotlightRect && (
         <div
           className="tutorial-spotlight"
@@ -746,15 +857,18 @@ const AppTutorial = ({ isOpen, onClose }) => {
         }
       >
         <p className="tutorial-step-counter">Paso {step.number} de 8</p>
-        {hasParts && <p className="tutorial-part-counter">Parte {partIndex + 1} de {parts.length}</p>}
+        {hasParts && activePart?.isOverview && <p className="tutorial-part-counter">Vista general</p>}
+        {hasParts && !activePart?.isOverview && (
+          <p className="tutorial-part-counter">Parte {partIndex} de {Math.max(1, parts.length - 1)}</p>
+        )}
 
         <h3>{panelTitle}</h3>
         <p>{panelDescription}</p>
         {needsAudioInteraction && (
-          <p className="tutorial-audio-hint">Toca la pantalla para activar el sonido ambiente.</p>
+          <p className="tutorial-audio-hint">Toca la pantalla para habilitar la musica del tutorial.</p>
         )}
         <p className="tutorial-audio-credit">
-          Audio: Uniq - Art Of Silence V2 (CC BY 4.0, Wikimedia Commons).
+          Musica: YouTube (video PQjgO6SIOas) desde 09:30.
         </p>
 
         <div className="tutorial-actions">
@@ -777,7 +891,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
                 }
 
                 const previousStepIndex = Math.max(0, stepIndex - 1);
-                const previousParts = STEP_LIST[previousStepIndex]?.parts || [];
+                const previousParts = buildStepParts(STEP_LIST[previousStepIndex]);
                 setStepIndex(previousStepIndex);
                 setPartIndex(previousParts.length > 0 ? previousParts.length - 1 : 0);
               }}

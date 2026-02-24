@@ -19,6 +19,19 @@
   margin: 0 auto;
 }
 
+.module-help-label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.module-help-label--danger {
+  color: #fda4af;
+}
+
 .mode-toggle-button {
   width: 100%;
   border: 1px solid var(--border-color);

@@ -11,6 +11,16 @@
   background: rgba(2, 6, 23, 0.8);
 }
 
+.tutorial-youtube-host {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  left: -9999px;
+  top: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .tutorial-spotlight {
   position: fixed;
   border-radius: 14px;
