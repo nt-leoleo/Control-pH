@@ -998,9 +998,19 @@ exports.sendManualDosingCommand = onRequest(async (req, res) => {
       return;
     }
     
+    const userDoc = await firestore.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? (userDoc.data() || {}) : {};
+    const adminConfig = userData.adminConfig || {};
+    const parsedMaxManual = Number(adminConfig.maxManualDosingSeconds);
+    const maxManualDosingSeconds = Number.isFinite(parsedMaxManual)
+      ? Math.max(1, Math.min(3600, Math.round(parsedMaxManual)))
+      : 300;
+
     // Validar duración
-    if (duration < 1 || duration > 3600) {
-      res.status(400).json({ error: 'Duración inválida. Debe estar entre 1 y 3600 segundos' });
+    if (duration < 1 || duration > maxManualDosingSeconds) {
+      res.status(400).json({
+        error: `Duración inválida. Debe estar entre 1 y ${maxManualDosingSeconds} segundos`,
+      });
       return;
     }
     
