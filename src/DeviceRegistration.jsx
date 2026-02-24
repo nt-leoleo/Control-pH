@@ -160,7 +160,7 @@ const DeviceRegistration = () => {
         setMessage({
           type: 'success',
           text:
-            'WiFi reiniciado. El ESP32 borrara credenciales y levantara el AP SensorPH_Config (clave 12345678).'
+            'WiFi reiniciado. El ESP32 borrara credenciales y levantara el AP SensorPH_Config (sin contrasena).'
         });
       } else {
         setMessage({
@@ -340,7 +340,7 @@ const DeviceRegistration = () => {
         isOpen={showWifiResetConfirm}
         title="Resetear WiFi del ESP32"
         message="Se borraran las credenciales WiFi guardadas y el equipo reiniciara en modo configuracion."
-        details="Despues debes conectarte al AP SensorPH_Config (clave 12345678) y volver a configurar la red."
+        details="Despues debes conectarte al AP SensorPH_Config (sin contrasena) y volver a configurar la red."
         confirmLabel="Resetear WiFi"
         tone="danger"
         isLoading={isResettingWifi}

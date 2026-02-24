@@ -17,7 +17,7 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
         setError('');
         
         try {
-            // Intentar conectar al ESP32 en modo configuración
+            // Intentar conectar al ESP32 en modo configuraciÃ³n
             const response = await fetch('http://192.168.4.1/scan', {
                 method: 'GET',
                 timeout: 5000
@@ -26,10 +26,10 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
             if (response.ok) {
                 const html = await response.text();
                 // Parsear las redes del HTML
-                const networkMatches = html.match(/📶\s+([^<]+)\s+\(/g);
+                const networkMatches = html.match(/ðŸ“¶\s+([^<]+)\s+\(/g);
                 if (networkMatches) {
                     const networkList = networkMatches.map(match => {
-                        const ssid = match.replace('📶 ', '').replace(' (', '').trim();
+                        const ssid = match.replace('ðŸ“¶ ', '').replace(' (', '').trim();
                         return ssid;
                     });
                     setNetworks([...new Set(networkList)]); // Eliminar duplicados
@@ -40,7 +40,7 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                 throw new Error('No se pudo escanear redes');
             }
         } catch (err) {
-            setError('No se pudo conectar al ESP32. Asegúrate de estar conectado a la red "SensorPH_Config"');
+            setError('No se pudo conectar al ESP32. AsegÃºrate de estar conectado a la red "SensorPH_Config"');
             console.error('Error escaneando redes:', err);
         } finally {
             setIsScanning(false);
@@ -70,13 +70,13 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
             });
 
             if (response.ok) {
-                // Configuración exitosa
+                // ConfiguraciÃ³n exitosa
                 setTimeout(() => {
                     onSuccess();
                     onClose();
                 }, 3000); // Dar tiempo para que el ESP32 se reinicie
             } else {
-                throw new Error('Error al guardar configuración');
+                throw new Error('Error al guardar configuraciÃ³n');
             }
         } catch (err) {
             setError('Error al configurar WiFi: ' + err.message);
@@ -98,14 +98,14 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
         <div className="wifi-config-overlay" onClick={onClose}>
             <div className="wifi-config-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="wifi-config-header">
-                    <h2>🌐 Configurar WiFi del ESP32</h2>
-                    <button className="close-btn" onClick={onClose}>×</button>
+                    <h2>ðŸŒ Configurar WiFi del ESP32</h2>
+                    <button className="close-btn" onClick={onClose}>Ã—</button>
                 </div>
 
                 <div className="wifi-config-content">
                     {error && (
                         <div className="error-message">
-                            ⚠️ {error}
+                            âš ï¸ {error}
                         </div>
                     )}
 
@@ -113,8 +113,8 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                         <p><strong>Instrucciones:</strong></p>
                         <ol>
                             <li>Conecta tu dispositivo a la red <strong>"SensorPH_Config"</strong></li>
-                            <li>Contraseña: <strong>"12345678"</strong></li>
-                            <li>Selecciona tu red WiFi y configura la contraseña</li>
+                            <li>La red de configuracion no tiene contrasena</li>
+                            <li>Selecciona tu red WiFi y configura la contrasena de tu router</li>
                         </ol>
                     </div>
 
@@ -125,7 +125,7 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                                 disabled={isScanning}
                                 className="scan-btn"
                             >
-                                {isScanning ? '🔄 Escaneando...' : '🔍 Escanear Redes'}
+                                {isScanning ? 'ðŸ”„ Escaneando...' : 'ðŸ” Escanear Redes'}
                             </button>
                         </div>
 
@@ -144,7 +144,7 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                                                 setUseCustom(false);
                                             }}
                                         />
-                                        <span className="network-name">📶 {network}</span>
+                                        <span className="network-name">ðŸ“¶ {network}</span>
                                     </label>
                                 ))}
                             </div>
@@ -173,10 +173,10 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                         </div>
 
                         <div className="password-section">
-                            <label>Contraseña de la red:</label>
+                            <label>ContraseÃ±a de la red:</label>
                             <input
                                 type="password"
-                                placeholder="Contraseña WiFi"
+                                placeholder="ContraseÃ±a WiFi"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="password-input"
@@ -189,14 +189,14 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                                 disabled={isConnecting || (!selectedNetwork && !customSSID)}
                                 className="configure-btn"
                             >
-                                {isConnecting ? '⏳ Configurando...' : '💾 Configurar WiFi'}
+                                {isConnecting ? 'â³ Configurando...' : 'ðŸ’¾ Configurar WiFi'}
                             </button>
                         </div>
 
                         {isConnecting && (
                             <div className="connecting-message">
-                                <p>🔄 Configurando WiFi...</p>
-                                <p>El ESP32 se reiniciará y se conectará a tu red.</p>
+                                <p>ðŸ”„ Configurando WiFi...</p>
+                                <p>El ESP32 se reiniciarÃ¡ y se conectarÃ¡ a tu red.</p>
                                 <p>Esto puede tomar hasta 30 segundos.</p>
                             </div>
                         )}
