@@ -1,4 +1,4 @@
-﻿import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
+import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import WiFiConfig from './WiFiConfig';
 import AdminPanel from './AdminPanel';
@@ -295,7 +295,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     try {
       await checkConnection();
     } catch (error) {
-      console.error('[Settings] Error en test de conexiÃ³n:', error);
+      console.error('[Settings] Error en test de conexión:', error);
     } finally {
       setIsTestingConnection(false);
     }
@@ -374,7 +374,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
         </button>
         <h1 className="settings-title">
           <UiIcon name="settings" className="title-icon" />
-          <span>ConfiguraciÃ³n</span>
+          <span>Configuración</span>
         </h1>
       </div>
 
@@ -388,7 +388,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           
           <div className="setting-item">
             <label className="setting-label">
-              Tema de la aplicaciÃ³n
+              Tema de la aplicación
               <span className="setting-description">
                 Modo {theme === 'dark' ? 'oscuro' : 'claro'} activado
               </span>
@@ -406,7 +406,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="ph" className="heading-icon" />
-            <span>ConfiguraciÃ³n de pH</span>
+            <span>Configuración de pH</span>
           </h3>
           
           <div className="setting-item">
@@ -427,9 +427,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 />
                 <div className="slider-track">
                   <div className="slider-zones">
-                    <span className="zone acidic">Ãcido</span>
+                    <span className="zone acidic">Ácido</span>
                     <span className="zone neutral">Neutro</span>
-                    <span className="zone basic">BÃ¡sico</span>
+                    <span className="zone basic">Básico</span>
                   </div>
                 </div>
               </div>
@@ -451,7 +451,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           <div className="setting-item">
             <label className="setting-label">
               Tolerancia
-              <span className="setting-description">Rango permitido de variaciÃ³n (Â±)</span>
+              <span className="setting-description">Rango permitido de variación (±)</span>
             </label>
             <div className="setting-control-slider">
               <div className="slider-container">
@@ -479,7 +479,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                   onChange={handleRangeChange}
                   className="setting-input-small"
                 />
-                <span className="setting-unit">Â±</span>
+                <span className="setting-unit">±</span>
               </div>
             </div>
           </div>
@@ -497,7 +497,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="dosing" className="heading-icon" />
-            <span>Modo de DosificaciÃ³n</span>
+            <span>Modo de Dosificación</span>
           </h3>
           
           <div className="dosing-modes">
@@ -510,7 +510,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                   }
                   await setDosingMode('automatic');
                 } catch (error) {
-                  console.error('[Settings] Error cambiando a modo automÃ¡tico:', error);
+                  console.error('[Settings] Error cambiando a modo automático:', error);
                 }
               }}
             >
@@ -518,8 +518,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 <UiIcon name="automatic" />
               </div>
               <div className="mode-info">
-                <div className="mode-title">AutomÃ¡tico</div>
-                <div className="mode-desc">El sistema ajusta el pH automÃ¡ticamente</div>
+                <div className="mode-title">Automático</div>
+                <div className="mode-desc">El sistema ajusta el pH automáticamente</div>
               </div>
             </button>
 
@@ -541,7 +541,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               </div>
               <div className="mode-info">
                 <div className="mode-title">Manual</div>
-                <div className="mode-desc">Control manual de la dosificaciÃ³n</div>
+                <div className="mode-desc">Control manual de la dosificación</div>
               </div>
             </button>
           </div>
@@ -550,7 +550,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="esp32" className="heading-icon" />
-            <span>ConfiguraciÃ³n ESP32</span>
+            <span>Configuración ESP32</span>
           </h3>
           
           <button 
@@ -579,8 +579,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               <UiIcon name="wifi" />
             </div>
             <div className="config-info">
-              <div className="config-title">ConfiguraciÃ³n WiFi</div>
-              <div className="config-desc">Configurar conexiÃ³n del sensor</div>
+              <div className="config-title">Configuración WiFi</div>
+              <div className="config-desc">Configurar conexión del sensor</div>
             </div>
             <div className="config-arrow">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -593,7 +593,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="pool" className="heading-icon" />
-            <span>GestiÃ³n de Piscinas</span>
+            <span>Gestión de Piscinas</span>
           </h3>
           
           <button 
@@ -646,28 +646,28 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="info" className="heading-icon" />
-            <span>InformaciÃ³n del Sistema</span>
+            <span>Información del Sistema</span>
           </h3>
           
           <div className="system-info">
             <div className="info-item">
-              <span className="info-label">VersiÃ³n:</span>
+              <span className="info-label">Versión:</span>
               <span className="info-value">4.3.0</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Ãšltima actualizaciÃ³n:</span>
+              <span className="info-label">Última actualización:</span>
               <span className="info-value">{new Date().toLocaleDateString()}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Estado:</span>
               <span className={`info-value info-value-with-icon ${esp32Connected ? 'status-online' : 'status-offline'}`}>
                 <UiIcon name={esp32Connected ? 'statusOn' : 'statusOff'} className="status-icon" size={14} />
-                {esp32Connected ? 'En lÃ­nea' : 'Desconectado'}
+                {esp32Connected ? 'En línea' : 'Desconectado'}
               </span>
             </div>
             {lastDataReceived && (
               <div className="info-item">
-                <span className="info-label">Ãšltima lectura:</span>
+                <span className="info-label">Última lectura:</span>
                 <span className="info-value">{new Date(lastDataReceived).toLocaleString()}</span>
               </div>
             )}

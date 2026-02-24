@@ -9,10 +9,13 @@ const TOTAL_STEPS = 3;
 const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
 
 const normalizeDeviceId = (rawValue) => {
-  return String(rawValue || '')
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '');
+  const upper = String(rawValue || '').toUpperCase();
+  const candidates = upper.match(/[A-Z0-9_-]{6,64}/g) || [];
+  if (candidates.length === 0) {
+    return '';
+  }
+
+  return candidates.sort((a, b) => b.length - a.length)[0];
 };
 
 const Onboarding = () => {
@@ -83,6 +86,10 @@ const Onboarding = () => {
           message: 'El Device ID solo puede tener letras, numeros, guion o guion bajo (6 a 64 caracteres).'
         });
         return false;
+      }
+
+      if (normalizedDeviceId !== deviceId) {
+        setDeviceId(normalizedDeviceId);
       }
     }
 

@@ -425,7 +425,14 @@ export default function App() {
   }
 
   if (!isConfigured) {
-    return <Onboarding />;
+    return (
+      <>
+        <Onboarding />
+        {error && (
+          <ErrorNotification message={error.message} type={error.type || 'error'} duration={5000} />
+        )}
+      </>
+    );
   }
 
   if (currentView === 'settings') {
