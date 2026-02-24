@@ -112,7 +112,7 @@ const ShowpH = () => {
   };
 
   return (
-    <section className="ph-hero fade-in" data-ph-status={status.status}>
+    <section className="ph-hero fade-in" data-ph-status={status.status} data-tutorial="ph-meter">
       <div className="ph-carousel" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div className={`ph-carousel-track slide-${slideIndex}`}>
           <div className="ph-slide">
@@ -232,7 +232,9 @@ const ShowpH = () => {
         ></button>
       </div>
 
-      <p className="ph-swipe-hint">Desliza hacia los lados para cambiar vista.</p>
+      <p className="ph-swipe-hint" data-tutorial="ph-swipe-hint">
+        Desliza hacia los lados para cambiar vista.
+      </p>
     </section>
   );
 };

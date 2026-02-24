@@ -253,7 +253,7 @@ const ManualDosing = () => {
     };
 
     return (
-        <div className="manualDosingContainer">
+        <div className="manualDosingContainer" data-tutorial="manual-module">
             <h3>Dosificacion Manual</h3>
             
             <div className="dosingSection">

@@ -13,9 +13,15 @@ export const SettingsIcon = (props) => (
     </svg>
     );
 
-const ConfigButton = ({ onClick, label = 'Ajustes' }) => {
+const ConfigButton = ({ onClick, label = 'Ajustes', ...rest }) => {
     return (
-        <button onClick={onClick} className='configButton' title="Abrir ajustes" aria-label="Abrir ajustes">
+        <button
+            onClick={onClick}
+            className='configButton'
+            title="Abrir ajustes"
+            aria-label="Abrir ajustes"
+            {...rest}
+        >
             <SettingsIcon className="icon"/>
             <span className="configButtonLabel">{label}</span>
         </button>
