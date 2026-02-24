@@ -190,6 +190,7 @@ const STEP_LIST = [
         title: '6. Ejecutar dosificacion',
         description: 'Presiona este boton para enviar la dosificacion manual.',
         selector: '[data-tutorial="manual-submit"]',
+        scrollBlock: 'end',
       },
     ],
   },
@@ -199,6 +200,7 @@ const STEP_LIST = [
     description:
       'Este boton detiene el sistema de inmediato. Usalo solo en una situacion critica o de seguridad.',
     selector: '[data-tutorial="emergency-stop"]',
+    scrollBlock: 'end',
   },
   {
     number: 8,
@@ -223,6 +225,16 @@ const YOUTUBE_FADE_IN_MS = 2200;
 const YOUTUBE_FADE_OUT_MS = 3000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
 const TUTORIAL_CLOSE_FADE_MS = 320;
+const SCROLL_BLOCK_KEYS = new Set([
+  ' ',
+  'Spacebar',
+  'ArrowUp',
+  'ArrowDown',
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+]);
 
 const buildStepParts = (step) => {
   if (!step?.parts?.length) return [];
@@ -410,6 +422,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const activeSelector = activePart?.selector || step?.selector;
   const activeSlide = activePart?.showMeterSlide ?? step?.showMeterSlide;
   const activeDemoPhCycle = Boolean(activePart?.demoPhCycle || (!hasParts && step?.demoPhCycle));
+  const activeScrollBlock = activePart?.scrollBlock || step?.scrollBlock || 'start';
 
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
@@ -675,6 +688,42 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   }, [isOpen]);
 
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
+    const preventScroll = (event) => {
+      event.preventDefault();
+    };
+
+    const preventScrollKeys = (event) => {
+      if (!SCROLL_BLOCK_KEYS.has(event.key)) {
+        return;
+      }
+      event.preventDefault();
+    };
+
+    if (!isOpen) {
+      html.classList.remove('tutorial-scroll-lock');
+      body.classList.remove('tutorial-scroll-lock');
+      return undefined;
+    }
+
+    html.classList.add('tutorial-scroll-lock');
+    body.classList.add('tutorial-scroll-lock');
+    window.addEventListener('wheel', preventScroll, { passive: false });
+    window.addEventListener('touchmove', preventScroll, { passive: false });
+    window.addEventListener('keydown', preventScrollKeys, { passive: false });
+
+    return () => {
+      html.classList.remove('tutorial-scroll-lock');
+      body.classList.remove('tutorial-scroll-lock');
+      window.removeEventListener('wheel', preventScroll);
+      window.removeEventListener('touchmove', preventScroll);
+      window.removeEventListener('keydown', preventScrollKeys);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (trackBadgeTimeoutRef.current) {
       window.clearTimeout(trackBadgeTimeoutRef.current);
       trackBadgeTimeoutRef.current = null;
@@ -799,7 +848,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
       if (cancelled) return;
 
       if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        targetElement.scrollIntoView({ behavior: 'smooth', block: activeScrollBlock, inline: 'nearest' });
         await wait(230);
       }
 
@@ -814,6 +863,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
     };
   }, [
     activeSlide,
+    activeScrollBlock,
     dosingMode,
     findTargetElement,
     isOpen,
