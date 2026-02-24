@@ -255,7 +255,9 @@ function getSystemHealth(isRecent, ph, voltage) {
     const issues = [];
     
     if (!isRecent) issues.push('Datos obsoletos');
-    if (ph < 6.0 || ph > 8.5) issues.push('pH fuera de rango seguro');
+    if (ph < ESP32_CONFIG.MIN_PH || ph > ESP32_CONFIG.MAX_PH) {
+        issues.push('pH fuera de rango seguro');
+    }
     if (voltage < 0.1 || voltage > 4.0) issues.push('Voltaje anómalo');
     
     if (issues.length === 0) {

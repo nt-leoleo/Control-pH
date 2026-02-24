@@ -119,15 +119,6 @@ function calculateAcidForPHDecrease(poolVolumeLiters, currentPH, targetPH, alkal
     };
   }
   
-  if (currentPH < 6.0 || currentPH > 8.5) {
-    return {
-      volumeML: 0,
-      volumeGrams: 0,
-      durationSeconds: 0,
-      safetyWarning: 'pH fuera de rango seguro (6.0-8.5). Consulte a un profesional.'
-    };
-  }
-  
   // Convertir volumen de piscina a galones
   const poolVolumeGallons = litersToGallons(poolVolumeLiters);
   

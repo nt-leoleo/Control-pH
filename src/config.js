@@ -25,8 +25,8 @@ export const CONFIG = {
     },
 
     SAFETY: {
-        MIN_PH: 6.0,
-        MAX_PH: 8.5,
+        MIN_PH: 0.0,
+        MAX_PH: 14.0,
         MAX_PH_CHANGE: 1.0,
     },
 };

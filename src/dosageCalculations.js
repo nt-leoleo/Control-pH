@@ -110,8 +110,8 @@ export const validateDosage = (
 ) => {
     const {
         alkalinityPpm = DEFAULT_ALKALINITY_PPM,
-        minSafePH = 6.0,
-        maxSafePH = 8.5,
+        minSafePH = 0.0,
+        maxSafePH = 14.0,
         maxPHChange = 1.0,
     } = options;
 

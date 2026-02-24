@@ -124,12 +124,12 @@ const ManualDosing = () => {
 
     const adminConfig = userConfig?.adminConfig || {};
     const minSafePH = useMemo(() => {
-        const configuredMin = toNumberOr(adminConfig.minPH, 6.0);
+        const configuredMin = toNumberOr(adminConfig.minPH, 0.0);
         return Math.max(0, Math.min(14, configuredMin));
     }, [adminConfig.minPH]);
 
     const maxSafePH = useMemo(() => {
-        const configuredMax = toNumberOr(adminConfig.maxPH, 8.5);
+        const configuredMax = toNumberOr(adminConfig.maxPH, 14.0);
         return Math.max(minSafePH + 0.1, Math.min(14, configuredMax));
     }, [adminConfig.maxPH, minSafePH]);
 

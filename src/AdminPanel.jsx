@@ -12,8 +12,8 @@ const DEFAULT_ADMIN_CONFIG = {
   maxDoseVolume: 0.5,
   minDoseVolume: 0.01,
   correctionFactor: 0.8,
-  minPH: 6.0,
-  maxPH: 8.5,
+  minPH: 0.0,
+  maxPH: 14.0,
   maxPHChange: 1.0,
   pumpFlowRate: 60,
 };
@@ -301,8 +301,8 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.minPH}
                   onChange={(e) => handleConfigChange('minPH', e.target.value)}
-                  min="4"
-                  max="7"
+                  min="0"
+                  max="14"
                   step="0.1"
                 />
                 <span className="field-unit">pH</span>
@@ -314,8 +314,8 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.maxPH}
                   onChange={(e) => handleConfigChange('maxPH', e.target.value)}
-                  min="7"
-                  max="10"
+                  min="0"
+                  max="14"
                   step="0.1"
                 />
                 <span className="field-unit">pH</span>
