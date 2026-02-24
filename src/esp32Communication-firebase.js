@@ -419,6 +419,42 @@ export const sendEmergencyStopCommand = async (userId) => {
     }
 };
 
+export const sendWifiResetCommand = async (userId) => {
+    try {
+        if (!userId) {
+            throw new Error('userId es requerido');
+        }
+
+        const commandId = '!wifi_reset';
+        const wifiResetRef = ref(database, `users/${userId}/commands/${commandId}`);
+
+        const commandData = {
+            product: 'wifi_reset',
+            duration: 0,
+            status: 'pending',
+            priority: 'high',
+            source: 'web-app',
+            createdAt: Date.now(),
+            timestamp: Date.now(),
+        };
+
+        await set(wifiResetRef, commandData);
+
+        return {
+            success: true,
+            commandId,
+            product: 'wifi_reset',
+            message: 'Comando de reinicio WiFi enviado al ESP32',
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            message: 'No se pudo enviar el reinicio de WiFi',
+        };
+    }
+};
+
 export const waitForCommandConfirmation = async (userId, commandId, maxWaitTime = 60000) => {
     try {
         const commandRef = ref(database, `users/${userId}/commands/${commandId}`);
