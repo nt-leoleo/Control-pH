@@ -1,6 +1,7 @@
 import './ShowpH.css';
 import { useContext, useMemo, useRef, useState } from 'react';
 import { PHContext } from './PHContext';
+import InfoHint from './InfoHint';
 
 const SWIPE_THRESHOLD = 42;
 const GAUGE_MIN = 6.0;
@@ -122,7 +123,14 @@ const ShowpH = () => {
       >
         <div className={`ph-carousel-track slide-${slideIndex}`}>
           <div className="ph-slide" data-tutorial="ph-meter-read">
-            <p className="ph-label">Lectura actual</p>
+            <p className="ph-label ph-label-with-info">
+              <span>Lectura actual</span>
+              <InfoHint
+                size="sm"
+                title="Lectura actual"
+                text="Es el valor que el sensor esta midiendo ahora mismo. Se actualiza automaticamente cuando llega un dato nuevo."
+              />
+            </p>
             <p className="ph-value" data-tutorial="ph-meter-value">
               {ph.toFixed(2)}
             </p>

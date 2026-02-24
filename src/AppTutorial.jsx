@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PHContext } from './PHContext';
+import tutorialAmbientTrack from './assets/tutorial-ambient.ogg';
 import './AppTutorial.css';
 
 const STEP_LIST = [
@@ -199,6 +200,9 @@ const STEP_LIST = [
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const AMBIENT_TARGET_VOLUME = 0.16;
+const AMBIENT_FADE_IN_MS = 1800;
+const AMBIENT_FADE_OUT_MS = 2600;
 
 const getSpotlightRect = (element) => {
   if (!element) return null;
@@ -314,6 +318,8 @@ const getConnectorPoints = (cardPosition, cardWidth, cardHeight, targetRect) => 
 const AppTutorial = ({ isOpen, onClose }) => {
   const { dosingMode, setDosingMode } = useContext(PHContext);
   const cardRef = useRef(null);
+  const ambientAudioRef = useRef(null);
+  const fadeIntervalRef = useRef(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [partIndex, setPartIndex] = useState(0);
@@ -321,6 +327,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
   const [cardPosition, setCardPosition] = useState(null);
   const [connectorPoints, setConnectorPoints] = useState(null);
   const [isPreparing, setIsPreparing] = useState(false);
+  const [needsAudioInteraction, setNeedsAudioInteraction] = useState(false);
 
   const step = STEP_LIST[stepIndex];
   const parts = step?.parts || [];
@@ -331,6 +338,109 @@ const AppTutorial = ({ isOpen, onClose }) => {
 
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
+
+  const clearFadeInterval = useCallback(() => {
+    if (fadeIntervalRef.current) {
+      window.clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+    }
+  }, []);
+
+  const fadeAmbientTo = useCallback(
+    (targetVolume, durationMs, onComplete) => {
+      const audio = ambientAudioRef.current;
+      if (!audio) {
+        if (onComplete) onComplete();
+        return;
+      }
+
+      clearFadeInterval();
+
+      const startVolume = audio.volume;
+      const delta = targetVolume - startVolume;
+      if (Math.abs(delta) < 0.01 || durationMs <= 0) {
+        audio.volume = clamp(targetVolume, 0, 1);
+        if (onComplete) onComplete();
+        return;
+      }
+
+      const stepMs = 50;
+      const totalSteps = Math.max(1, Math.round(durationMs / stepMs));
+      let step = 0;
+
+      fadeIntervalRef.current = window.setInterval(() => {
+        step += 1;
+        const progress = step / totalSteps;
+        audio.volume = clamp(startVolume + delta * progress, 0, 1);
+
+        if (step >= totalSteps) {
+          clearFadeInterval();
+          audio.volume = clamp(targetVolume, 0, 1);
+          if (onComplete) onComplete();
+        }
+      }, stepMs);
+    },
+    [clearFadeInterval]
+  );
+
+  const ensureAmbientAudio = useCallback(() => {
+    if (!ambientAudioRef.current) {
+      const audio = new Audio(tutorialAmbientTrack);
+      audio.loop = true;
+      audio.preload = 'auto';
+      audio.volume = 0;
+      ambientAudioRef.current = audio;
+    }
+
+    return ambientAudioRef.current;
+  }, []);
+
+  const tryPlayAmbient = useCallback(async () => {
+    const audio = ensureAmbientAudio();
+    clearFadeInterval();
+
+    if (!audio.paused) {
+      fadeAmbientTo(AMBIENT_TARGET_VOLUME, AMBIENT_FADE_IN_MS);
+      setNeedsAudioInteraction(false);
+      return true;
+    }
+
+    audio.volume = 0;
+
+    try {
+      await audio.play();
+      setNeedsAudioInteraction(false);
+      fadeAmbientTo(AMBIENT_TARGET_VOLUME, AMBIENT_FADE_IN_MS);
+      return true;
+    } catch (error) {
+      console.warn('[Tutorial] Audio bloqueado hasta interaccion del usuario:', error);
+      setNeedsAudioInteraction(true);
+      return false;
+    }
+  }, [clearFadeInterval, ensureAmbientAudio, fadeAmbientTo]);
+
+  const stopAmbient = useCallback(
+    (withFade) => {
+      const audio = ambientAudioRef.current;
+      if (!audio) return;
+
+      setNeedsAudioInteraction(false);
+
+      if (withFade) {
+        fadeAmbientTo(0, AMBIENT_FADE_OUT_MS, () => {
+          audio.pause();
+          audio.currentTime = 0;
+        });
+        return;
+      }
+
+      clearFadeInterval();
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 0;
+    },
+    [clearFadeInterval, fadeAmbientTo]
+  );
 
   const findTargetElement = useCallback(() => {
     if (activeSelector) {
@@ -410,6 +520,42 @@ const AppTutorial = ({ isOpen, onClose }) => {
     setCardPosition(null);
     setConnectorPoints(null);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      tryPlayAmbient();
+      return undefined;
+    }
+
+    stopAmbient(true);
+    return undefined;
+  }, [isOpen, stopAmbient, tryPlayAmbient]);
+
+  useEffect(() => {
+    if (!isOpen || !needsAudioInteraction) return undefined;
+
+    const unlockAudio = () => {
+      tryPlayAmbient();
+    };
+
+    window.addEventListener('pointerdown', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, [isOpen, needsAudioInteraction, tryPlayAmbient]);
+
+  useEffect(
+    () => () => {
+      stopAmbient(false);
+      ambientAudioRef.current = null;
+    },
+    [stopAmbient]
+  );
 
   useEffect(() => {
     if (!isOpen || !step) return undefined;
@@ -604,6 +750,12 @@ const AppTutorial = ({ isOpen, onClose }) => {
 
         <h3>{panelTitle}</h3>
         <p>{panelDescription}</p>
+        {needsAudioInteraction && (
+          <p className="tutorial-audio-hint">Toca la pantalla para activar el sonido ambiente.</p>
+        )}
+        <p className="tutorial-audio-credit">
+          Audio: Uniq - Art Of Silence V2 (CC BY 4.0, Wikimedia Commons).
+        </p>
 
         <div className="tutorial-actions">
           <button type="button" className="tutorial-btn tutorial-btn--ghost" onClick={() => onClose('skipped')}>

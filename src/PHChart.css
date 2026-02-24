@@ -23,6 +23,11 @@
   color: var(--text-primary);
 }
 
+.chart-title-with-info {
+  display: inline-flex;
+  align-items: center;
+}
+
 .warningBadge {
   --warning-color: #fb7185;
   position: relative;

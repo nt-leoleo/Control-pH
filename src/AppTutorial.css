@@ -114,6 +114,19 @@
   line-height: 1.34;
 }
 
+.tutorial-audio-hint {
+  margin-top: 0.46rem;
+  color: #67e8f9;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.tutorial-audio-credit {
+  margin-top: 0.34rem;
+  color: #94a3b8;
+  font-size: 0.74rem;
+}
+
 .tutorial-actions {
   margin-top: 0.85rem;
   display: flex;

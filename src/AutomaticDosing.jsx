@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { ref, onValue } from 'firebase/database';
 import { database } from './firebase';
 import { getChemicalName, getConfiguredProducts } from './chemicalLabels';
+import InfoHint from './InfoHint';
 import './AutomaticDosing.css';
 
 const AutomaticDosing = () => {
@@ -223,7 +224,14 @@ const AutomaticDosing = () => {
 
   return (
     <div className="automatic-dosing-container" data-tutorial="auto-module">
-      <h3>Modo automatico</h3>
+      <h3 className="auto-title-with-info">
+        <span>Modo automatico</span>
+        <InfoHint
+          size="sm"
+          title="Modo automatico"
+          text="El sistema evalua el desvio del pH y decide correcciones sin que tengas que dosificar manualmente."
+        />
+      </h3>
 
       <div className={`auto-status ${systemStatus.status}`} data-tutorial="auto-status">
         <div className="status-head" data-tutorial="auto-status-head">
@@ -258,7 +266,14 @@ const AutomaticDosing = () => {
       </div>
 
       <div className="simple-summary" data-tutorial="auto-summary">
-        <h4>Ultima correccion</h4>
+        <h4 className="auto-subtitle-with-info">
+          <span>Ultima correccion</span>
+          <InfoHint
+            size="sm"
+            title="Ultima correccion"
+            text="Resume la accion mas reciente del sistema automatico: cuando fue, que producto aplico y por cuanto tiempo."
+          />
+        </h4>
         <div className="summary-grid">
           <div className="summary-item">
             <span className="label">Cuando</span>

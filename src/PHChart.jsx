@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { PHContext } from './PHContext';
+import InfoHint from './InfoHint';
 import './PHChart.css';
 
 const WarningIcon = () => (
@@ -70,7 +71,14 @@ const PHChart = () => {
     return (
         <div className="chartContainer" data-tutorial="ph-chart">
             <div className="chartHeader" data-tutorial="chart-header">
-                <h3 data-tutorial="chart-title">Seguimiento de pH por Hora</h3>
+                <h3 className="chart-title-with-info" data-tutorial="chart-title">
+                    <span>Seguimiento de pH por Hora</span>
+                    <InfoHint
+                        size="sm"
+                        title="Grafico de pH"
+                        text="Muestra como fue cambiando el pH en el tiempo. Si ves subidas o bajadas continuas, revisa configuraciones o dosificacion."
+                    />
+                </h3>
                 {showWarning && (
                     <div
                         className={`warningBadge warningBadge--active warningBadge--${status.label.toLowerCase()}`}

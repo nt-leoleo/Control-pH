@@ -54,6 +54,12 @@
   font-weight: 700;
 }
 
+.ph-label-with-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .ph-value {
   margin: 0.45rem 0 0;
   font-family: 'Sora', 'Manrope', sans-serif;

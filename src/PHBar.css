@@ -21,6 +21,11 @@
   font-size: 0.98rem;
 }
 
+.ph-scale-title-with-info {
+  display: inline-flex;
+  align-items: center;
+}
+
 .ph-scale-current {
   font-size: 0.78rem;
   font-weight: 700;
