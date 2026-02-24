@@ -353,3 +353,135 @@ exports.forceCheck = functions.https.onRequest(async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+const getAdminAllowlist = () => {
+  const fromEnv = (process.env.ADMIN_ACCESS_EMAILS || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  const fromRuntime = ((((functions.config() || {}).admin || {}).emails) || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  return Array.from(new Set([...fromEnv, ...fromRuntime]));
+};
+
+const verifyAdminRequest = async (req) => {
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    throw new Error('AUTH_MISSING');
+  }
+
+  const idToken = authHeader.slice(7);
+  const decoded = await admin.auth().verifyIdToken(idToken);
+  const requesterEmail = (decoded.email || '').toLowerCase();
+  const allowlist = getAdminAllowlist();
+  const isAllowedByEmail = allowlist.includes(requesterEmail);
+  const isAllowedByClaim = decoded.admin === true;
+
+  if (!isAllowedByEmail && !isAllowedByClaim) {
+    throw new Error('ADMIN_REQUIRED');
+  }
+
+  return decoded;
+};
+
+const detachDevicesFromUser = async (targetUserId) => {
+  const db = admin.firestore();
+  const [legacyDevicesSnapshot, linkedDevicesSnapshot] = await Promise.all([
+    db.collection('devices').where('userId', '==', targetUserId).get(),
+    db.collection('devices').where('userIds', 'array-contains', targetUserId).get()
+  ]);
+
+  const devicesMap = new Map();
+  legacyDevicesSnapshot.forEach((deviceDoc) => devicesMap.set(deviceDoc.id, deviceDoc));
+  linkedDevicesSnapshot.forEach((deviceDoc) => devicesMap.set(deviceDoc.id, deviceDoc));
+
+  const tasks = [];
+  devicesMap.forEach((deviceDoc) => {
+    const data = deviceDoc.data() || {};
+    const linkedUserIds = Array.isArray(data.userIds) ? data.userIds : [];
+
+    if (linkedUserIds.length > 1) {
+      const remaining = linkedUserIds.filter((id) => id !== targetUserId);
+      const updatePayload = {
+        userIds: admin.firestore.FieldValue.arrayRemove(targetUserId),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (data.userId === targetUserId && remaining.length > 0) {
+        updatePayload.userId = remaining[0];
+      }
+
+      tasks.push(deviceDoc.ref.update(updatePayload));
+      return;
+    }
+
+    tasks.push(deviceDoc.ref.delete());
+  });
+
+  await Promise.all(tasks);
+};
+
+exports.deleteUserCompletely = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const requester = await verifyAdminRequest(req);
+    const targetUserId = req.body.targetUserId;
+
+    if (!targetUserId || typeof targetUserId !== 'string') {
+      res.status(400).json({ error: 'targetUserId required' });
+      return;
+    }
+
+    if (targetUserId === requester.uid) {
+      res.status(400).json({ error: 'No puedes eliminar tu propia cuenta desde este endpoint' });
+      return;
+    }
+
+    await detachDevicesFromUser(targetUserId);
+    await admin.database().ref(`users/${targetUserId}`).remove();
+    await admin.firestore().doc(`users/${targetUserId}`).delete();
+
+    try {
+      await admin.auth().deleteUser(targetUserId);
+    } catch (authError) {
+      if (authError.code !== 'auth/user-not-found') {
+        throw authError;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Usuario eliminado completamente',
+      targetUserId
+    });
+  } catch (error) {
+    if (error.message === 'AUTH_MISSING') {
+      res.status(401).json({ error: 'Authorization header missing' });
+      return;
+    }
+    if (error.message === 'ADMIN_REQUIRED') {
+      res.status(403).json({ error: 'Admin privileges required' });
+      return;
+    }
+
+    console.error('Error en deleteUserCompletely:', error);
+    res.status(500).json({ error: error.message || 'Unexpected error' });
+  }
+});

@@ -1,32 +1,31 @@
-import { useState, useEffect, useContext } from 'react';
+﻿import { useState, useEffect, useContext, useCallback } from 'react';
 import { PHContext } from './PHContext';
 import { ref, onValue, off, set } from 'firebase/database';
-import { database } from './firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { database, db, auth } from './firebase';
 import './AdminPanel.css';
+
+const DEFAULT_ADMIN_CONFIG = {
+  maxDailyDoses: 10,
+  minWaitTimeBetweenDoses: 2,
+  checkInterval: 1,
+  maxDoseVolume: 0.5,
+  minDoseVolume: 0.01,
+  correctionFactor: 0.8,
+  minPH: 6.0,
+  maxPH: 8.5,
+  maxPHChange: 1.0,
+  pumpFlowRate: 60,
+};
+
+const CLOUD_FUNCTIONS_BASE =
+  import.meta.env.VITE_CLOUD_FUNCTIONS_BASE_URL ||
+  'https://us-central1-control-ph-82951.cloudfunctions.net';
 
 const AdminPanel = ({ onClose }) => {
   const { userConfig, saveConfigToFirebase, user } = useContext(PHContext);
-  
-  // Estados para configuración avanzada
-  const [adminConfig, setAdminConfig] = useState({
-    // Dosificación
-    maxDailyDoses: 10,
-    minWaitTimeBetweenDoses: 2, // horas
-    checkInterval: 1, // minutos (Cloud Functions ejecuta cada 1 min)
-    maxDoseVolume: 0.5, // litros
-    minDoseVolume: 0.01, // litros
-    correctionFactor: 0.8,
-    
-    // Rangos de seguridad
-    minPH: 6.0,
-    maxPH: 8.5,
-    maxPHChange: 1.0,
-    
-    // Hardware
-    pumpFlowRate: 60, // L/h
-  });
-  
-  // Estado para logs en tiempo real
+
+  const [adminConfig, setAdminConfig] = useState(DEFAULT_ADMIN_CONFIG);
   const [realtimeLogs, setRealtimeLogs] = useState([]);
   const [backendStatus, setBackendStatus] = useState({
     lastCheck: null,
@@ -35,128 +34,177 @@ const AdminPanel = ({ onClose }) => {
     errors: [],
     currentPH: null,
     targetPH: null,
-    autoMode: false
+    autoMode: false,
   });
 
-  // Cargar configuración guardada
+  const [users, setUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
+
   useEffect(() => {
     if (userConfig?.adminConfig) {
-      setAdminConfig(prev => ({ ...prev, ...userConfig.adminConfig }));
+      setAdminConfig((previous) => ({ ...previous, ...userConfig.adminConfig }));
     }
   }, [userConfig]);
 
-  // Monitorear estado del sistema en tiempo real desde Firebase Realtime Database
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
 
     const systemStatusRef = ref(database, `users/${user.uid}/systemStatus`);
     const logsRef = ref(database, `users/${user.uid}/logs`);
 
-    // Escuchar cambios en el estado del sistema
     onValue(systemStatusRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) {
-        setBackendStatus(prev => ({
-          ...prev,
-          lastCheck: data.lastCheck,
-          lastDosing: data.lastDosing,
-          dosingCount: data.dosingCount || 0,
-          currentPH: data.currentPH,
-          targetPH: data.targetPH,
-          autoMode: data.autoMode,
-          errors: data.errors || []
-        }));
-      }
+      if (!data) return;
+
+      setBackendStatus((previous) => ({
+        ...previous,
+        lastCheck: data.lastCheck,
+        lastDosing: data.lastDosing,
+        dosingCount: data.dosingCount || 0,
+        currentPH: data.currentPH,
+        targetPH: data.targetPH,
+        autoMode: data.autoMode,
+        errors: data.errors || [],
+      }));
     });
 
-    // Escuchar logs en tiempo real
     onValue(logsRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) {
-        const logsArray = Object.entries(data)
-          .map(([key, value]) => ({
-            id: key,
-            ...value
-          }))
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-          .slice(0, 50);
-        
-        setRealtimeLogs(logsArray);
-      }
+      if (!data) return;
+
+      const logsArray = Object.entries(data)
+        .map(([id, value]) => ({ id, ...value }))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 50);
+
+      setRealtimeLogs(logsArray);
     });
 
     return () => {
       off(systemStatusRef);
       off(logsRef);
     };
-  }, [user]);
+  }, [user?.uid]);
+
+  const loadUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const loadedUsers = usersSnapshot.docs
+        .map((item) => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => {
+          const aName = (a.displayName || a.email || a.id).toLowerCase();
+          const bName = (b.displayName || b.email || b.id).toLowerCase();
+          return aName.localeCompare(bName);
+        });
+      setUsers(loadedUsers);
+    } catch (error) {
+      console.error('Error cargando usuarios:', error);
+      alert('No se pudieron cargar los usuarios.');
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleConfigChange = (key, value) => {
     const numValue = parseFloat(value);
-    setAdminConfig(prev => ({
-      ...prev,
-      [key]: isNaN(numValue) ? value : numValue
+    setAdminConfig((previous) => ({
+      ...previous,
+      [key]: Number.isNaN(numValue) ? value : numValue,
     }));
   };
 
   const handleSaveConfig = async () => {
     try {
-      // Guardar en Firestore para que Cloud Functions lo lean
-      await saveConfigToFirebase({ 
+      await saveConfigToFirebase({
         adminConfig,
-        // Actualizar timestamp para que Cloud Functions sepan que hay nueva config
-        configUpdatedAt: new Date().toISOString()
+        configUpdatedAt: new Date().toISOString(),
       });
-      
-      // Agregar log de cambio de configuración
+
       const logRef = ref(database, `users/${user.uid}/logs/${Date.now()}`);
       await set(logRef, {
         timestamp: new Date().toISOString(),
         type: 'success',
         message: 'Configuracion de administrador actualizada',
-        data: adminConfig
+        data: adminConfig,
       });
-      
-      alert('Configuracion guardada correctamente. Las Cloud Functions usaran esta configuracion.');
+
+      alert('Configuracion guardada correctamente.');
     } catch (error) {
       console.error('Error guardando configuracion:', error);
-      alert('Error guardando configuracion: ' + error.message);
+      alert(`Error guardando configuracion: ${error.message}`);
     }
   };
 
   const handleResetConfig = () => {
-    if (confirm('Estas seguro de restablecer la configuracion a valores por defecto?')) {
-      setAdminConfig({
-        maxDailyDoses: 10,
-        minWaitTimeBetweenDoses: 2,
-        checkInterval: 5,
-        maxDoseVolume: 0.5,
-        minDoseVolume: 0.01,
-        correctionFactor: 0.8,
-        minPH: 6.0,
-        maxPH: 8.5,
-        maxPHChange: 1.0,
-        pumpFlowRate: 60,
-      });
+    if (window.confirm('Estas seguro de restablecer la configuracion a valores por defecto?')) {
+      setAdminConfig({ ...DEFAULT_ADMIN_CONFIG, checkInterval: 5 });
+    }
+  };
+
+  const deleteUserCompletely = async (targetUserId) => {
+    const currentAuthUser = auth.currentUser;
+    if (!currentAuthUser) {
+      throw new Error('Sesion expirada. Vuelve a iniciar sesion.');
+    }
+
+    const token = await currentAuthUser.getIdToken();
+    const response = await fetch(`${CLOUD_FUNCTIONS_BASE}/deleteUserCompletely`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ targetUserId }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  };
+
+  const handleDeleteUser = async (targetUser) => {
+    if (!targetUser?.id) return;
+
+    const identity = targetUser.displayName || targetUser.email || targetUser.id;
+    const confirmed = window.confirm(
+      `Vas a eliminar completamente al usuario ${identity}.\n\nSe borrara Firestore, Realtime DB, dispositivos vinculados y Firebase Auth.`
+    );
+    if (!confirmed) return;
+
+    setDeletingUserId(targetUser.id);
+    try {
+      await deleteUserCompletely(targetUser.id);
+      setUsers((previous) => previous.filter((item) => item.id !== targetUser.id));
+      alert('Usuario eliminado completamente.');
+    } catch (error) {
+      console.error('Error eliminando usuario:', error);
+      alert(`No se pudo eliminar el usuario: ${error.message}`);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
   return (
     <div className="admin-panel-overlay">
       <div className="admin-panel">
-        {/* Header */}
         <div className="admin-header">
-          <h2>🔐 Panel de Administrador</h2>
-          <button className="admin-close-btn" onClick={onClose}>✕</button>
+          <h2>Panel de Administrador</h2>
+          <button className="admin-close-btn" onClick={onClose}>x</button>
         </div>
 
-        {/* Contenido con scroll */}
         <div className="admin-content">
-          
-          {/* Configuración de Dosificación */}
           <div className="admin-section">
-            <h3>💊 Configuracion de Dosificacion</h3>
-            
+            <h3>Configuracion de Dosificacion</h3>
+
             <div className="admin-grid">
               <div className="admin-field">
                 <label>Dosis maximas diarias</label>
@@ -171,7 +219,7 @@ const AdminPanel = ({ onClose }) => {
               </div>
 
               <div className="admin-field">
-                <label>Tiempo minimo entre dosis (Espera de mezcla)</label>
+                <label>Tiempo minimo entre dosis (espera de mezcla)</label>
                 <input
                   type="number"
                   value={adminConfig.minWaitTimeBetweenDoses}
@@ -184,57 +232,6 @@ const AdminPanel = ({ onClose }) => {
                 <span className="field-help">
                   Tiempo que espera el sistema despues de dosificar para que el quimico se mezcle con el agua.
                 </span>
-                <div className="quick-buttons">
-                  <button 
-                    type="button"
-                    className="quick-btn"
-                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 0)}
-                  >
-                    Sin espera
-                  </button>
-                  <button 
-                    type="button"
-                    className="quick-btn"
-                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 0.016)}
-                  >
-                    1 min
-                  </button>
-                  <button 
-                    type="button"
-                    className="quick-btn"
-                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 0.083)}
-                  >
-                    5 min
-                  </button>
-                  <button 
-                    type="button"
-                    className="quick-btn"
-                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 0.25)}
-                  >
-                    15 min
-                  </button>
-                  <button 
-                    type="button"
-                    className="quick-btn"
-                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 0.5)}
-                  >
-                    30 min
-                  </button>
-                  <button 
-                    type="button"
-                    className="quick-btn"
-                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 1)}
-                  >
-                    1 hora
-                  </button>
-                  <button 
-                    type="button"
-                    className="quick-btn"
-                    onClick={() => handleConfigChange('minWaitTimeBetweenDoses', 2)}
-                  >
-                    2 horas
-                  </button>
-                </div>
               </div>
 
               <div className="admin-field">
@@ -247,9 +244,6 @@ const AdminPanel = ({ onClose }) => {
                   max="60"
                 />
                 <span className="field-unit">minutos</span>
-                <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85em', display: 'block', marginTop: '4px' }}>
-                  Nota: Cloud Functions tiene un mínimo de 1 minuto. Valores menores se ajustarán automáticamente.
-                </small>
               </div>
 
               <div className="admin-field">
@@ -293,15 +287,13 @@ const AdminPanel = ({ onClose }) => {
             </div>
           </div>
 
-          {/* Rangos de Seguridad */}
           <div className="admin-section">
-            <h3>⚠️ Rangos de Seguridad</h3>
-            
+            <h3>Rangos de Seguridad</h3>
+
             <div className="safety-warning">
-              <strong>⚠️ IMPORTANTE:</strong> Estos valores evitan que el sistema dosifique si detecta condiciones peligrosas.
-              Si el pH objetivo esta fuera de estos rangos, el sistema NO dosificara.
+              <strong>Importante:</strong> Estos valores evitan que el sistema dosifique en condiciones peligrosas.
             </div>
-            
+
             <div className="admin-grid">
               <div className="admin-field">
                 <label>pH minimo permitido</label>
@@ -340,18 +332,13 @@ const AdminPanel = ({ onClose }) => {
                   step="0.1"
                 />
                 <span className="field-unit">pH</span>
-                <span className="field-help">
-                  Si la desviacion del pH es mayor a este valor, el sistema NO dosificara.
-                  Aumenta este valor si tu pH esta muy desviado del objetivo.
-                </span>
               </div>
             </div>
           </div>
 
-          {/* Configuración de Hardware */}
           <div className="admin-section">
-            <h3>🔧 Configuracion de Hardware</h3>
-            
+            <h3>Configuracion de Hardware</h3>
+
             <div className="admin-grid">
               <div className="admin-field">
                 <label>Caudal de la bomba</label>
@@ -367,10 +354,9 @@ const AdminPanel = ({ onClose }) => {
             </div>
           </div>
 
-          {/* Estado del Backend */}
           <div className="admin-section">
-            <h3>📊 Estado del Backend</h3>
-            
+            <h3>Estado del Backend</h3>
+
             <div className="backend-status">
               <div className="status-item">
                 <span className="status-label">Ultima verificacion:</span>
@@ -389,63 +375,76 @@ const AdminPanel = ({ onClose }) => {
                 <span className="status-value">{backendStatus.dosingCount}</span>
               </div>
               <div className="status-item">
-                <span className="status-label">pH Actual:</span>
+                <span className="status-label">pH actual:</span>
                 <span className="status-value">
                   {backendStatus.currentPH ? backendStatus.currentPH.toFixed(2) : 'N/A'}
                 </span>
               </div>
               <div className="status-item">
-                <span className="status-label">pH Objetivo:</span>
+                <span className="status-label">pH objetivo:</span>
                 <span className="status-value">
                   {backendStatus.targetPH ? backendStatus.targetPH.toFixed(2) : 'N/A'}
                 </span>
               </div>
-              <div className="status-item">
-                <span className="status-label">Modo Automatico:</span>
-                <span className={`status-value ${backendStatus.autoMode ? 'status-active' : 'status-inactive'}`}>
-                  {backendStatus.autoMode ? '✅ Activo' : '❌ Inactivo'}
-                </span>
-              </div>
-              <div className="status-item">
-                <span className="status-label">Errores:</span>
-                <span className="status-value error">{backendStatus.errors.length}</span>
-              </div>
             </div>
           </div>
 
-          {/* Logs en Tiempo Real */}
           <div className="admin-section">
-            <h3>📡 Logs en Tiempo Real</h3>
-            
+            <h3>Usuarios registrados</h3>
+
+            {isLoadingUsers ? (
+              <div className="no-logs">Cargando usuarios...</div>
+            ) : users.length === 0 ? (
+              <div className="no-logs">No hay usuarios registrados</div>
+            ) : (
+              <div className="admin-users-list">
+                {users.map((registeredUser) => (
+                  <div key={registeredUser.id} className="admin-user-item">
+                    <div className="admin-user-meta">
+                      <strong>{registeredUser.displayName || 'Sin nombre'}</strong>
+                      <span>{registeredUser.email || 'Sin email'}</span>
+                      <small>ID: {registeredUser.id}</small>
+                    </div>
+                    <button
+                      className="admin-user-delete"
+                      onClick={() => handleDeleteUser(registeredUser)}
+                      disabled={deletingUserId === registeredUser.id}
+                    >
+                      {deletingUserId === registeredUser.id ? 'Eliminando...' : 'Eliminar'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="admin-section">
+            <h3>Logs en Tiempo Real</h3>
+
             <div className="realtime-logs">
               {realtimeLogs.length === 0 ? (
                 <div className="no-logs">No hay logs disponibles</div>
               ) : (
-                realtimeLogs.map((log, index) => (
-                  <div key={index} className={`log-entry log-${log.type}`}>
-                    <span className="log-time">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
+                realtimeLogs.map((log) => (
+                  <div key={log.id} className={`log-entry log-${log.type}`}>
+                    <span className="log-time">{new Date(log.timestamp).toLocaleTimeString()}</span>
                     <span className="log-message">{log.message}</span>
-                    {log.data && (
-                      <pre className="log-data">{JSON.stringify(log.data, null, 2)}</pre>
-                    )}
+                    {log.data && <pre className="log-data">{JSON.stringify(log.data, null, 2)}</pre>}
                   </div>
                 ))
               )}
             </div>
           </div>
 
-          {/* Botones de Acción */}
           <div className="admin-actions">
             <button className="admin-btn btn-primary" onClick={handleSaveConfig}>
-              💾 Guardar Configuracion
+              Guardar configuracion
             </button>
             <button className="admin-btn btn-secondary" onClick={handleResetConfig}>
-              🔄 Restablecer Valores
+              Restablecer valores
             </button>
             <button className="admin-btn btn-danger" onClick={onClose}>
-              ❌ Cerrar
+              Cerrar
             </button>
           </div>
         </div>
