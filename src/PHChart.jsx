@@ -20,9 +20,10 @@ const WarningIcon = () => (
     </svg>
 );
 
-const PHChart = () => {
+const PHChart = ({ phOverride }) => {
     const { phHistory, ph, phTolerance, phToleranceRange } = useContext(PHContext);
     const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
+    const currentPh = typeof phOverride === 'number' ? phOverride : ph;
 
     // Calcular el rango dinámico del eje Y basado en los datos
     const calculateYAxisDomain = () => {
@@ -47,9 +48,9 @@ const PHChart = () => {
     const yAxisDomain = calculateYAxisDomain();
 
     const getStatus = () => {
-        if (ph < phTolerance - phToleranceRange) {
+        if (currentPh < phTolerance - phToleranceRange) {
             return { color: '#fb7185', label: 'Bajo' };
-        } else if (ph > phTolerance + phToleranceRange) {
+        } else if (currentPh > phTolerance + phToleranceRange) {
             return { color: '#f59e0b', label: 'Alto' };
         } else {
             return { color: '#14b8a6', label: 'OK' };

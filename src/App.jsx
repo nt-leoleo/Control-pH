@@ -31,6 +31,9 @@ export default function App() {
   const [showDeviceRegistrationModal, setShowDeviceRegistrationModal] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialCheckedForUser, setTutorialCheckedForUser] = useState(false);
+  const [tutorialDemoPh, setTutorialDemoPh] = useState(null);
+
+  const displayedPh = typeof tutorialDemoPh === 'number' ? tutorialDemoPh : ph;
 
   const getTutorialStorageKey = useCallback(
     () => (user?.uid ? `control-pileta:tutorial-completed:${user.uid}` : null),
@@ -250,10 +253,10 @@ export default function App() {
 
       <main className="fade-in app-main" data-tutorial="dashboard-root">
         <div className="dashboard-stack">
-          <ShowpH />
+          <ShowpH phValue={displayedPh} />
           <HandleAdmin />
-          <PHBar ph={ph} />
-          <PHChart />
+          <PHBar ph={displayedPh} />
+          <PHChart phOverride={displayedPh} />
         </div>
 
         {dosingMode === 'manual' && (
@@ -335,7 +338,9 @@ export default function App() {
 
       <AppTutorial
         isOpen={showTutorial}
+        onDemoPhChange={setTutorialDemoPh}
         onClose={(reason) => {
+          setTutorialDemoPh(null);
           setShowTutorial(false);
           if (reason === 'completed' || reason === 'skipped') {
             markTutorialAsSeen();

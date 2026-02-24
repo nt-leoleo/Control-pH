@@ -26,15 +26,16 @@ const describeArc = (cx, cy, radius, startAngle, endAngle) => {
   return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
 };
 
-const ShowpH = () => {
+const ShowpH = ({ phValue }) => {
   const { ph, phTolerance, phToleranceRange } = useContext(PHContext);
+  const currentPh = typeof phValue === 'number' ? phValue : ph;
   const [slideIndex, setSlideIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
 
   const getStatus = () => {
-    if (ph < phTolerance - phToleranceRange) return { text: 'pH bajo', status: 'low' };
-    if (ph > phTolerance + phToleranceRange) return { text: 'pH alto', status: 'high' };
+    if (currentPh < phTolerance - phToleranceRange) return { text: 'pH bajo', status: 'low' };
+    if (currentPh > phTolerance + phToleranceRange) return { text: 'pH alto', status: 'high' };
     return { text: 'pH en rango ideal', status: 'ok' };
   };
 
@@ -44,7 +45,7 @@ const ShowpH = () => {
 
   const idealMinValue = clamp(phTolerance - phToleranceRange, GAUGE_MIN, GAUGE_MAX);
   const idealMaxValue = clamp(phTolerance + phToleranceRange, GAUGE_MIN, GAUGE_MAX);
-  const phOnGauge = clamp(ph, GAUGE_MIN, GAUGE_MAX);
+  const phOnGauge = clamp(currentPh, GAUGE_MIN, GAUGE_MAX);
 
   const valueToAngle = (value) => {
     const ratio = (value - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN);
@@ -132,7 +133,7 @@ const ShowpH = () => {
               />
             </p>
             <p className="ph-value" data-tutorial="ph-meter-value">
-              {ph.toFixed(2)}
+              {currentPh.toFixed(2)}
             </p>
             <p className="ph-status" data-tutorial="ph-meter-status">
               {status.text}
@@ -145,7 +146,12 @@ const ShowpH = () => {
 
           <div className="ph-slide ph-slide-gauge" data-tutorial="ph-meter-gauge">
             <div className="ph-gauge-wrap">
-              <svg viewBox="0 0 200 150" className="ph-gauge" role="img" aria-label={`Medidor de pH ${ph.toFixed(2)}`}>
+              <svg
+                viewBox="0 0 200 150"
+                className="ph-gauge"
+                role="img"
+                aria-label={`Medidor de pH ${currentPh.toFixed(2)}`}
+              >
                 <defs>
                   <linearGradient id="gaugeBezelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stopColor="var(--gauge-bezel-top)" />
@@ -224,7 +230,7 @@ const ShowpH = () => {
 
                 <rect x="66" y="94" width="68" height="24" rx="7" className="gauge-value-panel" />
                 <text x="100" y="110" className="gauge-value">
-                  {ph.toFixed(2)}
+                  {currentPh.toFixed(2)}
                 </text>
                 <text x="100" y="130" className="gauge-unit">
                   pH
