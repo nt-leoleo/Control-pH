@@ -8,10 +8,11 @@ import {
   updateDoc,
   deleteField
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 
 export const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
 const DEFAULT_DEVICE_NAME = 'Piscina principal';
+const CLOUD_FUNCTIONS_BASE = 'https://us-central1-control-ph-82951.cloudfunctions.net';
 
 export const normalizeDeviceId = (rawValue) => {
   const upper = String(rawValue || '').toUpperCase();
@@ -26,6 +27,33 @@ export const normalizeDeviceId = (rawValue) => {
 const isPermissionDeniedError = (error) =>
   error?.code === 'permission-denied' ||
   /missing or insufficient permissions/i.test(String(error?.message || ''));
+
+const linkDeviceViaCloudFunction = async ({ deviceId, deviceName }) => {
+  const currentUser = auth.currentUser;
+  if (!currentUser?.uid) {
+    throw new Error('No hay sesion activa para vincular dispositivo.');
+  }
+
+  const idToken = await currentUser.getIdToken();
+  const response = await fetch(`${CLOUD_FUNCTIONS_BASE}/linkDeviceToAccount`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`
+    },
+    body: JSON.stringify({
+      deviceId,
+      deviceName
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success !== true) {
+    throw new Error(payload?.error || `HTTP ${response.status}`);
+  }
+
+  return payload;
+};
 
 export const persistUserDeviceLink = async ({ uid, deviceId, deviceName }) => {
   if (!uid || !deviceId) {
@@ -124,11 +152,19 @@ export const syncSharedDeviceLink = async ({ uid, userEmail, deviceId, deviceNam
     return { synced: true };
   } catch (error) {
     if (isPermissionDeniedError(error)) {
-      return {
-        synced: false,
-        warning:
-          'No se pudo actualizar el registro compartido del dispositivo. El enlace en tu cuenta ya quedo guardado.'
-      };
+      try {
+        await linkDeviceViaCloudFunction({
+          deviceId,
+          deviceName: resolvedName
+        });
+        return { synced: true, via: 'cloud-function-fallback' };
+      } catch {
+        return {
+          synced: false,
+          warning:
+            'No se pudo actualizar el registro compartido del dispositivo. Verifica permisos de Firestore y despliegue de Cloud Functions.'
+        };
+      }
     }
 
     throw error;

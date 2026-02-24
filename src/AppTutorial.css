@@ -131,6 +131,27 @@
   transition: top 0.24s ease, left 0.24s ease, transform 0.32s ease, opacity 0.32s ease;
 }
 
+.tutorial-audio-toggle {
+  position: absolute;
+  top: 0.58rem;
+  right: 0.58rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(30, 41, 59, 0.92);
+  color: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.tutorial-audio-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .tutorial-overlay.is-closing {
   opacity: 0;
   pointer-events: none;
@@ -154,6 +175,7 @@
 
 .tutorial-step-counter {
   margin: 0;
+  padding-right: 2.4rem;
   color: #67e8f9;
   font-size: 0.8rem;
   text-transform: uppercase;
