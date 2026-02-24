@@ -225,6 +225,9 @@ const YOUTUBE_FADE_IN_MS = 2200;
 const YOUTUBE_FADE_OUT_MS = 3000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
 const TUTORIAL_CLOSE_FADE_MS = 320;
+const SMALL_TARGET_MAX_HEIGHT = 190;
+const SMALL_TARGET_MAX_VIEWPORT_RATIO = 0.28;
+const SMALL_TARGET_VIEWPORT_ANCHOR = 0.42;
 const SCROLL_BLOCK_KEYS = new Set([
   ' ',
   'Spacebar',
@@ -389,6 +392,20 @@ const isInViewport = (element, margin = 12) => {
   return rect.top >= margin && rect.bottom <= window.innerHeight - margin;
 };
 
+const isSmallTutorialTarget = (element) => {
+  if (!element) {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  if (rect.height <= 0) {
+    return false;
+  }
+
+  const ratio = rect.height / Math.max(window.innerHeight, 1);
+  return rect.height <= SMALL_TARGET_MAX_HEIGHT || ratio <= SMALL_TARGET_MAX_VIEWPORT_RATIO;
+};
+
 const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const { dosingMode, setDosingMode, phTolerance, phToleranceRange } = useContext(PHContext);
   const cardRef = useRef(null);
@@ -419,7 +436,8 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const activeSelector = activePart?.selector || step?.selector;
   const activeSlide = activePart?.showMeterSlide ?? step?.showMeterSlide;
   const activeDemoPhCycle = Boolean(activePart?.demoPhCycle || (!hasParts && step?.demoPhCycle));
-  const activeScrollBlock = activePart?.scrollBlock || step?.scrollBlock || 'start';
+  const activeScrollPreference = activePart?.scrollBlock ?? step?.scrollBlock ?? null;
+  const activeScrollBlock = activeScrollPreference || 'start';
 
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
@@ -903,7 +921,22 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
 
       if (targetElement) {
         const alignTarget = async (behavior) => {
+          const useSmallTargetAnchor = !activeScrollPreference && isSmallTutorialTarget(targetElement);
+
           await runProgrammaticScroll(() => {
+            if (useSmallTargetAnchor) {
+              const rect = targetElement.getBoundingClientRect();
+              const targetCenter = rect.top + rect.height / 2;
+              const desiredCenter = window.innerHeight * SMALL_TARGET_VIEWPORT_ANCHOR;
+              const delta = targetCenter - desiredCenter;
+
+              window.scrollTo({
+                top: Math.max(0, window.scrollY + delta),
+                behavior,
+              });
+              return;
+            }
+
             targetElement.scrollIntoView({
               behavior,
               block: activeScrollBlock,
@@ -929,6 +962,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
       cancelled = true;
     };
   }, [
+    activeScrollPreference,
     activeSlide,
     activeScrollBlock,
     dosingMode,
