@@ -305,55 +305,23 @@ const getSpotlightRect = (element) => {
 
 const getCardPlacement = (targetRect, cardWidth, cardHeight) => {
   const margin = 10;
-  const gap = 16;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const centeredLeft = clamp((viewportWidth - cardWidth) / 2, margin, viewportWidth - cardWidth - margin);
 
   if (!targetRect) {
     return {
       top: clamp(viewportHeight - cardHeight - margin, margin, viewportHeight - cardHeight - margin),
-      left: clamp((viewportWidth - cardWidth) / 2, margin, viewportWidth - cardWidth - margin),
+      left: centeredLeft,
     };
   }
 
-  const candidates = [
-    {
-      top: targetRect.top + targetRect.height + gap,
-      left: targetRect.left + targetRect.width / 2 - cardWidth / 2,
-    },
-    {
-      top: targetRect.top - cardHeight - gap,
-      left: targetRect.left + targetRect.width / 2 - cardWidth / 2,
-    },
-    {
-      top: targetRect.top + targetRect.height / 2 - cardHeight / 2,
-      left: targetRect.left + targetRect.width + gap,
-    },
-    {
-      top: targetRect.top + targetRect.height / 2 - cardHeight / 2,
-      left: targetRect.left - cardWidth - gap,
-    },
-  ];
-
-  const fits = (candidate) =>
-    candidate.top >= margin &&
-    candidate.left >= margin &&
-    candidate.top + cardHeight <= viewportHeight - margin &&
-    candidate.left + cardWidth <= viewportWidth - margin;
-
-  const exact = candidates.find((candidate) => fits(candidate));
-  if (exact) {
-    return exact;
-  }
-
-  const fallback = candidates[0] || {
-    top: viewportHeight - cardHeight - margin,
-    left: (viewportWidth - cardWidth) / 2,
-  };
+  const targetCenterY = targetRect.top + targetRect.height / 2;
+  const shouldPinToTop = targetCenterY > viewportHeight / 2;
 
   return {
-    top: clamp(fallback.top, margin, viewportHeight - cardHeight - margin),
-    left: clamp(fallback.left, margin, viewportWidth - cardWidth - margin),
+    top: shouldPinToTop ? margin : clamp(viewportHeight - cardHeight - margin, margin, viewportHeight - cardHeight - margin),
+    left: centeredLeft,
   };
 };
 
@@ -396,6 +364,31 @@ const getConnectorPoints = (cardPosition, cardWidth, cardHeight, targetRect) => 
   return { fromX, fromY, toX, toY };
 };
 
+const isElementScrollable = (element) => {
+  if (!(element instanceof HTMLElement)) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1;
+  const canScrollX = /(auto|scroll|overlay)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1;
+  return canScrollX || canScrollY;
+};
+
+const collectScrollableElements = () => {
+  const all = Array.from(document.querySelectorAll('*'));
+  return all.filter((node) => isElementScrollable(node));
+};
+
+const isInViewport = (element, margin = 12) => {
+  if (!element) {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  return rect.top >= margin && rect.bottom <= window.innerHeight - margin;
+};
+
 const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const { dosingMode, setDosingMode, phTolerance, phToleranceRange } = useContext(PHContext);
   const cardRef = useRef(null);
@@ -404,6 +397,10 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const trackBadgeTimeoutRef = useRef(null);
   const demoPhIntervalRef = useRef(null);
   const closeTimeoutRef = useRef(null);
+  const isProgrammaticScrollRef = useRef(false);
+  const lockedWindowScrollRef = useRef({ x: 0, y: 0 });
+  const lockedElementScrollRef = useRef(new WeakMap());
+  const scrollableElementsRef = useRef([]);
 
   const [stepIndex, setStepIndex] = useState(TUTORIAL_START_INDEX);
   const [partIndex, setPartIndex] = useState(0);
@@ -426,6 +423,40 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
 
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
+
+  const syncScrollLockSnapshot = useCallback(() => {
+    lockedWindowScrollRef.current = {
+      x: window.scrollX,
+      y: window.scrollY,
+    };
+
+    const scrollables = collectScrollableElements();
+    scrollableElementsRef.current = scrollables;
+    const nextMap = new WeakMap();
+
+    scrollables.forEach((element) => {
+      nextMap.set(element, {
+        top: element.scrollTop,
+        left: element.scrollLeft,
+      });
+    });
+
+    lockedElementScrollRef.current = nextMap;
+  }, []);
+
+  const runProgrammaticScroll = useCallback(
+    async (scrollAction, waitMs = 280) => {
+      isProgrammaticScrollRef.current = true;
+      try {
+        scrollAction();
+        await wait(waitMs);
+        syncScrollLockSnapshot();
+      } finally {
+        isProgrammaticScrollRef.current = false;
+      }
+    },
+    [syncScrollLockSnapshot]
+  );
 
   const clearDemoPhCycle = useCallback(() => {
     if (demoPhIntervalRef.current) {
@@ -688,40 +719,62 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   }, [isOpen]);
 
   useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-
-    const preventScroll = (event) => {
-      event.preventDefault();
-    };
-
-    const preventScrollKeys = (event) => {
-      if (!SCROLL_BLOCK_KEYS.has(event.key)) {
+    const preventPointerScroll = (event) => {
+      if (isProgrammaticScrollRef.current) {
         return;
       }
       event.preventDefault();
     };
 
+    const preventScrollKeys = (event) => {
+      if (isProgrammaticScrollRef.current || !SCROLL_BLOCK_KEYS.has(event.key)) {
+        return;
+      }
+      event.preventDefault();
+    };
+
+    const lockUnexpectedScroll = (event) => {
+      if (isProgrammaticScrollRef.current) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const savedPosition = lockedElementScrollRef.current.get(target);
+        if (savedPosition) {
+          if (target.scrollTop !== savedPosition.top) {
+            target.scrollTop = savedPosition.top;
+          }
+          if (target.scrollLeft !== savedPosition.left) {
+            target.scrollLeft = savedPosition.left;
+          }
+          return;
+        }
+      }
+
+      const { x, y } = lockedWindowScrollRef.current;
+      if (window.scrollX !== x || window.scrollY !== y) {
+        window.scrollTo({ left: x, top: y, behavior: 'auto' });
+      }
+    };
+
     if (!isOpen) {
-      html.classList.remove('tutorial-scroll-lock');
-      body.classList.remove('tutorial-scroll-lock');
       return undefined;
     }
 
-    html.classList.add('tutorial-scroll-lock');
-    body.classList.add('tutorial-scroll-lock');
-    window.addEventListener('wheel', preventScroll, { passive: false });
-    window.addEventListener('touchmove', preventScroll, { passive: false });
-    window.addEventListener('keydown', preventScrollKeys, { passive: false });
+    syncScrollLockSnapshot();
+    document.addEventListener('wheel', preventPointerScroll, { passive: false, capture: true });
+    document.addEventListener('touchmove', preventPointerScroll, { passive: false, capture: true });
+    window.addEventListener('keydown', preventScrollKeys, { capture: true });
+    window.addEventListener('scroll', lockUnexpectedScroll, true);
 
     return () => {
-      html.classList.remove('tutorial-scroll-lock');
-      body.classList.remove('tutorial-scroll-lock');
-      window.removeEventListener('wheel', preventScroll);
-      window.removeEventListener('touchmove', preventScroll);
-      window.removeEventListener('keydown', preventScrollKeys);
+      document.removeEventListener('wheel', preventPointerScroll, true);
+      document.removeEventListener('touchmove', preventPointerScroll, true);
+      window.removeEventListener('keydown', preventScrollKeys, true);
+      window.removeEventListener('scroll', lockUnexpectedScroll, true);
     };
-  }, [isOpen]);
+  }, [isOpen, syncScrollLockSnapshot]);
 
   useEffect(() => {
     if (trackBadgeTimeoutRef.current) {
@@ -819,8 +872,9 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
       setIsPreparing(true);
 
       if (step.scrollTop) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        await wait(280);
+        await runProgrammaticScroll(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 560);
       }
 
       if (step.requiredMode && dosingMode !== step.requiredMode) {
@@ -848,8 +902,21 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
       if (cancelled) return;
 
       if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth', block: activeScrollBlock, inline: 'nearest' });
-        await wait(230);
+        const alignTarget = async (behavior) => {
+          await runProgrammaticScroll(() => {
+            targetElement.scrollIntoView({
+              behavior,
+              block: activeScrollBlock,
+              inline: 'nearest',
+            });
+          }, behavior === 'smooth' ? 560 : 140);
+        };
+
+        await alignTarget('smooth');
+
+        if (!isInViewport(targetElement, 12)) {
+          await alignTarget('auto');
+        }
       }
 
       updateSpotlightForCurrentPart();
@@ -871,6 +938,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
     setDosingMode,
     step,
     stepIndex,
+    runProgrammaticScroll,
     syncMeterSlide,
     updateSpotlightForCurrentPart,
   ]);
@@ -945,6 +1013,8 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
       role="dialog"
       aria-modal="true"
       aria-label="Tutorial de uso"
+      onWheel={(event) => event.preventDefault()}
+      onTouchMove={(event) => event.preventDefault()}
     >
       {!spotlightRect && <div className="tutorial-full-shade" />}
 

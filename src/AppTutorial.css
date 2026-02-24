@@ -4,13 +4,8 @@
   z-index: 4000;
   pointer-events: auto;
   opacity: 1;
+  touch-action: none;
   transition: opacity 0.32s ease;
-}
-
-html.tutorial-scroll-lock,
-body.tutorial-scroll-lock {
-  overflow: hidden;
-  overscroll-behavior: none;
 }
 
 .tutorial-full-shade {
