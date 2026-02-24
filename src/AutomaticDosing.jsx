@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef } from 'react';
+﻿import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { ref, onValue } from 'firebase/database';
@@ -7,6 +7,31 @@ import { getChemicalName, getConfiguredProducts } from './chemicalLabels';
 import InfoHint from './InfoHint';
 import './AutomaticDosing.css';
 
+const toNumberOr = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const formatDuration = (totalSeconds) => {
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0s';
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
+
+const formatWaitInterval = (hoursValue) => {
+  if (!Number.isFinite(hoursValue) || hoursValue <= 0) return 'Sin espera';
+  if (hoursValue < 1) {
+    return `${Math.round(hoursValue * 60)} min`;
+  }
+  const rounded = Number(hoursValue.toFixed(2));
+  return `${rounded} h`;
+};
+
 const AutomaticDosing = () => {
   const { ph, phTolerance, phToleranceRange, dosingMode, userConfig, chlorineType, acidType } =
     useContext(PHContext);
@@ -14,6 +39,8 @@ const AutomaticDosing = () => {
 
   const [lastDosingEvent, setLastDosingEvent] = useState(null);
   const [dosingState, setDosingState] = useState(null);
+  const [activeAutoCommand, setActiveAutoCommand] = useState(null);
+  const [nowTs, setNowTs] = useState(Date.now());
   const lastForceCheckRef = useRef(0);
 
   const adminConfig = userConfig?.adminConfig || {
@@ -25,7 +52,13 @@ const AutomaticDosing = () => {
   };
 
   useEffect(() => {
-    if (!user || dosingMode !== 'automatic') return;
+    if (dosingMode !== 'automatic') return undefined;
+    const intervalId = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(intervalId);
+  }, [dosingMode]);
+
+  useEffect(() => {
+    if (!user || dosingMode !== 'automatic') return undefined;
 
     const timeoutId = setTimeout(() => {
       if (!dosingState) {
@@ -71,20 +104,43 @@ const AutomaticDosing = () => {
       setLastDosingEvent(lastEvent);
     });
 
+    const commandsRef = ref(database, `users/${user.uid}/commands`);
+    const unsubscribeCommands = onValue(commandsRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setActiveAutoCommand(null);
+        return;
+      }
+
+      const commands = snapshot.val() || {};
+      const activeCommands = Object.entries(commands)
+        .map(([id, command]) => ({ id, ...(command || {}) }))
+        .filter(
+          (command) =>
+            command.source === 'automatic' &&
+            (command.status === 'pending' || command.status === 'processing')
+        )
+        .sort((a, b) => {
+          const aCreated = toNumberOr(a.createdAt || a.timestamp, 0);
+          const bCreated = toNumberOr(b.createdAt || b.timestamp, 0);
+          return bCreated - aCreated;
+        });
+
+      setActiveAutoCommand(activeCommands[0] || null);
+    });
+
     return () => {
       clearTimeout(timeoutId);
       unsubscribeState();
       unsubscribeHistory();
+      unsubscribeCommands();
     };
-  }, [user, dosingMode]);
+  }, [dosingMode, user]);
 
   useEffect(() => {
     if (!user || dosingMode !== 'automatic') return;
     if (!dosingState?.initialized) return;
 
-    const minWaitHours =
-      adminConfig.minWaitTimeBetweenDoses !== undefined ? adminConfig.minWaitTimeBetweenDoses : 0.5;
-
+    const minWaitHours = toNumberOr(adminConfig.minWaitTimeBetweenDoses, 0.5);
     if (minWaitHours !== 0) return;
 
     const deviation = ph - phTolerance;
@@ -109,19 +165,29 @@ const AutomaticDosing = () => {
 
     forceCheck();
   }, [
-    user,
+    adminConfig.minWaitTimeBetweenDoses,
     dosingMode,
+    dosingState?.initialized,
     ph,
     phTolerance,
     phToleranceRange,
-    adminConfig.minWaitTimeBetweenDoses,
-    dosingState?.initialized,
+    user,
   ]);
 
   if (dosingMode !== 'automatic') return null;
 
   const deviation = ph - phTolerance;
   const isOutOfRange = Math.abs(deviation) > phToleranceRange;
+  const minWaitHours = toNumberOr(adminConfig.minWaitTimeBetweenDoses, 0.5);
+  const waitTimeMs = Math.max(0, minWaitHours) * 60 * 60 * 1000;
+  const timeSinceLastDosing = dosingState?.lastDosingTime
+    ? Math.max(0, nowTs - toNumberOr(dosingState.lastDosingTime, nowTs))
+    : null;
+  const remainingWaitSeconds =
+    waitTimeMs > 0 && timeSinceLastDosing !== null
+      ? Math.max(0, Math.ceil((waitTimeMs - timeSinceLastDosing) / 1000))
+      : 0;
+
   const minIdeal = (phTolerance - phToleranceRange).toFixed(1);
   const maxIdeal = (phTolerance + phToleranceRange).toFixed(1);
   const { raiseName, lowerName } = getConfiguredProducts(chlorineType, acidType);
@@ -132,6 +198,27 @@ const AutomaticDosing = () => {
     if (product === 'ph_minus') return `Bajo pH (${lowerName})`;
     return getChemicalName(product);
   };
+
+  const activeCommandInfo = useMemo(() => {
+    if (!activeAutoCommand) return null;
+
+    const durationSeconds = toNumberOr(activeAutoCommand.duration, 0);
+    const commandStartTs = toNumberOr(
+      activeAutoCommand.processedAt || activeAutoCommand.lastDispatchAt || activeAutoCommand.createdAt,
+      0
+    );
+    const elapsedSeconds = commandStartTs > 0 ? Math.max(0, Math.floor((nowTs - commandStartTs) / 1000)) : 0;
+    const remainingSeconds = durationSeconds > 0 ? Math.max(0, durationSeconds - elapsedSeconds) : null;
+
+    return {
+      id: activeAutoCommand.id,
+      status: activeAutoCommand.status,
+      product: activeAutoCommand.product,
+      durationSeconds,
+      remainingSeconds,
+      label: getProductLabel(activeAutoCommand.product),
+    };
+  }, [activeAutoCommand, nowTs]);
 
   const getPHDeviationLevel = () => {
     const absDeviation = Math.abs(deviation);
@@ -151,9 +238,23 @@ const AutomaticDosing = () => {
   };
 
   const getSystemStatus = () => {
+    if (activeCommandInfo) {
+      const commandText =
+        activeCommandInfo.status === 'pending'
+          ? 'Comando enviado. Esperando que el Arduino inicie.'
+          : `Arduino dosificando ${activeCommandInfo.label}.`;
+
+      return {
+        icon: 'RUN',
+        title: activeCommandInfo.status === 'pending' ? 'Preparando dosificacion' : 'Dosificando ahora',
+        text: commandText,
+        status: 'dosing',
+      };
+    }
+
     if (!dosingState) {
       return {
-        icon: '⏳',
+        icon: '...',
         title: 'Conectando',
         text: 'Estamos preparando el modo automatico.',
         status: 'connecting',
@@ -162,7 +263,7 @@ const AutomaticDosing = () => {
 
     if (!dosingState.initialized) {
       return {
-        icon: '⏳',
+        icon: '...',
         title: 'Conectando',
         text: dosingState.message || 'Estamos preparando el modo automatico.',
         status: 'connecting',
@@ -171,26 +272,18 @@ const AutomaticDosing = () => {
 
     if (dosingState.error) {
       return {
-        icon: '⚠️',
+        icon: '!',
         title: 'No pudimos conectar',
         text: 'Vamos a reintentar automaticamente.',
         status: 'error',
       };
     }
 
-    const timeSinceLastDosing = dosingState.lastDosingTime
-      ? Date.now() - dosingState.lastDosingTime
-      : null;
-    const minWaitHours =
-      adminConfig.minWaitTimeBetweenDoses !== undefined ? adminConfig.minWaitTimeBetweenDoses : 0.5;
-    const waitTimeMs = minWaitHours * 60 * 60 * 1000;
-
-    if (minWaitHours > 0 && timeSinceLastDosing && timeSinceLastDosing < waitTimeMs) {
-      const remainingMinutes = Math.ceil((waitTimeMs - timeSinceLastDosing) / 60000);
+    if (minWaitHours > 0 && remainingWaitSeconds > 0) {
       return {
-        icon: '🕒',
+        icon: 'WAIT',
         title: 'Esperando mezcla',
-        text: `Faltan ${remainingMinutes} min antes de volver a corregir.`,
+        text: `Faltan ${formatDuration(remainingWaitSeconds)} antes de volver a corregir.`,
         status: 'waiting',
       };
     }
@@ -198,7 +291,7 @@ const AutomaticDosing = () => {
     if (isOutOfRange) {
       const level = getPHDeviationLevel();
       return {
-        icon: '!',
+        icon: 'ALERT',
         title: level.title,
         text: level.actionText,
         status: 'alert',
@@ -206,7 +299,7 @@ const AutomaticDosing = () => {
     }
 
     return {
-      icon: '✅',
+      icon: 'OK',
       title: 'Todo en orden',
       text: 'El pH esta en rango y el sistema sigue monitoreando.',
       status: 'ok',
@@ -238,12 +331,25 @@ const AutomaticDosing = () => {
 
       <div className={`auto-status ${systemStatus.status}`} data-tutorial="auto-status">
         <div className="status-head" data-tutorial="auto-status-head">
-          <span className="status-icon">{systemStatus.icon}</span>
+          <span className={`status-icon ${systemStatus.status === 'dosing' ? 'status-icon--pulse' : ''}`}>
+            {systemStatus.icon}
+          </span>
           <div>
             <p className="status-title">{systemStatus.title}</p>
             <p className="status-text">{systemStatus.text}</p>
           </div>
         </div>
+
+        {systemStatus.status === 'dosing' && (
+          <div className="dosing-live">
+            <span className="dosing-live-dot" aria-hidden="true"></span>
+            <span className="dosing-live-text">
+              {activeCommandInfo?.remainingSeconds !== null && activeCommandInfo?.remainingSeconds !== undefined
+                ? `Dosificando... restante estimado ${formatDuration(activeCommandInfo.remainingSeconds)}`
+                : 'Dosificando... esperando confirmacion del Arduino'}
+            </span>
+          </div>
+        )}
 
         <div className="status-details" data-tutorial="auto-status-details">
           <div className="detail-row">
@@ -263,6 +369,24 @@ const AutomaticDosing = () => {
             <span className={`value ${isOutOfRange ? 'warning' : 'ok'}`}>
               {deviation >= 0 ? '+' : ''}
               {deviation.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="detail-row">
+            <span>Espera entre dosificados</span>
+            <span className="value">{formatWaitInterval(minWaitHours)}</span>
+          </div>
+
+          <div className="detail-row">
+            <span>Siguiente correccion</span>
+            <span className="value">
+              {systemStatus.status === 'dosing'
+                ? 'En dosificacion'
+                : waitTimeMs <= 0
+                  ? 'Inmediata'
+                  : remainingWaitSeconds > 0
+                    ? formatDuration(remainingWaitSeconds)
+                    : 'Disponible'}
             </span>
           </div>
         </div>
@@ -307,4 +431,3 @@ const AutomaticDosing = () => {
 };
 
 export default AutomaticDosing;
-
