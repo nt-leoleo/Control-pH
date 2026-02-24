@@ -225,8 +225,8 @@ const AutomaticDosing = () => {
     <div className="automatic-dosing-container" data-tutorial="auto-module">
       <h3>Modo automatico</h3>
 
-      <div className={`auto-status ${systemStatus.status}`}>
-        <div className="status-head">
+      <div className={`auto-status ${systemStatus.status}`} data-tutorial="auto-status">
+        <div className="status-head" data-tutorial="auto-status-head">
           <span className="status-icon">{systemStatus.icon}</span>
           <div>
             <p className="status-title">{systemStatus.title}</p>
@@ -234,7 +234,7 @@ const AutomaticDosing = () => {
           </div>
         </div>
 
-        <div className="status-details">
+        <div className="status-details" data-tutorial="auto-status-details">
           <div className="detail-row">
             <span>Objetivo</span>
             <span className="value">
@@ -257,7 +257,7 @@ const AutomaticDosing = () => {
         </div>
       </div>
 
-      <div className="simple-summary">
+      <div className="simple-summary" data-tutorial="auto-summary">
         <h4>Ultima correccion</h4>
         <div className="summary-grid">
           <div className="summary-item">
@@ -281,7 +281,9 @@ const AutomaticDosing = () => {
         </div>
       </div>
 
-      <p className="auto-help">No hace falta dejar la app abierta: el sistema sigue funcionando solo.</p>
+      <p className="auto-help" data-tutorial="auto-help">
+        No hace falta dejar la app abierta: el sistema sigue funcionando solo.
+      </p>
     </div>
   );
 };
