@@ -164,6 +164,7 @@ export const useAuth = () => {
         const defaultConfig = {
           phTolerance: 7.4,
           phToleranceRange: 0.5,
+          dosingMode: 'automatic',
           autoDosingEnabled: true,
           notifications: true,
           esp32IP: '192.168.100.134',
