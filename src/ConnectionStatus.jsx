@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { PHContext } from './PHContext';
 import { getESP32IP } from './esp32Communication';
+import InfoHint from './InfoHint';
 import './ConnectionStatus.css';
 
 const ConnectionStatus = ({ compact = false }) => {
@@ -44,6 +45,16 @@ const ConnectionStatus = ({ compact = false }) => {
       <div className="connection-indicator">
         <div className={`status-dot ${esp32Connected ? 'online' : 'offline'}`}></div>
         <span className="status-text">{getStatusText()}</span>
+        <InfoHint
+          size={compact ? 'sm' : 'md'}
+          align="left"
+          title="Estado del sensor"
+          text={
+            esp32Connected
+              ? 'Sensor online: el ESP32 esta enviando lecturas recientes de pH.'
+              : 'Sensor offline: no llegan datos recientes del ESP32. Revisa energia, WiFi y registro del dispositivo.'
+          }
+        />
       </div>
       {lastDataReceived && (
         <div className="last-update">

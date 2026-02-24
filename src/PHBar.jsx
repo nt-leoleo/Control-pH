@@ -1,6 +1,7 @@
 import './PHBar.css';
 import { useContext } from 'react';
 import { PHContext } from './PHContext';
+import InfoHint from './InfoHint';
 
 const PHBar = ({ ph }) => {
   const { phTolerance, phToleranceRange } = useContext(PHContext);
@@ -17,7 +18,14 @@ const PHBar = ({ ph }) => {
   return (
     <section className="ph-scale" data-tutorial="ph-scale">
       <div className="ph-scale-header" data-tutorial="ph-scale-header">
-        <h3>Escala de pH</h3>
+        <h3 className="ph-scale-title-with-info">
+          <span>Escala de pH</span>
+          <InfoHint
+            size="sm"
+            title="Escala de pH"
+            text="El pH va de 0 a 14. Cerca de 7 es neutro. El sistema busca mantener el valor dentro del rango ideal configurado."
+          />
+        </h3>
         <span className="ph-scale-current">Actual {ph.toFixed(2)}</span>
       </div>
 

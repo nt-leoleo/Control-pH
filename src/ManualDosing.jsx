@@ -6,6 +6,7 @@ import { useAuth } from './useAuth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getConfiguredProducts, getChemicalName } from './chemicalLabels';
+import InfoHint from './InfoHint';
 import './ManualDosing.css';
 
 const ManualDosing = () => {
@@ -254,10 +255,24 @@ const ManualDosing = () => {
 
     return (
         <div className="manualDosingContainer" data-tutorial="manual-module">
-            <h3>Dosificacion Manual</h3>
+            <h3 className="manual-title-with-info">
+                <span>Dosificacion Manual</span>
+                <InfoHint
+                    size="sm"
+                    title="Modo manual"
+                    text="Vos decidis producto, tiempo y litros. El sistema envia exactamente esa orden al ESP32."
+                />
+            </h3>
             
             <div className="dosingSection" data-tutorial="manual-product">
-                <label>Producto a aplicar:</label>
+                <label className="label-with-info">
+                    <span>Producto a aplicar:</span>
+                    <InfoHint
+                        size="sm"
+                        title="Producto"
+                        text="Elegi si queres subir o bajar el pH. Cada boton activa una bomba distinta."
+                    />
+                </label>
                 <div className="productButtons">
                     {allowedProducts.map((product) => (
                         <button 
@@ -279,7 +294,14 @@ const ManualDosing = () => {
             </div>
 
             <div className="dosingSection" data-tutorial="manual-time">
-                <label>Tiempo de dosificado:</label>
+                <label className="label-with-info">
+                    <span>Tiempo de dosificado:</span>
+                    <InfoHint
+                        size="sm"
+                        title="Tiempo"
+                        text="Es la duracion de la bomba encendida. A mayor tiempo, mayor producto inyectado."
+                    />
+                </label>
                 <div className="timeInputs">
                     <div className="timeGroup">
                         <input 
@@ -307,7 +329,14 @@ const ManualDosing = () => {
             </div>
 
             <div className="dosingSection" data-tutorial="manual-liters">
-                <label>Cantidad (litros):</label>
+                <label className="label-with-info">
+                    <span>Cantidad (litros):</span>
+                    <InfoHint
+                        size="sm"
+                        title="Litros"
+                        text="Sirve para calcular el impacto estimado en pH y guardar un historial claro de lo aplicado."
+                    />
+                </label>
                 <input 
                     type="number" 
                     min="0" 
@@ -353,26 +382,40 @@ const ManualDosing = () => {
 
             {/* Indicador de conexion ESP32 */}
             <div className="esp32-connection-status" data-tutorial="manual-connection">
-                <span className={`connection-indicator ${esp32Connected ? 'connected' : 'disconnected'}`}>
-                    {esp32Connected ? 'ESP32 Conectado' : 'ESP32 Desconectado'}
-                </span>
+                <div className="manual-connection-header">
+                    <span className={`connection-indicator ${esp32Connected ? 'connected' : 'disconnected'}`}>
+                        {esp32Connected ? 'ESP32 Conectado' : 'ESP32 Desconectado'}
+                    </span>
+                    <InfoHint
+                        size="sm"
+                        title="Conexion ESP32"
+                        text="Si esta desconectado, los comandos no llegan al equipo fisico y la dosificacion no se ejecuta."
+                    />
+                </div>
                 {!esp32Connected && (
                     <small>Los comandos de dosificacion requieren conexion con el ESP32</small>
                 )}
             </div>
 
-            <button 
-                className="dosifyBtn" 
-                data-tutorial="manual-submit"
-                onClick={handleDosify}
-                disabled={isAnimating || isDosing || (hasConfiguredDevice && !esp32Connected)}
-            >
-                {isDosing ? 'Dosificando... Esperando ESP32' : 
-                 isAnimating ? 'Simulando cambio...' : 
-                 !hasConfiguredDevice ? 'Configurar dispositivo' :
-                 !esp32Connected ? 'ESP32 Desconectado' :
-                 'DOSIFICAR'}
-            </button>
+            <div className="manual-submit-wrap">
+                <button 
+                    className="dosifyBtn" 
+                    data-tutorial="manual-submit"
+                    onClick={handleDosify}
+                    disabled={isAnimating || isDosing || (hasConfiguredDevice && !esp32Connected)}
+                >
+                    {isDosing ? 'Dosificando... Esperando ESP32' : 
+                    isAnimating ? 'Simulando cambio...' : 
+                    !hasConfiguredDevice ? 'Configurar dispositivo' :
+                    !esp32Connected ? 'ESP32 Desconectado' :
+                    'DOSIFICAR'}
+                </button>
+                <InfoHint
+                    size="sm"
+                    title="Ejecutar dosificacion"
+                    text="Al presionar este boton se envia la orden al ESP32 y se espera confirmacion de finalizacion."
+                />
+            </div>
         </div>
     );
 };

@@ -14,6 +14,7 @@ import LoginScreen from './LoginScreen';
 import SplashScreen from './SplashScreen';
 import DeviceRegistration from './DeviceRegistration';
 import AppTutorial from './AppTutorial';
+import InfoHint from './InfoHint';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
@@ -268,6 +269,14 @@ export default function App() {
         )}
 
         <div className="mode-toggle-container">
+          <div className="module-help-label">
+            <span>Modo de dosificacion</span>
+            <InfoHint
+              size="sm"
+              title="Cambio de modo"
+              text="Automatico: el sistema corrige solo. Manual: vos decidis cada dosificacion."
+            />
+          </div>
           <button
             onClick={async () => {
               try {
@@ -290,6 +299,14 @@ export default function App() {
         </div>
 
         <div className="emergency-stop-container" data-tutorial="emergency-stop">
+          <div className="module-help-label module-help-label--danger">
+            <span>Parada de emergencia</span>
+            <InfoHint
+              size="sm"
+              title="Parada de emergencia"
+              text="Detiene bombas y acciones del sistema. Usalo solo ante riesgo o funcionamiento anormal."
+            />
+          </div>
           <button
             onClick={handleEmergencyStop}
             disabled={isSendingEmergencyStop}
