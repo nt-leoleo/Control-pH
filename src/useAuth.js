@@ -176,6 +176,7 @@ export const useAuth = () => {
           esp32IP: '192.168.100.134',
           thingSpeakChannel: '3249157',
           isConfigured: false,
+          tutorialCompleted: false,
           createdAt: new Date(),
           displayName: userData.displayName,
           email: userData.email,

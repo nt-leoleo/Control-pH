@@ -15,7 +15,7 @@ const PHBar = ({ ph }) => {
   const idealRight = Math.min(100, ((idealMax - minPH) / (maxPH - minPH)) * 100);
 
   return (
-    <section className="ph-scale">
+    <section className="ph-scale" data-tutorial="ph-scale">
       <div className="ph-scale-header">
         <h3>Escala de pH</h3>
         <span className="ph-scale-current">Actual {ph.toFixed(2)}</span>

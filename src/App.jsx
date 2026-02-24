@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from 'react';
+import { useCallback, useContext, useState, useEffect } from 'react';
 import Header from './Header';
 import ShowpH from './ShowpH';
 import HandleAdmin from './HandleAdmin';
@@ -13,6 +13,7 @@ import ErrorNotification from './ErrorNotification';
 import LoginScreen from './LoginScreen';
 import SplashScreen from './SplashScreen';
 import DeviceRegistration from './DeviceRegistration';
+import AppTutorial from './AppTutorial';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
@@ -21,12 +22,19 @@ import './App.css';
 export default function App() {
   const { ph, error, setError, dosingMode, setDosingMode, isConfigured, ensureDeviceConfigured } =
     useContext(PHContext);
-  const { user, loading } = useAuth();
+  const { user, loading, userConfig, updateUserConfig } = useAuth();
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(true);
   const [isSendingEmergencyStop, setIsSendingEmergencyStop] = useState(false);
   const [showDeviceRegistrationModal, setShowDeviceRegistrationModal] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialCheckedForUser, setTutorialCheckedForUser] = useState(false);
+
+  const getTutorialStorageKey = useCallback(
+    () => (user?.uid ? `control-pileta:tutorial-completed:${user.uid}` : null),
+    [user?.uid]
+  );
 
   const handleSplashFinish = () => {
     setShowSplash(false);
@@ -67,6 +75,73 @@ export default function App() {
       window.removeEventListener('device-registration:updated', closeOnConfigured);
     };
   }, []);
+
+  useEffect(() => {
+    setTutorialCheckedForUser(false);
+    setShowTutorial(false);
+  }, [user?.uid]);
+
+  const openTutorial = useCallback(() => {
+    setShowDeviceRegistrationModal(false);
+
+    if (currentView !== 'main') {
+      setCurrentView('main');
+      window.location.hash = '';
+      setTimeout(() => setShowTutorial(true), 180);
+      return;
+    }
+
+    setShowTutorial(true);
+  }, [currentView]);
+
+  const markTutorialAsSeen = useCallback(async () => {
+    const storageKey = getTutorialStorageKey();
+    if (storageKey) {
+      localStorage.setItem(storageKey, '1');
+    }
+
+    if (user && userConfig?.tutorialCompleted !== true) {
+      try {
+        await updateUserConfig({ tutorialCompleted: true });
+      } catch (tutorialError) {
+        console.error('No se pudo guardar el estado del tutorial:', tutorialError);
+      }
+    }
+  }, [getTutorialStorageKey, updateUserConfig, user, userConfig?.tutorialCompleted]);
+
+  useEffect(() => {
+    window.startControlPiletaTutorial = () => {
+      openTutorial();
+    };
+
+    return () => {
+      delete window.startControlPiletaTutorial;
+    };
+  }, [openTutorial]);
+
+  useEffect(() => {
+    if (loading || !user?.uid || !isConfigured || tutorialCheckedForUser) {
+      return;
+    }
+
+    const storageKey = getTutorialStorageKey();
+    const seenInBrowser = storageKey ? localStorage.getItem(storageKey) === '1' : false;
+    const seenInAccount = userConfig?.tutorialCompleted !== false;
+
+    if (!seenInBrowser && !seenInAccount) {
+      openTutorial();
+    }
+
+    setTutorialCheckedForUser(true);
+  }, [
+    getTutorialStorageKey,
+    isConfigured,
+    loading,
+    openTutorial,
+    tutorialCheckedForUser,
+    user?.uid,
+    userConfig?.tutorialCompleted,
+  ]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -172,7 +247,7 @@ export default function App() {
         }}
       />
 
-      <main className="fade-in app-main">
+      <main className="fade-in app-main" data-tutorial="dashboard-root">
         <div className="dashboard-stack">
           <ShowpH />
           <HandleAdmin />
@@ -214,7 +289,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="emergency-stop-container">
+        <div className="emergency-stop-container" data-tutorial="emergency-stop">
           <button
             onClick={handleEmergencyStop}
             disabled={isSendingEmergencyStop}
@@ -240,6 +315,16 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <AppTutorial
+        isOpen={showTutorial}
+        onClose={(reason) => {
+          setShowTutorial(false);
+          if (reason === 'completed' || reason === 'skipped') {
+            markTutorialAsSeen();
+          }
+        }}
+      />
     </>
   );
 }

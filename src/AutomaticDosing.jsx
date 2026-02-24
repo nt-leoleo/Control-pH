@@ -222,7 +222,7 @@ const AutomaticDosing = () => {
     dosingState?.dosingCountToday !== undefined ? dosingState.dosingCountToday : lastDosingEvent ? 1 : 0;
 
   return (
-    <div className="automatic-dosing-container">
+    <div className="automatic-dosing-container" data-tutorial="auto-module">
       <h3>Modo automatico</h3>
 
       <div className={`auto-status ${systemStatus.status}`}>

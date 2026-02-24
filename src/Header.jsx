@@ -82,7 +82,7 @@ const Header = ({ onConfigClick }) => {
               <span className="user-name">{shortName}</span>
             </div>
           )}
-          <ConfigButton onClick={onConfigClick} />
+          <ConfigButton onClick={onConfigClick} data-tutorial="open-settings" />
           {user && (
             <button className="logout-btn" onClick={handleLogout} title="Cerrar sesion">
               Salir

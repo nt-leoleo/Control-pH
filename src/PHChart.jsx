@@ -68,7 +68,7 @@ const PHChart = () => {
     };
 
     return (
-        <div className="chartContainer">
+        <div className="chartContainer" data-tutorial="ph-chart">
             <div className="chartHeader">
                 <h3>Seguimiento de pH por Hora</h3>
                 {showWarning && (
