@@ -3,6 +3,8 @@
   inset: 0;
   z-index: 4000;
   pointer-events: auto;
+  opacity: 1;
+  transition: opacity 0.32s ease;
 }
 
 .tutorial-full-shade {
@@ -37,6 +39,7 @@
   text-decoration: none;
   box-shadow: 0 12px 26px rgba(2, 8, 23, 0.52);
   animation: tutorialTrackBadgeIn 0.26s ease-out;
+  transition: opacity 0.32s ease, transform 0.32s ease;
 }
 
 .tutorial-track-badge svg {
@@ -60,6 +63,7 @@
   background: rgba(34, 211, 238, 0.08);
   box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.8), 0 0 24px rgba(34, 211, 238, 0.52);
   pointer-events: none;
+  transition: opacity 0.32s ease, transform 0.32s ease;
 }
 
 .tutorial-connector {
@@ -69,6 +73,7 @@
   height: 100%;
   pointer-events: none;
   z-index: 1;
+  transition: opacity 0.32s ease;
 }
 
 .tutorial-connector line {
@@ -82,6 +87,7 @@
   position: fixed;
   pointer-events: none;
   z-index: 1;
+  transition: opacity 0.32s ease, transform 0.32s ease;
 }
 
 .tutorial-swipe-track {
@@ -121,7 +127,23 @@
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   padding: 0.95rem;
   z-index: 2;
-  transition: top 0.24s ease, left 0.24s ease;
+  transition: top 0.24s ease, left 0.24s ease, transform 0.32s ease, opacity 0.32s ease;
+}
+
+.tutorial-overlay.is-closing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tutorial-overlay.is-closing .tutorial-card {
+  transform: translateY(10px);
+}
+
+.tutorial-overlay.is-closing .tutorial-spotlight,
+.tutorial-overlay.is-closing .tutorial-connector,
+.tutorial-overlay.is-closing .tutorial-swipe-demo,
+.tutorial-overlay.is-closing .tutorial-track-badge {
+  opacity: 0;
 }
 
 .tutorial-card.is-positioned {

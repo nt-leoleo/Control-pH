@@ -16,6 +16,7 @@ const STEP_LIST = [
     title: 'Medidor de pH',
     description: 'Primero vemos el medidor principal y cada parte importante.',
     overviewDescription: 'Este es el medidor principal. Desde aca ves estado actual, objetivo y el dial visual del pH.',
+    overviewDemoPhCycle: true,
     selector: '[data-tutorial="ph-meter"]',
     parts: [
       {
@@ -56,6 +57,7 @@ const STEP_LIST = [
     description: 'Observa: el medidor cambia de vista deslizando por pantalla a la izquierda o derecha.',
     selector: '[data-tutorial="ph-carousel"]',
     demo: 'swipe',
+    demoPhCycle: true,
   },
   {
     number: 3,
@@ -63,6 +65,7 @@ const STEP_LIST = [
     description: 'Ahora vemos cada parte de la escala lineal.',
     overviewDescription:
       'Esta escala te ayuda a ubicar rapidamente el valor del pH dentro del rango total de 0 a 14.',
+    overviewDemoPhCycle: true,
     selector: '[data-tutorial="ph-scale"]',
     parts: [
       {
@@ -102,8 +105,9 @@ const STEP_LIST = [
     parts: [
       {
         title: 'Titulo y alerta',
-        description: 'Arriba ves el titulo del grafico y el icono de alerta cuando hay desvio.',
+        description: 'Arriba ves el titulo y una demo del icono de alerta alternando entre pH alto y pH bajo.',
         selector: '[data-tutorial="chart-header"]',
+        demoPhCycle: true,
       },
       {
         title: 'Area del grafico',
@@ -215,6 +219,7 @@ const YOUTUBE_TARGET_VOLUME = 24;
 const YOUTUBE_FADE_IN_MS = 2200;
 const YOUTUBE_FADE_OUT_MS = 3000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
+const TUTORIAL_CLOSE_FADE_MS = 320;
 
 const buildStepParts = (step) => {
   if (!step?.parts?.length) return [];
@@ -225,6 +230,7 @@ const buildStepParts = (step) => {
       description: step.overviewDescription || step.description,
       selector: step.selector,
       showMeterSlide: step.showMeterSlide,
+      demoPhCycle: step.overviewDemoPhCycle,
       isOverview: true,
     },
     ...step.parts,
@@ -375,12 +381,14 @@ const getConnectorPoints = (cardPosition, cardWidth, cardHeight, targetRect) => 
   return { fromX, fromY, toX, toY };
 };
 
-const AppTutorial = ({ isOpen, onClose }) => {
-  const { dosingMode, setDosingMode } = useContext(PHContext);
+const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
+  const { dosingMode, setDosingMode, phTolerance, phToleranceRange } = useContext(PHContext);
   const cardRef = useRef(null);
   const youtubePlayerRef = useRef(null);
   const youtubeVolumeIntervalRef = useRef(null);
   const trackBadgeTimeoutRef = useRef(null);
+  const demoPhIntervalRef = useRef(null);
+  const closeTimeoutRef = useRef(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [partIndex, setPartIndex] = useState(0);
@@ -390,6 +398,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
   const [isPreparing, setIsPreparing] = useState(false);
   const [needsAudioInteraction, setNeedsAudioInteraction] = useState(false);
   const [showTrackBadge, setShowTrackBadge] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   const step = STEP_LIST[stepIndex];
   const parts = useMemo(() => buildStepParts(step), [step]);
@@ -397,9 +406,20 @@ const AppTutorial = ({ isOpen, onClose }) => {
   const activePart = hasParts ? parts[Math.min(partIndex, parts.length - 1)] : null;
   const activeSelector = activePart?.selector || step?.selector;
   const activeSlide = activePart?.showMeterSlide ?? step?.showMeterSlide;
+  const activeDemoPhCycle = Boolean(activePart?.demoPhCycle || (!hasParts && step?.demoPhCycle));
 
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
+
+  const clearDemoPhCycle = useCallback(() => {
+    if (demoPhIntervalRef.current) {
+      window.clearInterval(demoPhIntervalRef.current);
+      demoPhIntervalRef.current = null;
+    }
+    if (onDemoPhChange) {
+      onDemoPhChange(null);
+    }
+  }, [onDemoPhChange]);
 
   const clearYoutubeVolumeInterval = useCallback(() => {
     if (youtubeVolumeIntervalRef.current) {
@@ -550,6 +570,27 @@ const AppTutorial = ({ isOpen, onClose }) => {
     [clearYoutubeVolumeInterval, fadeYoutubeTo]
   );
 
+  const handleCloseWithFade = useCallback(
+    (reason) => {
+      if (isClosing) {
+        return;
+      }
+
+      setIsClosing(true);
+      setShowTrackBadge(false);
+      stopYoutubeAmbient(true);
+
+      if (closeTimeoutRef.current) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+
+      closeTimeoutRef.current = window.setTimeout(() => {
+        onClose(reason);
+      }, TUTORIAL_CLOSE_FADE_MS);
+    },
+    [isClosing, onClose, stopYoutubeAmbient]
+  );
+
   const findTargetElement = useCallback(() => {
     if (activeSelector) {
       const primary = document.querySelector(activeSelector);
@@ -623,6 +664,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (!isOpen) return;
+    setIsClosing(false);
     setStepIndex(0);
     setPartIndex(0);
     setCardPosition(null);
@@ -676,6 +718,10 @@ const AppTutorial = ({ isOpen, onClose }) => {
 
   useEffect(
     () => () => {
+      if (closeTimeoutRef.current) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+      clearDemoPhCycle();
       stopYoutubeAmbient(false);
       clearYoutubeVolumeInterval();
       if (trackBadgeTimeoutRef.current) {
@@ -686,8 +732,31 @@ const AppTutorial = ({ isOpen, onClose }) => {
       }
       youtubePlayerRef.current = null;
     },
-    [clearYoutubeVolumeInterval, stopYoutubeAmbient]
+    [clearDemoPhCycle, clearYoutubeVolumeInterval, stopYoutubeAmbient]
   );
+
+  useEffect(() => {
+    clearDemoPhCycle();
+
+    if (!isOpen || !activeDemoPhCycle || !onDemoPhChange) {
+      return undefined;
+    }
+
+    const highPh = clamp(phTolerance + phToleranceRange + 0.45, 0, 14);
+    const lowPh = clamp(phTolerance - phToleranceRange - 0.45, 0, 14);
+    let showHigh = true;
+
+    onDemoPhChange(highPh);
+
+    demoPhIntervalRef.current = window.setInterval(() => {
+      showHigh = !showHigh;
+      onDemoPhChange(showHigh ? highPh : lowPh);
+    }, 1600);
+
+    return () => {
+      clearDemoPhCycle();
+    };
+  }, [activeDemoPhCycle, clearDemoPhCycle, isOpen, onDemoPhChange, phTolerance, phToleranceRange]);
 
   useEffect(() => {
     if (!isOpen || !step) return undefined;
@@ -818,7 +887,12 @@ const AppTutorial = ({ isOpen, onClose }) => {
   }
 
   return (
-    <div className="tutorial-overlay" role="dialog" aria-modal="true" aria-label="Tutorial de uso">
+    <div
+      className={`tutorial-overlay ${isClosing ? 'is-closing' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Tutorial de uso"
+    >
       {!spotlightRect && <div className="tutorial-full-shade" />}
 
       <div id="tutorial-youtube-audio-host" className="tutorial-youtube-host" aria-hidden="true" />
@@ -903,7 +977,11 @@ const AppTutorial = ({ isOpen, onClose }) => {
         <p>{panelDescription}</p>
 
         <div className="tutorial-actions">
-          <button type="button" className="tutorial-btn tutorial-btn--ghost" onClick={() => onClose('skipped')}>
+          <button
+            type="button"
+            className="tutorial-btn tutorial-btn--ghost"
+            onClick={() => handleCloseWithFade('skipped')}
+          >
             Omitir
           </button>
 
@@ -945,7 +1023,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
                 }
 
                 if (isLastStep) {
-                  onClose('completed');
+                  handleCloseWithFade('completed');
                   return;
                 }
 
