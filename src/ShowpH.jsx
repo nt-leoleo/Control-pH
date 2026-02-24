@@ -113,19 +113,29 @@ const ShowpH = () => {
 
   return (
     <section className="ph-hero fade-in" data-ph-status={status.status} data-tutorial="ph-meter">
-      <div className="ph-carousel" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <div
+        className="ph-carousel"
+        data-tutorial="ph-carousel"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         <div className={`ph-carousel-track slide-${slideIndex}`}>
-          <div className="ph-slide">
+          <div className="ph-slide" data-tutorial="ph-meter-read">
             <p className="ph-label">Lectura actual</p>
-            <p className="ph-value">{ph.toFixed(2)}</p>
-            <p className="ph-status">{status.text}</p>
-            <div className="ph-meta">
+            <p className="ph-value" data-tutorial="ph-meter-value">
+              {ph.toFixed(2)}
+            </p>
+            <p className="ph-status" data-tutorial="ph-meter-status">
+              {status.text}
+            </p>
+            <div className="ph-meta" data-tutorial="ph-meter-target">
               <span>Objetivo: {phTolerance.toFixed(1)}</span>
               <span>Ideal: {minIdeal} - {maxIdeal}</span>
             </div>
           </div>
 
-          <div className="ph-slide ph-slide-gauge">
+          <div className="ph-slide ph-slide-gauge" data-tutorial="ph-meter-gauge">
             <div className="ph-gauge-wrap">
               <svg viewBox="0 0 200 150" className="ph-gauge" role="img" aria-label={`Medidor de pH ${ph.toFixed(2)}`}>
                 <defs>
@@ -217,7 +227,12 @@ const ShowpH = () => {
         </div>
       </div>
 
-      <div className="ph-carousel-indicators" role="tablist" aria-label="Vistas del medidor de pH">
+      <div
+        className="ph-carousel-indicators"
+        data-tutorial="ph-meter-dots"
+        role="tablist"
+        aria-label="Vistas del medidor de pH"
+      >
         <button
           type="button"
           className={`ph-dot ${slideIndex === 0 ? 'active' : ''}`}

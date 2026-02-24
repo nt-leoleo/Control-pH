@@ -16,30 +16,31 @@ const PHBar = ({ ph }) => {
 
   return (
     <section className="ph-scale" data-tutorial="ph-scale">
-      <div className="ph-scale-header">
+      <div className="ph-scale-header" data-tutorial="ph-scale-header">
         <h3>Escala de pH</h3>
         <span className="ph-scale-current">Actual {ph.toFixed(2)}</span>
       </div>
 
-      <div className="ph-scale-track">
-        <div className="ph-scale-gradient"></div>
+      <div className="ph-scale-track" data-tutorial="ph-scale-track">
+        <div className="ph-scale-gradient" data-tutorial="ph-scale-gradient"></div>
         <div
           className="ph-scale-target"
+          data-tutorial="ph-scale-target"
           style={{
             left: `${idealLeft}%`,
             width: `${Math.max(0, idealRight - idealLeft)}%`,
           }}
         ></div>
-        <div className="ph-scale-marker" style={{ left: `${markerPosition}%` }}></div>
+        <div className="ph-scale-marker" data-tutorial="ph-scale-marker" style={{ left: `${markerPosition}%` }}></div>
       </div>
 
-      <div className="ph-scale-labels">
+      <div className="ph-scale-labels" data-tutorial="ph-scale-labels">
         <span>0</span>
         <span>7</span>
         <span>14</span>
       </div>
 
-      <p className="ph-scale-range">
+      <p className="ph-scale-range" data-tutorial="ph-scale-range">
         Rango ideal configurado: {idealMin.toFixed(1)} - {idealMax.toFixed(1)}
       </p>
     </section>

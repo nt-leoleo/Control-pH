@@ -256,7 +256,7 @@ const ManualDosing = () => {
         <div className="manualDosingContainer" data-tutorial="manual-module">
             <h3>Dosificacion Manual</h3>
             
-            <div className="dosingSection">
+            <div className="dosingSection" data-tutorial="manual-product">
                 <label>Producto a aplicar:</label>
                 <div className="productButtons">
                     {allowedProducts.map((product) => (
@@ -278,7 +278,7 @@ const ManualDosing = () => {
                 </small>
             </div>
 
-            <div className="dosingSection">
+            <div className="dosingSection" data-tutorial="manual-time">
                 <label>Tiempo de dosificado:</label>
                 <div className="timeInputs">
                     <div className="timeGroup">
@@ -306,7 +306,7 @@ const ManualDosing = () => {
                 </div>
             </div>
 
-            <div className="dosingSection">
+            <div className="dosingSection" data-tutorial="manual-liters">
                 <label>Cantidad (litros):</label>
                 <input 
                     type="number" 
@@ -321,7 +321,7 @@ const ManualDosing = () => {
 
             {/* Estimado de pH final */}
             {phEstimate && (
-                <div className="phEstimateSection">
+                <div className="phEstimateSection" data-tutorial="manual-estimate">
                     <div className="estimateHeader">
                         <span>Estimado despues de dosificar:</span>
                     </div>
@@ -352,7 +352,7 @@ const ManualDosing = () => {
             )}
 
             {/* Indicador de conexion ESP32 */}
-            <div className="esp32-connection-status">
+            <div className="esp32-connection-status" data-tutorial="manual-connection">
                 <span className={`connection-indicator ${esp32Connected ? 'connected' : 'disconnected'}`}>
                     {esp32Connected ? 'ESP32 Conectado' : 'ESP32 Desconectado'}
                 </span>
@@ -363,6 +363,7 @@ const ManualDosing = () => {
 
             <button 
                 className="dosifyBtn" 
+                data-tutorial="manual-submit"
                 onClick={handleDosify}
                 disabled={isAnimating || isDosing || (hasConfiguredDevice && !esp32Connected)}
             >

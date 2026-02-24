@@ -69,11 +69,12 @@ const PHChart = () => {
 
     return (
         <div className="chartContainer" data-tutorial="ph-chart">
-            <div className="chartHeader">
-                <h3>Seguimiento de pH por Hora</h3>
+            <div className="chartHeader" data-tutorial="chart-header">
+                <h3 data-tutorial="chart-title">Seguimiento de pH por Hora</h3>
                 {showWarning && (
                     <div
                         className={`warningBadge warningBadge--active warningBadge--${status.label.toLowerCase()}`}
+                        data-tutorial="chart-warning"
                         style={{ '--warning-color': status.color }}
                         title={`Alerta: pH ${status.label}`}
                     >
@@ -81,8 +82,9 @@ const PHChart = () => {
                     </div>
                 )}
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={phHistory}>
+            <div data-tutorial="chart-plot">
+                <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={phHistory}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                     <XAxis 
                         dataKey="hour" 
@@ -109,8 +111,9 @@ const PHChart = () => {
                         name="pH"
                         strokeWidth={2}
                     />
-                </LineChart>
-            </ResponsiveContainer>
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 };

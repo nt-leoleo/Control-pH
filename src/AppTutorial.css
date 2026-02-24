@@ -8,16 +8,62 @@
 .tutorial-full-shade {
   position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.78);
+  background: rgba(2, 6, 23, 0.8);
 }
 
 .tutorial-spotlight {
   position: fixed;
   border-radius: 14px;
-  border: 2px solid rgba(34, 211, 238, 0.8);
+  border: 2px solid rgba(34, 211, 238, 0.84);
   background: rgba(34, 211, 238, 0.08);
-  box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.78), 0 0 22px rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.8), 0 0 24px rgba(34, 211, 238, 0.52);
   pointer-events: none;
+}
+
+.tutorial-connector {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tutorial-connector line {
+  stroke: rgba(103, 232, 249, 0.95);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 6;
+  animation: tutorialLinePulse 1.4s linear infinite;
+}
+
+.tutorial-swipe-demo {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tutorial-swipe-track {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.7);
+  background: rgba(8, 47, 73, 0.45);
+  overflow: hidden;
+}
+
+.tutorial-swipe-finger {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid #bae6fd;
+  background: rgba(224, 242, 254, 0.28);
+  box-shadow: 0 0 16px rgba(103, 232, 249, 0.6);
+  transform: translate(-2px, -50%);
+  animation: tutorialSwipe 1.6s ease-in-out infinite alternate;
 }
 
 .tutorial-card {
@@ -32,35 +78,40 @@
   color: #e2e8f0;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   padding: 0.95rem;
-  z-index: 1;
+  z-index: 2;
+  transition: top 0.24s ease, left 0.24s ease;
+}
+
+.tutorial-card.is-positioned {
+  bottom: auto;
+  transform: none;
 }
 
 .tutorial-step-counter {
   margin: 0;
   color: #67e8f9;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
 }
 
+.tutorial-part-counter {
+  margin: 0.2rem 0 0;
+  color: #bae6fd;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .tutorial-card h3 {
-  margin: 0.28rem 0 0.38rem;
-  font-size: 1.12rem;
+  margin: 0.34rem 0 0.38rem;
+  font-size: 1.08rem;
 }
 
 .tutorial-card p {
   margin: 0;
   color: #cbd5e1;
-  line-height: 1.35;
-}
-
-.tutorial-card ul {
-  margin: 0.58rem 0 0;
-  padding-left: 1.2rem;
-  color: #cbd5e1;
-  display: grid;
-  gap: 0.24rem;
+  line-height: 1.34;
 }
 
 .tutorial-actions {
@@ -101,18 +152,31 @@
   color: #f8fafc;
 }
 
+@keyframes tutorialLinePulse {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+@keyframes tutorialSwipe {
+  0% {
+    left: 3%;
+  }
+  100% {
+    left: calc(97% - 24px);
+  }
+}
+
 @media (max-width: 720px) {
   .tutorial-card {
-    bottom: 0.7rem;
     padding: 0.82rem;
   }
 
   .tutorial-card h3 {
-    font-size: 1.04rem;
+    font-size: 1rem;
   }
 
-  .tutorial-card p,
-  .tutorial-card ul {
+  .tutorial-card p {
     font-size: 0.92rem;
   }
 
