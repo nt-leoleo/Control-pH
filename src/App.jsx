@@ -53,6 +53,8 @@ export default function App() {
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState(null);
   const [systemEvents, setSystemEvents] = useState([]);
+  const [isSystemStatusExpanded, setIsSystemStatusExpanded] = useState(false);
+  const [isSystemEventsExpanded, setIsSystemEventsExpanded] = useState(false);
 
   const displayedPh = typeof tutorialDemoPh === 'number' ? tutorialDemoPh : ph;
   const phDeviation = displayedPh - phTolerance;
@@ -358,7 +360,7 @@ export default function App() {
         addSystemEvent({
           type: 'warning',
           title: 'pH fuera de rango',
-          detail: `Lectura ${displayedPh.toFixed(2)} con objetivo ${phTolerance.toFixed(1)} ± ${phToleranceRange.toFixed(1)}.`,
+          detail: `Lectura ${displayedPh.toFixed(2)} con objetivo ${phTolerance.toFixed(1)} +/- ${phToleranceRange.toFixed(1)}.`,
           action: dosingMode === 'automatic' ? 'Esperar correccion automatica' : 'Aplicar dosificacion manual'
         });
       } else {
@@ -480,152 +482,6 @@ export default function App() {
           <PHChart phOverride={displayedPh} />
         </div>
 
-        <section className={`system-status-card system-status-card--${systemSummary.status}`}>
-          <div className="module-help-label">
-            <span>Estado del sistema</span>
-            <InfoHint
-              size="sm"
-              title="Estado rapido"
-              text="Resume en lenguaje simple si todo esta bien, si el sistema esta corrigiendo o si necesitas intervenir."
-            />
-          </div>
-
-          <div className="system-status-head">
-            <strong>{systemSummary.title}</strong>
-            <span>{systemSummary.text}</span>
-          </div>
-
-          <div className="system-status-meta">
-            <div>
-              <small>pH actual</small>
-              <strong>{displayedPh.toFixed(2)}</strong>
-            </div>
-            <div>
-              <small>Objetivo</small>
-              <strong>
-                {phTolerance.toFixed(1)} ± {phToleranceRange.toFixed(1)}
-              </strong>
-            </div>
-            <div>
-              <small>Siguiente accion</small>
-              <strong>{systemSummary.nextAction}</strong>
-            </div>
-            <div>
-              <small>Ultima lectura</small>
-              <strong>{lastDataReceived ? new Date(lastDataReceived).toLocaleTimeString() : 'Sin datos'}</strong>
-            </div>
-          </div>
-
-          {!esp32Connected && !isDiagnosticOpen && (
-            <button className="system-status-action" onClick={startOfflineDiagnostic}>
-              Iniciar diagnostico guiado
-            </button>
-          )}
-
-          {isDiagnosticOpen && (
-            <div className="offline-diagnostic">
-              <div className="offline-diagnostic-header">
-                <h4>Diagnostico guiado</h4>
-                <button onClick={closeOfflineDiagnostic}>Cerrar</button>
-              </div>
-
-              {diagnosticStep === 0 && (
-                <div className="offline-diagnostic-step">
-                  <p>1. Revisa que el ESP32 tenga energia y este encendido.</p>
-                  <button onClick={() => setDiagnosticStep(1)}>Ya lo revise</button>
-                </div>
-              )}
-
-              {diagnosticStep === 1 && (
-                <div className="offline-diagnostic-step">
-                  <p>2. Verifica WiFi: el equipo debe estar en la misma red configurada.</p>
-                  <button onClick={() => setDiagnosticStep(2)}>Continuar</button>
-                </div>
-              )}
-
-              {diagnosticStep === 2 && (
-                <div className="offline-diagnostic-step">
-                  <p>
-                    3. Registro del dispositivo: {hasConfiguredDevice ? 'dispositivo vinculado' : 'no hay dispositivo vinculado'}.
-                  </p>
-                  <div className="offline-diagnostic-actions">
-                    {!hasConfiguredDevice && (
-                      <button
-                        onClick={() => {
-                          openDeviceRegistrationModal();
-                        }}
-                      >
-                        Abrir registro de dispositivo
-                      </button>
-                    )}
-                    <button onClick={() => setDiagnosticStep(3)}>Continuar</button>
-                  </div>
-                </div>
-              )}
-
-              {diagnosticStep === 3 && (
-                <div className="offline-diagnostic-step">
-                  <p>4. Ejecuta una prueba de conexion ahora mismo.</p>
-                  <button onClick={runConnectionCheck} disabled={isCheckingConnection}>
-                    {isCheckingConnection ? 'Probando...' : 'Probar conexion'}
-                  </button>
-                </div>
-              )}
-
-              {diagnosticStep >= 4 && (
-                <div className="offline-diagnostic-step">
-                  <p>
-                    {diagnosticResult === 'online'
-                      ? 'Resultado: sensor online. Ya llegan lecturas de nuevo.'
-                      : 'Resultado: sigue offline. Repite el diagnostico o vuelve a registrar el dispositivo.'}
-                  </p>
-                  <div className="offline-diagnostic-actions">
-                    <button onClick={startOfflineDiagnostic}>Repetir diagnostico</button>
-                    <button onClick={openDeviceRegistrationModal}>Ir a registro</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="system-events-card">
-          <div className="system-events-header">
-            <div className="module-help-label">
-              <span>Centro de eventos</span>
-              <InfoHint
-                size="sm"
-                title="Eventos recientes"
-                text="Explica que paso, que hizo el sistema y que conviene hacer ahora."
-              />
-            </div>
-            <button
-              className="system-events-clear"
-              onClick={() => setSystemEvents([])}
-              disabled={systemEvents.length === 0}
-            >
-              Limpiar
-            </button>
-          </div>
-
-          {systemEvents.length === 0 ? (
-            <p className="system-events-empty">Todavia no hay eventos para mostrar.</p>
-          ) : (
-            <ul className="system-events-list">
-              {systemEvents.slice(0, 8).map((event) => (
-                <li key={event.id} className={`system-event-item system-event-item--${event.type}`}>
-                  <div className="system-event-top">
-                    <span>{event.title}</span>
-                    <small>{new Date(event.createdAt).toLocaleTimeString()}</small>
-                  </div>
-                  <p>{event.detail}</p>
-                  <strong>{event.action}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
         {dosingMode === 'manual' && (
           <div className="scale-in dashboard-module">
             <ManualDosing />
@@ -668,6 +524,195 @@ export default function App() {
           </button>
         </div>
 
+        <section className={`system-status-card system-status-card--${systemSummary.status}`}>
+          <button
+            type="button"
+            className="system-card-toggle"
+            aria-expanded={isSystemStatusExpanded}
+            onClick={() => setIsSystemStatusExpanded((prev) => !prev)}
+          >
+            <div className="system-card-toggle-text">
+              <div className="module-help-label module-help-label--tight">
+                <span>Estado del sistema</span>
+                <InfoHint
+                  size="sm"
+                  title="Estado rapido"
+                  text="Resume en lenguaje simple si todo esta bien, si el sistema esta corrigiendo o si necesitas intervenir."
+                />
+              </div>
+              <small>{systemSummary.title}</small>
+            </div>
+            <span className={`system-card-chevron ${isSystemStatusExpanded ? 'is-open' : ''}`} aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </span>
+          </button>
+
+          {isSystemStatusExpanded && (
+            <>
+              <div className="system-status-head">
+                <strong>{systemSummary.title}</strong>
+                <span>{systemSummary.text}</span>
+              </div>
+
+              <div className="system-status-meta">
+                <div>
+                  <small>pH actual</small>
+                  <strong>{displayedPh.toFixed(2)}</strong>
+                </div>
+                <div>
+                  <small>Objetivo</small>
+                  <strong>
+                    {phTolerance.toFixed(1)} +/- {phToleranceRange.toFixed(1)}
+                  </strong>
+                </div>
+                <div>
+                  <small>Siguiente accion</small>
+                  <strong>{systemSummary.nextAction}</strong>
+                </div>
+                <div>
+                  <small>Ultima lectura</small>
+                  <strong>{lastDataReceived ? new Date(lastDataReceived).toLocaleTimeString() : 'Sin datos'}</strong>
+                </div>
+              </div>
+
+              {!esp32Connected && !isDiagnosticOpen && (
+                <button className="system-status-action" onClick={startOfflineDiagnostic}>
+                  Iniciar diagnostico guiado
+                </button>
+              )}
+
+              {isDiagnosticOpen && (
+                <div className="offline-diagnostic">
+                  <div className="offline-diagnostic-header">
+                    <h4>Diagnostico guiado</h4>
+                    <button onClick={closeOfflineDiagnostic}>Cerrar</button>
+                  </div>
+
+                  {diagnosticStep === 0 && (
+                    <div className="offline-diagnostic-step">
+                      <p>1. Revisa que el ESP32 tenga energia y este encendido.</p>
+                      <button onClick={() => setDiagnosticStep(1)}>Ya lo revise</button>
+                    </div>
+                  )}
+
+                  {diagnosticStep === 1 && (
+                    <div className="offline-diagnostic-step">
+                      <p>2. Verifica WiFi: el equipo debe estar en la misma red configurada.</p>
+                      <button onClick={() => setDiagnosticStep(2)}>Continuar</button>
+                    </div>
+                  )}
+
+                  {diagnosticStep === 2 && (
+                    <div className="offline-diagnostic-step">
+                      <p>
+                        3. Registro del dispositivo: {hasConfiguredDevice ? 'dispositivo vinculado' : 'no hay dispositivo vinculado'}.
+                      </p>
+                      <div className="offline-diagnostic-actions">
+                        {!hasConfiguredDevice && (
+                          <button
+                            onClick={() => {
+                              openDeviceRegistrationModal();
+                            }}
+                          >
+                            Abrir registro de dispositivo
+                          </button>
+                        )}
+                        <button onClick={() => setDiagnosticStep(3)}>Continuar</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {diagnosticStep === 3 && (
+                    <div className="offline-diagnostic-step">
+                      <p>4. Ejecuta una prueba de conexion ahora mismo.</p>
+                      <button onClick={runConnectionCheck} disabled={isCheckingConnection}>
+                        {isCheckingConnection ? 'Probando...' : 'Probar conexion'}
+                      </button>
+                    </div>
+                  )}
+
+                  {diagnosticStep >= 4 && (
+                    <div className="offline-diagnostic-step">
+                      <p>
+                        {diagnosticResult === 'online'
+                          ? 'Resultado: sensor online. Ya llegan lecturas de nuevo.'
+                          : 'Resultado: sigue offline. Repite el diagnostico o vuelve a registrar el dispositivo.'}
+                      </p>
+                      <div className="offline-diagnostic-actions">
+                        <button onClick={startOfflineDiagnostic}>Repetir diagnostico</button>
+                        <button onClick={openDeviceRegistrationModal}>Ir a registro</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        <section className="system-events-card">
+          <button
+            type="button"
+            className="system-card-toggle"
+            aria-expanded={isSystemEventsExpanded}
+            onClick={() => setIsSystemEventsExpanded((prev) => !prev)}
+          >
+            <div className="system-card-toggle-text">
+              <div className="module-help-label module-help-label--tight">
+                <span>Centro de eventos</span>
+                <InfoHint
+                  size="sm"
+                  title="Eventos recientes"
+                  text="Explica que paso, que hizo el sistema y que conviene hacer ahora."
+                />
+              </div>
+              <small>
+                {systemEvents.length > 0
+                  ? `${Math.min(systemEvents.length, 8)} evento(s) recientes`
+                  : 'Sin eventos recientes'}
+              </small>
+            </div>
+            <span className={`system-card-chevron ${isSystemEventsExpanded ? 'is-open' : ''}`} aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </span>
+          </button>
+
+          {isSystemEventsExpanded && (
+            <>
+              <div className="system-events-header">
+                <span className="system-events-title">Ultimos eventos</span>
+                <button
+                  className="system-events-clear"
+                  onClick={() => setSystemEvents([])}
+                  disabled={systemEvents.length === 0}
+                >
+                  Limpiar
+                </button>
+              </div>
+
+              {systemEvents.length === 0 ? (
+                <p className="system-events-empty">Todavia no hay eventos para mostrar.</p>
+              ) : (
+                <ul className="system-events-list">
+                  {systemEvents.slice(0, 8).map((event) => (
+                    <li key={event.id} className={`system-event-item system-event-item--${event.type}`}>
+                      <div className="system-event-top">
+                        <span>{event.title}</span>
+                        <small>{new Date(event.createdAt).toLocaleTimeString()}</small>
+                      </div>
+                      <p>{event.detail}</p>
+                      <strong>{event.action}</strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </section>
         <div className="emergency-stop-container" data-tutorial="emergency-stop">
           <div className="module-help-label module-help-label--danger">
             <span>Parada de emergencia</span>
@@ -696,7 +741,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setShowDeviceRegistrationModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setShowDeviceRegistrationModal(false)}>
-              ×
+              &times;
             </button>
             <DeviceRegistration />
           </div>
