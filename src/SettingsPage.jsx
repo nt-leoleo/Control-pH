@@ -16,7 +16,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     setDosingMode,
     esp32Connected,
     lastDataReceived,
-    checkConnection
+    checkConnection,
+    ensureDeviceConfigured
   } = useContext(PHContext);
   const { user, deleteAccount } = useAuth();
   
@@ -40,6 +41,12 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
   useEffect(() => {
     setLocalPhToleranceRange(phToleranceRange);
   }, [phToleranceRange]);
+
+  useEffect(() => {
+    const openDeviceModal = () => setShowDeviceRegistration(true);
+    window.addEventListener('device-registration:open', openDeviceModal);
+    return () => window.removeEventListener('device-registration:open', openDeviceModal);
+  }, []);
 
   // Debounce para pH tolerance (guardar 500ms después de que pare de mover)
   useEffect(() => {
@@ -111,6 +118,10 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
   };
 
   const handleTestConnection = async () => {
+    if (!ensureDeviceConfigured('probar la conexion')) {
+      return;
+    }
+
     setIsTestingConnection(true);
     try {
       console.log('🧪 [Settings] Probando conexión manual...');
@@ -301,6 +312,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               className={`dosing-mode-btn ${dosingMode === 'automatic' ? 'active' : ''}`}
               onClick={async () => {
                 try {
+                  if (!ensureDeviceConfigured('cambiar el modo automatico')) {
+                    return;
+                  }
                   await setDosingMode('automatic');
                 } catch (error) {
                   console.error('❌ [Settings] Error cambiando a modo automático:', error);
@@ -318,6 +332,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               className={`dosing-mode-btn ${dosingMode === 'manual' ? 'active' : ''}`}
               onClick={async () => {
                 try {
+                  if (!ensureDeviceConfigured('cambiar el modo manual')) {
+                    return;
+                  }
                   await setDosingMode('manual');
                 } catch (error) {
                   console.error('❌ [Settings] Error cambiando a modo manual:', error);

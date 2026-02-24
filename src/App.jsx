@@ -12,18 +12,21 @@ import PoolManager from './PoolManager';
 import ErrorNotification from './ErrorNotification';
 import LoginScreen from './LoginScreen';
 import SplashScreen from './SplashScreen';
+import DeviceRegistration from './DeviceRegistration';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
 import './App.css';
 
 export default function App() {
-  const { ph, error, setError, dosingMode, setDosingMode, isConfigured } = useContext(PHContext);
+  const { ph, error, setError, dosingMode, setDosingMode, isConfigured, ensureDeviceConfigured } =
+    useContext(PHContext);
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(true);
   const [isSendingEmergencyStop, setIsSendingEmergencyStop] = useState(false);
+  const [showDeviceRegistrationModal, setShowDeviceRegistrationModal] = useState(false);
 
   const handleSplashFinish = () => {
     setShowSplash(false);
@@ -50,6 +53,21 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const openDeviceModal = () => setShowDeviceRegistrationModal(true);
+    const closeOnConfigured = (event) => {
+      if (event?.detail?.hasDevice) {
+        setShowDeviceRegistrationModal(false);
+      }
+    };
+    window.addEventListener('device-registration:open', openDeviceModal);
+    window.addEventListener('device-registration:updated', closeOnConfigured);
+    return () => {
+      window.removeEventListener('device-registration:open', openDeviceModal);
+      window.removeEventListener('device-registration:updated', closeOnConfigured);
+    };
+  }, []);
+
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -59,6 +77,10 @@ export default function App() {
 
   const handleEmergencyStop = async () => {
     if (!user?.uid || isSendingEmergencyStop) {
+      return;
+    }
+
+    if (!ensureDeviceConfigured('la parada de emergencia')) {
       return;
     }
 
@@ -174,6 +196,9 @@ export default function App() {
           <button
             onClick={async () => {
               try {
+                if (!ensureDeviceConfigured('cambiar el modo de dosificacion')) {
+                  return;
+                }
                 const newMode = dosingMode === 'automatic' ? 'manual' : 'automatic';
                 await setDosingMode(newMode);
               } catch (toggleError) {
@@ -203,6 +228,17 @@ export default function App() {
 
       {error && (
         <ErrorNotification message={error.message} type={error.type || 'error'} duration={5000} />
+      )}
+
+      {showDeviceRegistrationModal && (
+        <div className="modal-overlay" onClick={() => setShowDeviceRegistrationModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowDeviceRegistrationModal(false)}>
+              ×
+            </button>
+            <DeviceRegistration />
+          </div>
+        </div>
       )}
     </>
   );

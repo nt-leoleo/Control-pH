@@ -1,6 +1,8 @@
 import { createContext, useState, useEffect } from 'react';
 import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
 import { subscribeToPHData, checkESP32Connection } from './esp32Communication-firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from './firebase';
 import { useAuth } from './useAuth';
 
 export const PHContext = createContext(null);
@@ -40,6 +42,7 @@ export const PHProvider = ({ children }) => {
     // Estado de conexión ESP32
     const [esp32Connected, setEsp32Connected] = useState(false);
     const [lastDataReceived, setLastDataReceived] = useState(null);
+    const [hasConfiguredDevice, setHasConfiguredDevice] = useState(false);
 
     // Cargar configuración desde Firebase cuando esté disponible
     useEffect(() => {
@@ -134,6 +137,56 @@ export const PHProvider = ({ children }) => {
             }
         }
     }, [user?.uid, userConfig]);
+
+    useEffect(() => {
+        const loadDeviceState = async () => {
+            if (!user?.uid) {
+                setHasConfiguredDevice(false);
+                return;
+            }
+
+            try {
+                const [linkedByArray, linkedLegacy] = await Promise.all([
+                    getDocs(query(collection(db, 'devices'), where('userIds', 'array-contains', user.uid))),
+                    getDocs(query(collection(db, 'devices'), where('userId', '==', user.uid)))
+                ]);
+
+                setHasConfiguredDevice(!linkedByArray.empty || !linkedLegacy.empty);
+            } catch (error) {
+                console.error('Error verificando dispositivo configurado:', error);
+                setHasConfiguredDevice(false);
+            }
+        };
+
+        loadDeviceState();
+    }, [user?.uid, userConfig]);
+
+    useEffect(() => {
+        const handleDeviceStateUpdate = (event) => {
+            const hasDevice = Boolean(event?.detail?.hasDevice);
+            setHasConfiguredDevice(hasDevice);
+        };
+
+        window.addEventListener('device-registration:updated', handleDeviceStateUpdate);
+        return () => window.removeEventListener('device-registration:updated', handleDeviceStateUpdate);
+    }, []);
+
+    const openDeviceRegistrationModal = () => {
+        window.dispatchEvent(new CustomEvent('device-registration:open'));
+    };
+
+    const ensureDeviceConfigured = (featureName = 'esta funcion') => {
+        if (hasConfiguredDevice) {
+            return true;
+        }
+
+        setError({
+            type: 'warning',
+            message: `Primero registra tu ESP32 para usar ${featureName}.`
+        });
+        openDeviceRegistrationModal();
+        return false;
+    };
 
     // Función para guardar configuración en Firebase
     const saveConfigToFirebase = async (configUpdate) => {
@@ -375,6 +428,9 @@ export const PHProvider = ({ children }) => {
             // Funciones adicionales
             checkConnection,
             saveConfigToFirebase,
+            hasConfiguredDevice,
+            ensureDeviceConfigured,
+            openDeviceRegistrationModal,
             
             // Información de usuario
             user,

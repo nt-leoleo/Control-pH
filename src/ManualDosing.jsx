@@ -18,6 +18,8 @@ const ManualDosing = () => {
         poolVolume,
         alkalinity,
         esp32Connected,
+        hasConfiguredDevice,
+        ensureDeviceConfigured,
         chlorineType,
         acidType
     } = useContext(PHContext);
@@ -125,6 +127,10 @@ const ManualDosing = () => {
 
     const handleDosify = async () => {
         try {
+            if (!ensureDeviceConfigured('la dosificacion manual')) {
+                return;
+            }
+
             const { product, minutes, seconds, liters } = manualDosingConfig;
             
             if (liters <= 0) {
@@ -358,10 +364,11 @@ const ManualDosing = () => {
             <button 
                 className="dosifyBtn" 
                 onClick={handleDosify}
-                disabled={isAnimating || isDosing || !esp32Connected}
+                disabled={isAnimating || isDosing || (hasConfiguredDevice && !esp32Connected)}
             >
                 {isDosing ? 'Dosificando... Esperando ESP32' : 
                  isAnimating ? 'Simulando cambio...' : 
+                 !hasConfiguredDevice ? 'Configurar dispositivo' :
                  !esp32Connected ? 'ESP32 Desconectado' :
                  'DOSIFICAR'}
             </button>
