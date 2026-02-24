@@ -6,6 +6,14 @@ import { useAuth } from './useAuth';
 import './Onboarding.css';
 
 const TOTAL_STEPS = 3;
+const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
+
+const normalizeDeviceId = (rawValue) => {
+  return String(rawValue || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+};
 
 const Onboarding = () => {
   const {
@@ -63,8 +71,17 @@ const Onboarding = () => {
         return false;
       }
 
-      if (!deviceId.trim()) {
+      const normalizedDeviceId = normalizeDeviceId(deviceId);
+      if (!normalizedDeviceId) {
         setError({ type: 'error', message: 'Ingresa el Device ID para continuar.' });
+        return false;
+      }
+
+      if (!DEVICE_ID_REGEX.test(normalizedDeviceId)) {
+        setError({
+          type: 'error',
+          message: 'El Device ID solo puede tener letras, numeros, guion o guion bajo (6 a 64 caracteres).'
+        });
         return false;
       }
     }
@@ -73,9 +90,13 @@ const Onboarding = () => {
   };
 
   const registerDevice = async () => {
-    const trimmedDeviceId = deviceId.trim().toUpperCase();
+    const trimmedDeviceId = normalizeDeviceId(deviceId);
     if (!trimmedDeviceId || !user?.uid) {
       return true;
+    }
+
+    if (!DEVICE_ID_REGEX.test(trimmedDeviceId)) {
+      throw new Error('Device ID invalido. Verifica el valor del ESP32.');
     }
 
     const deviceRef = doc(db, 'devices', trimmedDeviceId);
@@ -270,7 +291,7 @@ const Onboarding = () => {
                 className="onboarding-input"
                 type="text"
                 value={deviceId}
-                onChange={(e) => setDeviceId(e.target.value.toUpperCase())}
+                onChange={(e) => setDeviceId(e.target.value)}
                 placeholder="Ej: A1B2C3D4E5F6"
               />
 
