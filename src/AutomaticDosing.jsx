@@ -200,25 +200,60 @@ const AutomaticDosing = () => {
   };
 
   const activeCommandInfo = useMemo(() => {
-    if (!activeAutoCommand) return null;
+    if (activeAutoCommand) {
+      const durationSeconds = toNumberOr(activeAutoCommand.duration, 0);
+      const commandStartTs = toNumberOr(
+        activeAutoCommand.processedAt || activeAutoCommand.lastDispatchAt || activeAutoCommand.createdAt,
+        0
+      );
+      const elapsedSeconds =
+        commandStartTs > 0 ? Math.max(0, Math.floor((nowTs - commandStartTs) / 1000)) : 0;
+      const remainingSeconds =
+        durationSeconds > 0 ? Math.max(0, durationSeconds - elapsedSeconds) : null;
 
-    const durationSeconds = toNumberOr(activeAutoCommand.duration, 0);
-    const commandStartTs = toNumberOr(
-      activeAutoCommand.processedAt || activeAutoCommand.lastDispatchAt || activeAutoCommand.createdAt,
+      return {
+        id: activeAutoCommand.id,
+        status: activeAutoCommand.status,
+        product: activeAutoCommand.product,
+        durationSeconds,
+        remainingSeconds,
+        label: getProductLabel(activeAutoCommand.product),
+      };
+    }
+
+    const stateStatus = String(dosingState?.autoCommandStatus || '').toLowerCase();
+    const activeByState =
+      Boolean(dosingState?.autoDosingActive) || stateStatus === 'pending' || stateStatus === 'processing';
+
+    if (!activeByState) {
+      return null;
+    }
+
+    const product = dosingState?.autoCommandProduct || dosingState?.lastProduct || null;
+    const durationSeconds = toNumberOr(
+      dosingState?.autoCommandDuration ?? dosingState?.lastDuration,
       0
     );
-    const elapsedSeconds = commandStartTs > 0 ? Math.max(0, Math.floor((nowTs - commandStartTs) / 1000)) : 0;
-    const remainingSeconds = durationSeconds > 0 ? Math.max(0, durationSeconds - elapsedSeconds) : null;
+    const commandStartTs = toNumberOr(
+      dosingState?.autoCommandStartedAt ||
+        dosingState?.autoCommandCreatedAt ||
+        dosingState?.lastDosingTime,
+      0
+    );
+    const elapsedSeconds =
+      commandStartTs > 0 ? Math.max(0, Math.floor((nowTs - commandStartTs) / 1000)) : 0;
+    const remainingSeconds =
+      durationSeconds > 0 ? Math.max(0, durationSeconds - elapsedSeconds) : null;
 
     return {
-      id: activeAutoCommand.id,
-      status: activeAutoCommand.status,
-      product: activeAutoCommand.product,
+      id: dosingState?.autoCommandId || dosingState?.lastCommandId || 'auto-state',
+      status: stateStatus || 'processing',
+      product,
       durationSeconds,
       remainingSeconds,
-      label: getProductLabel(activeAutoCommand.product),
+      label: getProductLabel(product),
     };
-  }, [activeAutoCommand, nowTs]);
+  }, [activeAutoCommand, dosingState, nowTs, raiseName, lowerName]);
 
   const getPHDeviationLevel = () => {
     const absDeviation = Math.abs(deviation);

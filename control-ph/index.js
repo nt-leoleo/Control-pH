@@ -287,14 +287,27 @@ exports.getCommand = onRequest(async (req, res) => {
 
     const { userId, commandId, command } = selectedEntry;
     const selectedCommandRef = realtimeDb.ref(`users/${userId}/commands/${commandId}`);
+    const nowTs = Date.now();
 
     // Marcar como "processing"
     await selectedCommandRef.update({
       status: 'processing',
-      processedAt: Date.now(),
+      processedAt: nowTs,
       dispatchCount: Number(command?.dispatchCount || 0) + 1,
-      lastDispatchAt: Date.now()
+      lastDispatchAt: nowTs
     });
+
+    if (command?.source === 'automatic') {
+      await realtimeDb.ref(`users/${userId}/dosingState`).update({
+        autoCommandId: commandId,
+        autoCommandStatus: 'processing',
+        autoCommandProduct: command.product || null,
+        autoCommandDuration: Number(command?.duration || 0),
+        autoCommandStartedAt: nowTs,
+        autoCommandUpdatedAt: nowTs,
+        autoDosingActive: true,
+      });
+    }
 
     logger.info(`📤 Comando enviado a ${deviceId} (${userId}): ${command.product}, ${command.duration || 0}s`);
     if (command?.staleProcessing) {
@@ -344,6 +357,7 @@ exports.confirmCommand = onRequest(async (req, res) => {
     }
 
     let commandUserId = null;
+    let commandData = null;
 
     if (requestedUserId && deviceUserIds.includes(requestedUserId)) {
       const requestedSnapshot = await realtimeDb
@@ -351,6 +365,7 @@ exports.confirmCommand = onRequest(async (req, res) => {
         .once('value');
       if (requestedSnapshot.exists()) {
         commandUserId = requestedUserId;
+        commandData = requestedSnapshot.val() || null;
       }
     } else {
       for (const candidateUserId of deviceUserIds) {
@@ -359,6 +374,7 @@ exports.confirmCommand = onRequest(async (req, res) => {
           .once('value');
         if (commandSnapshot.exists()) {
           commandUserId = candidateUserId;
+          commandData = commandSnapshot.val() || null;
           break;
         }
       }
@@ -369,19 +385,31 @@ exports.confirmCommand = onRequest(async (req, res) => {
       return;
     }
     
+    const nowTs = Date.now();
+
     // Actualizar comando
     await realtimeDb.ref(`users/${commandUserId}/commands/${commandId}`).update({
       status: status,
-      completedAt: Date.now()
+      completedAt: nowTs
     });
     
     // Registrar en historial
     await realtimeDb.ref(`users/${commandUserId}/dosingHistory`).push({
       commandId: commandId,
       status: status,
-      timestamp: Date.now(),
+      timestamp: nowTs,
       deviceId: deviceId
     });
+
+    if (commandData?.source === 'automatic') {
+      await realtimeDb.ref(`users/${commandUserId}/dosingState`).update({
+        autoCommandId: commandId,
+        autoCommandStatus: status,
+        autoCommandUpdatedAt: nowTs,
+        autoCommandCompletedAt: nowTs,
+        autoDosingActive: false,
+      });
+    }
     
     logger.info(`✅ Comando ${commandId} confirmado (${commandUserId}): ${status}`);
     
@@ -721,11 +749,13 @@ async function processUser(userId, userData) {
     const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
     const newCommandRef = commandsRef.push();
     
+    const commandCreatedAt = Date.now();
+
     await newCommandRef.set({
       product: product,
       duration: duration,
       status: 'pending',
-      createdAt: Date.now(),
+      createdAt: commandCreatedAt,
       source: 'automatic',
       phBefore: currentPH,
       phTarget: targetPH,
@@ -738,14 +768,21 @@ async function processUser(userId, userData) {
     
     // Actualizar estado en Realtime Database
     await realtimeDb.ref(`users/${userId}/dosingState`).update({
-      lastDosingTime: Date.now(),
+      lastDosingTime: commandCreatedAt,
       lastDosingDate: today,
       dosingCountToday: dosingCountToday + 1,
       lastProduct: product,
       lastDuration: duration,
       lastPH: currentPH,
       lastDeviation: deviation,
-      lastCommandId: commandId
+      lastCommandId: commandId,
+      autoCommandId: commandId,
+      autoCommandStatus: 'pending',
+      autoCommandProduct: product,
+      autoCommandDuration: duration,
+      autoCommandCreatedAt: commandCreatedAt,
+      autoCommandUpdatedAt: commandCreatedAt,
+      autoDosingActive: true,
     });
     
     // Actualizar estado del sistema
