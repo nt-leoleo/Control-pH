@@ -11,6 +11,7 @@ import {
   syncSharedDeviceUnlink
 } from './deviceLinking';
 import ConfirmDialog from './ConfirmDialog';
+import { sendWifiResetCommand, waitForCommandConfirmation } from './esp32Communication-firebase';
 import './DeviceRegistration.css';
 
 const DeviceRegistration = () => {
@@ -21,6 +22,8 @@ const DeviceRegistration = () => {
   const [message, setMessage] = useState(null);
   const [registeredDevices, setRegisteredDevices] = useState([]);
   const [deviceIdToDelete, setDeviceIdToDelete] = useState(null);
+  const [showWifiResetConfirm, setShowWifiResetConfirm] = useState(false);
+  const [isResettingWifi, setIsResettingWifi] = useState(false);
 
   const notifyDeviceState = (hasDevice) => {
     window.dispatchEvent(
@@ -125,6 +128,54 @@ const DeviceRegistration = () => {
     setDeviceIdToDelete(targetDeviceId);
   };
 
+  const requestWifiReset = () => {
+    if (registeredDevices.length === 0 || isResettingWifi) {
+      return;
+    }
+    setShowWifiResetConfirm(true);
+  };
+
+  const confirmWifiReset = async () => {
+    setShowWifiResetConfirm(false);
+
+    if (!user?.uid) {
+      setMessage({ type: 'error', text: 'Debes iniciar sesion para enviar comandos al ESP32.' });
+      return;
+    }
+
+    setIsResettingWifi(true);
+    setMessage({
+      type: 'info',
+      text: 'Enviando reinicio de WiFi al ESP32. Espera unos segundos...'
+    });
+
+    try {
+      const result = await sendWifiResetCommand(user.uid);
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo enviar el comando');
+      }
+
+      const confirmed = await waitForCommandConfirmation(user.uid, result.commandId, 45000);
+      if (confirmed) {
+        setMessage({
+          type: 'success',
+          text:
+            'WiFi reiniciado. El ESP32 borrara credenciales y levantara el AP SensorPH_Config (clave 12345678).'
+        });
+      } else {
+        setMessage({
+          type: 'info',
+          text:
+            'Comando enviado. Si el ESP32 se desconecto rapido, conectate al AP SensorPH_Config para reconfigurar.'
+        });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+    } finally {
+      setIsResettingWifi(false);
+    }
+  };
+
   const handleRegister = async (event) => {
     event.preventDefault();
 
@@ -220,6 +271,15 @@ const DeviceRegistration = () => {
               </div>
             </div>
           ))}
+
+          <div className="wifi-reset-section">
+            <button className="wifi-reset-btn" onClick={requestWifiReset} disabled={isResettingWifi}>
+              {isResettingWifi ? 'Reiniciando WiFi...' : 'Resetear WiFi del ESP32'}
+            </button>
+            <small>
+              Borra la red guardada en el ESP32 y lo deja en modo configuracion (AP: SensorPH_Config).
+            </small>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleRegister} className="registration-form">
@@ -274,6 +334,18 @@ const DeviceRegistration = () => {
         tone="danger"
         onCancel={() => setDeviceIdToDelete(null)}
         onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        isOpen={showWifiResetConfirm}
+        title="Resetear WiFi del ESP32"
+        message="Se borraran las credenciales WiFi guardadas y el equipo reiniciara en modo configuracion."
+        details="Despues debes conectarte al AP SensorPH_Config (clave 12345678) y volver a configurar la red."
+        confirmLabel="Resetear WiFi"
+        tone="danger"
+        isLoading={isResettingWifi}
+        onCancel={() => setShowWifiResetConfirm(false)}
+        onConfirm={confirmWifiReset}
       />
     </div>
   );

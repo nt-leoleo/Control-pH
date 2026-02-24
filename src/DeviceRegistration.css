@@ -196,6 +196,43 @@
     transform: scale(1.1);
 }
 
+.wifi-reset-section {
+    margin-top: 1rem;
+    padding: 0.9rem;
+    border: 1px solid #fbd38d;
+    border-radius: 8px;
+    background: #fffaf0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.wifi-reset-btn {
+    border: 1px solid #dd6b20;
+    background: #ed8936;
+    color: white;
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.wifi-reset-btn:hover:not(:disabled) {
+    background: #dd6b20;
+}
+
+.wifi-reset-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.wifi-reset-section small {
+    color: #744210;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
 .registration-help {
     margin-top: 2rem;
     padding: 1.5rem;
