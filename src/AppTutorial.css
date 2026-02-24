@@ -21,6 +21,38 @@
   pointer-events: none;
 }
 
+.tutorial-track-badge {
+  position: fixed;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+  padding: 0.52rem 0.66rem;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  background: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+  text-decoration: none;
+  box-shadow: 0 12px 26px rgba(2, 8, 23, 0.52);
+  animation: tutorialTrackBadgeIn 0.26s ease-out;
+}
+
+.tutorial-track-badge svg {
+  width: 15px;
+  height: 15px;
+  color: #ef4444;
+  flex: 0 0 auto;
+}
+
+.tutorial-track-badge span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .tutorial-spotlight {
   position: fixed;
   border-radius: 14px;
@@ -124,19 +156,6 @@
   line-height: 1.34;
 }
 
-.tutorial-audio-hint {
-  margin-top: 0.46rem;
-  color: #67e8f9;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.tutorial-audio-credit {
-  margin-top: 0.34rem;
-  color: #94a3b8;
-  font-size: 0.74rem;
-}
-
 .tutorial-actions {
   margin-top: 0.85rem;
   display: flex;
@@ -190,7 +209,29 @@
   }
 }
 
+@keyframes tutorialTrackBadgeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 720px) {
+  .tutorial-track-badge {
+    top: 0.68rem;
+    right: 0.68rem;
+    max-width: calc(100vw - 1.35rem);
+  }
+
+  .tutorial-track-badge span {
+    font-size: 0.71rem;
+    white-space: normal;
+  }
+
   .tutorial-card {
     padding: 0.82rem;
   }

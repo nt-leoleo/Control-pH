@@ -5,7 +5,7 @@ import './AppTutorial.css';
 const STEP_LIST = [
   {
     number: 0,
-    title: 'Bienvenida',
+    title: 'Bienvenid@ al tutorial de Control de pH',
     description:
       'Este recorrido te muestra como usar el sistema de control de pH. Vas a ver cada modulo clave en orden.',
     selector: '[data-tutorial="dashboard-root"]',
@@ -53,7 +53,7 @@ const STEP_LIST = [
   {
     number: 2,
     title: 'Cambio por deslizamiento',
-    description: 'Mira la demo: el medidor cambia de vista con un deslizamiento horizontal suave.',
+    description: 'Observa: el medidor cambia de vista deslizando por pantalla a la izquierda o derecha.',
     selector: '[data-tutorial="ph-carousel"]',
     demo: 'swipe',
   },
@@ -76,8 +76,8 @@ const STEP_LIST = [
         selector: '[data-tutorial="ph-scale-track"]',
       },
       {
-        title: 'Rango objetivo',
-        description: 'Esta zona remarcada muestra el rango ideal configurado para mantener el agua estable.',
+        title: 'Rango objetivo (zona verde)',
+        description: 'Esta zona remarcada en verde muestra el rango ideal configurado para mantener el agua estable.',
         selector: '[data-tutorial="ph-scale-target"]',
       },
       {
@@ -214,6 +214,7 @@ const YOUTUBE_START_SECONDS = 9 * 60 + 30;
 const YOUTUBE_TARGET_VOLUME = 24;
 const YOUTUBE_FADE_IN_MS = 2200;
 const YOUTUBE_FADE_OUT_MS = 3000;
+const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
 
 const buildStepParts = (step) => {
   if (!step?.parts?.length) return [];
@@ -379,6 +380,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
   const cardRef = useRef(null);
   const youtubePlayerRef = useRef(null);
   const youtubeVolumeIntervalRef = useRef(null);
+  const trackBadgeTimeoutRef = useRef(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [partIndex, setPartIndex] = useState(0);
@@ -387,6 +389,7 @@ const AppTutorial = ({ isOpen, onClose }) => {
   const [connectorPoints, setConnectorPoints] = useState(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [needsAudioInteraction, setNeedsAudioInteraction] = useState(false);
+  const [showTrackBadge, setShowTrackBadge] = useState(false);
 
   const step = STEP_LIST[stepIndex];
   const parts = useMemo(() => buildStepParts(step), [step]);
@@ -627,6 +630,23 @@ const AppTutorial = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   useEffect(() => {
+    if (trackBadgeTimeoutRef.current) {
+      window.clearTimeout(trackBadgeTimeoutRef.current);
+      trackBadgeTimeoutRef.current = null;
+    }
+
+    if (!isOpen) {
+      setShowTrackBadge(false);
+      return;
+    }
+
+    setShowTrackBadge(true);
+    trackBadgeTimeoutRef.current = window.setTimeout(() => {
+      setShowTrackBadge(false);
+    }, 5000);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
       startYoutubeAmbient();
       return undefined;
@@ -658,6 +678,9 @@ const AppTutorial = ({ isOpen, onClose }) => {
     () => () => {
       stopYoutubeAmbient(false);
       clearYoutubeVolumeInterval();
+      if (trackBadgeTimeoutRef.current) {
+        window.clearTimeout(trackBadgeTimeoutRef.current);
+      }
       if (youtubePlayerRef.current && typeof youtubePlayerRef.current.destroy === 'function') {
         youtubePlayerRef.current.destroy();
       }
@@ -800,6 +823,24 @@ const AppTutorial = ({ isOpen, onClose }) => {
 
       <div id="tutorial-youtube-audio-host" className="tutorial-youtube-host" aria-hidden="true" />
 
+      {showTrackBadge && (
+        <a
+          className="tutorial-track-badge"
+          href={YOUTUBE_VIDEO_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Abrir video en YouTube"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M23.498 6.186a2.99 2.99 0 0 0-2.103-2.115C19.544 3.6 12 3.6 12 3.6s-7.544 0-9.395.471A2.99 2.99 0 0 0 .502 6.186 31.44 31.44 0 0 0 0 12a31.44 31.44 0 0 0 .502 5.814 2.99 2.99 0 0 0 2.103 2.115C4.456 20.4 12 20.4 12 20.4s7.544 0 9.395-.471a2.99 2.99 0 0 0 2.103-2.115A31.44 31.44 0 0 0 24 12a31.44 31.44 0 0 0-.502-5.814zM9.6 15.6V8.4l6.4 3.6-6.4 3.6z"
+            />
+          </svg>
+          <span>Ambient PAD B | Worship Drone Pads</span>
+        </a>
+      )}
+
       {spotlightRect && (
         <div
           className="tutorial-spotlight"
@@ -857,19 +898,9 @@ const AppTutorial = ({ isOpen, onClose }) => {
         }
       >
         <p className="tutorial-step-counter">Paso {step.number} de 8</p>
-        {hasParts && activePart?.isOverview && <p className="tutorial-part-counter">Vista general</p>}
-        {hasParts && !activePart?.isOverview && (
-          <p className="tutorial-part-counter">Parte {partIndex} de {Math.max(1, parts.length - 1)}</p>
-        )}
 
         <h3>{panelTitle}</h3>
         <p>{panelDescription}</p>
-        {needsAudioInteraction && (
-          <p className="tutorial-audio-hint">Toca la pantalla para habilitar la musica del tutorial.</p>
-        )}
-        <p className="tutorial-audio-credit">
-          Musica: YouTube (video PQjgO6SIOas) desde 09:30.
-        </p>
 
         <div className="tutorial-actions">
           <button type="button" className="tutorial-btn tutorial-btn--ghost" onClick={() => onClose('skipped')}>
