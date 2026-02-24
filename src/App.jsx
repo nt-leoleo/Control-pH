@@ -463,12 +463,14 @@ export default function App() {
 
   return (
     <>
-      <Header
-        onConfigClick={() => {
-          setCurrentView('settings');
-          window.location.hash = 'settings';
-        }}
-      />
+      {!showTutorial && (
+        <Header
+          onConfigClick={() => {
+            setCurrentView('settings');
+            window.location.hash = 'settings';
+          }}
+        />
+      )}
 
       <main className="fade-in app-main" data-tutorial="dashboard-root">
         <div className="dashboard-stack">

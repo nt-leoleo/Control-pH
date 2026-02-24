@@ -222,12 +222,13 @@ const YOUTUBE_VIDEO_ID = 'PQjgO6SIOas';
 const YOUTUBE_START_SECONDS = 9 * 60 + 30;
 const YOUTUBE_TARGET_VOLUME = 24;
 const YOUTUBE_FADE_IN_MS = 2200;
-const YOUTUBE_FADE_OUT_MS = 3000;
+const YOUTUBE_FADE_OUT_MS = 7000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
 const TUTORIAL_CLOSE_FADE_MS = 320;
 const SMALL_TARGET_MAX_HEIGHT = 190;
 const SMALL_TARGET_MAX_VIEWPORT_RATIO = 0.28;
 const SMALL_TARGET_VIEWPORT_ANCHOR = 0.42;
+const TOP_TARGET_MIN_VIEWPORT_OFFSET = 74;
 const SCROLL_BLOCK_KEYS = new Set([
   ' ',
   'Spacebar',
@@ -945,10 +946,28 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
           }, behavior === 'smooth' ? 560 : 140);
         };
 
+        const nudgeTargetDownIfTooHigh = async () => {
+          const rect = targetElement.getBoundingClientRect();
+          const delta = TOP_TARGET_MIN_VIEWPORT_OFFSET - rect.top;
+
+          if (delta <= 6) {
+            return;
+          }
+
+          await runProgrammaticScroll(() => {
+            window.scrollTo({
+              top: Math.max(0, window.scrollY - delta),
+              behavior: 'auto',
+            });
+          }, 140);
+        };
+
         await alignTarget('smooth');
+        await nudgeTargetDownIfTooHigh();
 
         if (!isInViewport(targetElement, 12)) {
           await alignTarget('auto');
+          await nudgeTargetDownIfTooHigh();
         }
       }
 
