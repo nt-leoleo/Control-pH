@@ -598,15 +598,19 @@ async function processUser(userId, userData) {
     
     // Leer configuración de administrador (si existe)
     const adminConfig = userData.adminConfig || {};
+    const toNumberOr = (value, fallback) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
     const minWaitHours = adminConfig.minWaitTimeBetweenDoses !== undefined 
       ? adminConfig.minWaitTimeBetweenDoses 
       : 0.5;
     const MIN_WAIT_TIME = minWaitHours * 60 * 60 * 1000; // Convertir horas a ms
-    const MAX_DAILY_DOSES = adminConfig.maxDailyDoses || 10;
-    const MIN_PH = adminConfig.minPH || 6.0;
-    const MAX_PH = adminConfig.maxPH || 8.5;
-    const MAX_PH_CHANGE = adminConfig.maxPHChange || 1.0;
-    const CORRECTION_FACTOR = adminConfig.correctionFactor || 0.8;
+    const MAX_DAILY_DOSES = toNumberOr(adminConfig.maxDailyDoses, 10);
+    const MIN_PH = toNumberOr(adminConfig.minPH, 0.0);
+    const MAX_PH = toNumberOr(adminConfig.maxPH, 14.0);
+    const MAX_PH_CHANGE = toNumberOr(adminConfig.maxPHChange, 1.0);
+    const CORRECTION_FACTOR = toNumberOr(adminConfig.correctionFactor, 0.8);
     
     const targetPH = userData.phTolerance;
     const tolerance = userData.phToleranceRange;
@@ -740,8 +744,8 @@ async function processUser(userId, userData) {
     const alkalinity = userData.alkalinity || 100; // ppm
     const chlorineType = userData.chlorineType || 'sodium-hypochlorite';
     const acidType = userData.acidType || 'muriatic';
-    const pumpFlowRate = adminConfig.pumpFlowRate || 60; // L/h
-    const maxDoseVolume = adminConfig.maxDoseVolume || 500; // ml
+    const pumpFlowRate = toNumberOr(adminConfig.pumpFlowRate, 60); // L/h
+    const maxDoseVolume = toNumberOr(adminConfig.maxDoseVolume, 500); // ml
     
     logger.info(`📐 Calculando dosificación para piscina de ${poolVolume}L`);
     logger.info(`🧪 Químicos: Cloro=${chlorineType}, Ácido=${acidType}`);

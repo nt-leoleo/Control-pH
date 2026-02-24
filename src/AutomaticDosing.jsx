@@ -47,8 +47,8 @@ const AutomaticDosing = () => {
     minWaitTimeBetweenDoses: 0.5,
     maxDailyDoses: 10,
     checkInterval: 1,
-    minPH: 6.0,
-    maxPH: 8.5,
+    minPH: 0.0,
+    maxPH: 14.0,
   };
 
   useEffect(() => {
