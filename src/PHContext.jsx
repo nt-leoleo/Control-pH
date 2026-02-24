@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from 'react';
+﻿import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { validatePHValue, validateTolerance, validateToleranceRange, logError, ErrorMessages } from './errorUtils';
 import { subscribeToPHData, checkESP32Connection } from './esp32Communication-firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -8,11 +8,34 @@ import { useAuth } from './useAuth';
 export const PHContext = createContext(null);
 const THINGSPEAK_WRITE_API_KEY = import.meta.env.VITE_THINGSPEAK_WRITE_API_KEY || '';
 
+const DEFAULT_PH_HISTORY = [
+    { hour: '00:00', value: 7.0 },
+    { hour: '01:00', value: 7.1 },
+    { hour: '02:00', value: 7.0 },
+    { hour: '03:00', value: 6.9 },
+    { hour: '04:00', value: 7.2 },
+    { hour: '05:00', value: 7.3 },
+    { hour: '06:00', value: 7.1 },
+];
+
+const DEFAULT_MANUAL_DOSING_CONFIG = {
+    product: 'sodium-hypochlorite',
+    minutes: 2,
+    seconds: 30,
+};
+
+const hasValue = (value) => value !== undefined && value !== null;
+
+const toHistoryEntry = (phValue, date = new Date()) => {
+    const hour = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return { hour: `${hour}:${minutes}`, value: phValue };
+};
+
 export const PHProvider = ({ children }) => {
     const { user, userConfig, updateUserConfig } = useAuth();
+
     const [isConfigured, setIsConfigured] = useState(false);
-    
-    // Estados que se sincronizarán con Firebase
     const [poolVolume, setPoolVolume] = useState(null);
     const [alkalinity, setAlkalinity] = useState(100);
     const [chlorineType, setChlorineType] = useState('sodium-hypochlorite');
@@ -21,105 +44,86 @@ export const PHProvider = ({ children }) => {
     const [phToleranceRange, setPhToleranceRange] = useState(0.5);
     const [dosingMode, setDosingMode] = useState('automatic');
     const [ph, setPH] = useState(7.4);
-    const [phHistory, setPhHistory] = useState([
-        { hour: '00:00', value: 7.0 },
-        { hour: '01:00', value: 7.1 },
-        { hour: '02:00', value: 7.0 },
-        { hour: '03:00', value: 6.9 },
-        { hour: '04:00', value: 7.2 },
-        { hour: '05:00', value: 7.3 },
-        { hour: '06:00', value: 7.1 },
-    ]);
+    const [phHistory, setPhHistory] = useState(DEFAULT_PH_HISTORY);
     const [error, setError] = useState(null);
-    const [manualDosingConfig, setManualDosingConfig] = useState({
-        product: 'sodium-hypochlorite',
-        minutes: 2,
-        seconds: 30,
-        liters: 5,
-    });
+    const [manualDosingConfig, setManualDosingConfig] = useState(DEFAULT_MANUAL_DOSING_CONFIG);
     const [dosingHistory, setDosingHistory] = useState([]);
-
-    // Estado de conexión ESP32
     const [esp32Connected, setEsp32Connected] = useState(false);
     const [lastDataReceived, setLastDataReceived] = useState(null);
     const [hasConfiguredDevice, setHasConfiguredDevice] = useState(false);
 
-    // Cargar configuración desde Firebase cuando esté disponible
     useEffect(() => {
         if (userConfig) {
-            // Cargar configuración guardada
-            if (userConfig.poolVolume) setPoolVolume(userConfig.poolVolume);
-            if (userConfig.alkalinity) setAlkalinity(userConfig.alkalinity);
-            if (userConfig.chlorineType) setChlorineType(userConfig.chlorineType);
-            if (userConfig.acidType) setAcidType(userConfig.acidType);
-            
-            // Cargar pH y tolerancia (nuevo formato)
-            if (userConfig.phTolerance) setPhTolerance(userConfig.phTolerance);
-            if (userConfig.phToleranceRange) setPhToleranceRange(userConfig.phToleranceRange);
-            
-            // Compatibilidad con formato anterior (phMin/phMax)
-            if (!userConfig.phTolerance && userConfig.phMin) {
-                setPhTolerance(userConfig.phMin);
-            }
-            if (!userConfig.phToleranceRange && userConfig.phMax && userConfig.phMin) {
-                setPhToleranceRange(userConfig.phMax - userConfig.phMin);
-            }
-            
-            if (userConfig.dosingMode) setDosingMode(userConfig.dosingMode);
-            
-            // Cargar última configuración de dosificación manual
+            if (hasValue(userConfig.poolVolume)) setPoolVolume(userConfig.poolVolume);
+            if (hasValue(userConfig.alkalinity)) setAlkalinity(userConfig.alkalinity);
+            if (hasValue(userConfig.chlorineType)) setChlorineType(userConfig.chlorineType);
+            if (hasValue(userConfig.acidType)) setAcidType(userConfig.acidType);
+
+            const resolvedTolerance = hasValue(userConfig.phTolerance)
+                ? userConfig.phTolerance
+                : userConfig.phMin;
+            if (hasValue(resolvedTolerance)) setPhTolerance(resolvedTolerance);
+
+            const resolvedToleranceRange = hasValue(userConfig.phToleranceRange)
+                ? userConfig.phToleranceRange
+                : hasValue(userConfig.phMax) && hasValue(userConfig.phMin)
+                    ? userConfig.phMax - userConfig.phMin
+                    : null;
+            if (hasValue(resolvedToleranceRange)) setPhToleranceRange(resolvedToleranceRange);
+
+            if (hasValue(userConfig.dosingMode)) setDosingMode(userConfig.dosingMode);
+
             if (userConfig.lastManualDosingConfig) {
-                console.log('📥 Cargando configuración de dosificación manual:', userConfig.lastManualDosingConfig);
                 const savedConfig = userConfig.lastManualDosingConfig;
                 setManualDosingConfig({
-                    product: savedConfig.product ?? 'sodium-hypochlorite',
-                    minutes: savedConfig.minutes ?? 2,
-                    seconds: savedConfig.seconds ?? 30,
-                    liters: savedConfig.liters ?? 5
+                    product: savedConfig.product ?? DEFAULT_MANUAL_DOSING_CONFIG.product,
+                    minutes: savedConfig.minutes ?? DEFAULT_MANUAL_DOSING_CONFIG.minutes,
+                    seconds: savedConfig.seconds ?? DEFAULT_MANUAL_DOSING_CONFIG.seconds,
                 });
-                console.log('✅ Configuración aplicada - Minutos:', savedConfig.minutes);
-            } else {
-                console.log('⚠️ No hay configuración de dosificación manual guardada');
             }
-            
-            // Si tiene configuración básica, marcar como configurado
-            const hasBasicConfig = userConfig.poolVolume && (userConfig.phTolerance || userConfig.phMin);
-            const isConfiguredValue = userConfig.isConfigured || hasBasicConfig || false;
-            setIsConfigured(isConfiguredValue);
-        } else if (user && !userConfig) {
-            // Si hay usuario pero no configuración de Firebase, intentar localStorage
-            try {
-                const localConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
-                if (Object.keys(localConfig).length > 0) {
-                    if (localConfig.poolVolume) setPoolVolume(localConfig.poolVolume);
-                    if (localConfig.alkalinity) setAlkalinity(localConfig.alkalinity);
-                    if (localConfig.chlorineType) setChlorineType(localConfig.chlorineType);
-                    if (localConfig.acidType) setAcidType(localConfig.acidType);
-                    
-                    // Cargar pH y tolerancia (nuevo formato)
-                    if (localConfig.phTolerance) setPhTolerance(localConfig.phTolerance);
-                    if (localConfig.phToleranceRange) setPhToleranceRange(localConfig.phToleranceRange);
-                    
-                    // Compatibilidad con formato anterior
-                    if (!localConfig.phTolerance && localConfig.phMin) {
-                        setPhTolerance(localConfig.phMin);
-                    }
-                    if (!localConfig.phToleranceRange && localConfig.phMax && localConfig.phMin) {
-                        setPhToleranceRange(localConfig.phMax - localConfig.phMin);
-                    }
-                    
-                    if (localConfig.dosingMode) setDosingMode(localConfig.dosingMode);
-                    
-                    const hasBasicConfig = localConfig.poolVolume && (localConfig.phTolerance || localConfig.phMin);
-                    setIsConfigured(localConfig.isConfigured || hasBasicConfig || false);
-                }
-            } catch (error) {
-                // Ignorar errores de localStorage
-            }
-        }
-    }, [userConfig, user]);
 
-    // Evita que quede estado viejo de otra cuenta cuando no hay configuracion cargada
+            const hasBasicConfig = Boolean(userConfig.poolVolume) && (hasValue(userConfig.phTolerance) || hasValue(userConfig.phMin));
+            setIsConfigured(Boolean(userConfig.isConfigured) || hasBasicConfig);
+            return;
+        }
+
+        if (!user?.uid) {
+            return;
+        }
+
+        try {
+            const localConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
+            if (Object.keys(localConfig).length === 0) {
+                setIsConfigured(false);
+                return;
+            }
+
+            if (hasValue(localConfig.poolVolume)) setPoolVolume(localConfig.poolVolume);
+            if (hasValue(localConfig.alkalinity)) setAlkalinity(localConfig.alkalinity);
+            if (hasValue(localConfig.chlorineType)) setChlorineType(localConfig.chlorineType);
+            if (hasValue(localConfig.acidType)) setAcidType(localConfig.acidType);
+
+            const resolvedTolerance = hasValue(localConfig.phTolerance)
+                ? localConfig.phTolerance
+                : localConfig.phMin;
+            if (hasValue(resolvedTolerance)) setPhTolerance(resolvedTolerance);
+
+            const resolvedToleranceRange = hasValue(localConfig.phToleranceRange)
+                ? localConfig.phToleranceRange
+                : hasValue(localConfig.phMax) && hasValue(localConfig.phMin)
+                    ? localConfig.phMax - localConfig.phMin
+                    : null;
+            if (hasValue(resolvedToleranceRange)) setPhToleranceRange(resolvedToleranceRange);
+
+            if (hasValue(localConfig.dosingMode)) setDosingMode(localConfig.dosingMode);
+
+            const hasBasicConfig = Boolean(localConfig.poolVolume) && (hasValue(localConfig.phTolerance) || hasValue(localConfig.phMin));
+            setIsConfigured(Boolean(localConfig.isConfigured) || hasBasicConfig);
+        } catch {
+            setIsConfigured(false);
+        }
+    }, [user?.uid, userConfig]);
+
     useEffect(() => {
         if (!user) {
             setIsConfigured(false);
@@ -132,11 +136,11 @@ export const PHProvider = ({ children }) => {
                 if (Object.keys(localConfig).length === 0) {
                     setIsConfigured(false);
                 }
-            } catch (error) {
+            } catch {
                 setIsConfigured(false);
             }
         }
-    }, [user?.uid, userConfig]);
+    }, [user?.uid, userConfig, user]);
 
     useEffect(() => {
         const loadDeviceState = async () => {
@@ -148,249 +152,221 @@ export const PHProvider = ({ children }) => {
             try {
                 const [linkedByArray, linkedLegacy] = await Promise.all([
                     getDocs(query(collection(db, 'devices'), where('userIds', 'array-contains', user.uid))),
-                    getDocs(query(collection(db, 'devices'), where('userId', '==', user.uid)))
+                    getDocs(query(collection(db, 'devices'), where('userId', '==', user.uid))),
                 ]);
-
                 setHasConfiguredDevice(!linkedByArray.empty || !linkedLegacy.empty);
-            } catch (error) {
-                console.error('Error verificando dispositivo configurado:', error);
+            } catch {
                 setHasConfiguredDevice(false);
             }
         };
 
         loadDeviceState();
-    }, [user?.uid, userConfig]);
+    }, [user?.uid]);
 
     useEffect(() => {
         const handleDeviceStateUpdate = (event) => {
-            const hasDevice = Boolean(event?.detail?.hasDevice);
-            setHasConfiguredDevice(hasDevice);
+            setHasConfiguredDevice(Boolean(event?.detail?.hasDevice));
         };
 
         window.addEventListener('device-registration:updated', handleDeviceStateUpdate);
         return () => window.removeEventListener('device-registration:updated', handleDeviceStateUpdate);
     }, []);
 
-    const openDeviceRegistrationModal = () => {
+    const openDeviceRegistrationModal = useCallback(() => {
         window.dispatchEvent(new CustomEvent('device-registration:open'));
-    };
+    }, []);
 
-    const ensureDeviceConfigured = (featureName = 'esta funcion') => {
-        if (hasConfiguredDevice) {
-            return true;
-        }
+    const ensureDeviceConfigured = useCallback(
+        (featureName = 'esta funcion') => {
+            if (hasConfiguredDevice) {
+                return true;
+            }
 
-        setError({
-            type: 'warning',
-            message: `Primero registra tu ESP32 para usar ${featureName}.`
-        });
-        openDeviceRegistrationModal();
-        return false;
-    };
+            setError({
+                type: 'warning',
+                message: `Primero registra tu ESP32 para usar ${featureName}.`,
+            });
+            openDeviceRegistrationModal();
+            return false;
+        },
+        [hasConfiguredDevice, openDeviceRegistrationModal]
+    );
 
-    // Función para guardar configuración en Firebase
-    const saveConfigToFirebase = async (configUpdate) => {
-        if (!user) return;
-        
-        try {
-            await updateUserConfig(configUpdate);
-        } catch (error) {
-            // Fallback a localStorage si Firebase falla
+    const saveConfigToFirebase = useCallback(
+        async (configUpdate) => {
+            if (!user) return;
+
             try {
-                const currentConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
-                const newConfig = { ...currentConfig, ...configUpdate };
-                localStorage.setItem('poolConfig', JSON.stringify(newConfig));
-            } catch (localError) {
-                logError('CONFIG_SAVE_ERROR', localError.message, configUpdate);
+                await updateUserConfig(configUpdate);
+            } catch {
+                try {
+                    const currentConfig = JSON.parse(localStorage.getItem('poolConfig') || '{}');
+                    localStorage.setItem('poolConfig', JSON.stringify({ ...currentConfig, ...configUpdate }));
+                } catch (localError) {
+                    logError('CONFIG_SAVE_ERROR', localError.message, configUpdate);
+                }
             }
-        }
-    };
+        },
+        [updateUserConfig, user]
+    );
 
-    // Wrapper mejorado para setPoolVolume que guarda en Firebase
-    const safePoolVolumeSet = async (value) => {
-        setPoolVolume(value);
-        await saveConfigToFirebase({ poolVolume: value });
-    };
+    const updatePhHistory = useCallback((nextPhValue) => {
+        const entry = toHistoryEntry(nextPhValue);
+        setPhHistory((previous) => {
+            const filtered = previous.filter((item) => item.hour !== entry.hour);
+            return [...filtered, entry].slice(-24);
+        });
+    }, []);
 
-    // Wrapper mejorado para setIsConfigured que guarda en Firebase
-    const safeSetIsConfigured = async (value) => {
-        setIsConfigured(value);
-        await saveConfigToFirebase({ isConfigured: value });
-    };
-
-    // Wrapper para setPH con validación
-    const safePHSet = (value) => {
-        try {
-            const validatedValue = validatePHValue(value);
-            setPH(validatedValue);
-            setError(null);
-        } catch (err) {
-            logError('PH_VALIDATION_ERROR', err.message, { value });
-            setError({ type: 'error', message: err.message });
-        }
-    };
-
-    // Wrapper para setPhTolerance con validación y guardado en Firebase
-    const safeToleranceSet = async (value) => {
-        try {
-            const validatedValue = parseFloat(value);
-            if (isNaN(validatedValue)) {
-                throw new Error(ErrorMessages.INVALID_INPUT);
+    const safePHSet = useCallback(
+        (value, options = {}) => {
+            const { trackHistory = true } = options;
+            try {
+                const validatedValue = validatePHValue(value);
+                setPH((previous) => (previous === validatedValue ? previous : validatedValue));
+                if (trackHistory) {
+                    updatePhHistory(validatedValue);
+                }
+                setError(null);
+                return true;
+            } catch (err) {
+                logError('PH_VALIDATION_ERROR', err.message, { value });
+                setError({ type: 'error', message: err.message });
+                return false;
             }
-            validateToleranceRange(validatedValue, phToleranceRange);
-            setPhTolerance(validatedValue);
-            await saveConfigToFirebase({ phTolerance: validatedValue });
-            
-            // Enviar configuración a ThingSpeak para el ESP32
-            await sendConfigToThingSpeak(validatedValue, phToleranceRange, dosingMode);
-            
-            setError(null);
-        } catch (err) {
-            logError('TOLERANCE_VALIDATION_ERROR', err.message, { value });
-            setError({ type: 'error', message: err.message });
-        }
-    };
+        },
+        [updatePhHistory]
+    );
 
-    // Wrapper para setPhToleranceRange con validación y guardado en Firebase
-    const safeToleranceRangeSet = async (value) => {
-        try {
-            const validatedValue = validateTolerance(value);
-            validateToleranceRange(phTolerance, validatedValue);
-            setPhToleranceRange(validatedValue);
-            await saveConfigToFirebase({ phToleranceRange: validatedValue });
-            
-            // Enviar configuración a ThingSpeak para el ESP32
-            await sendConfigToThingSpeak(phTolerance, validatedValue, dosingMode);
-            
-            setError(null);
-        } catch (err) {
-            logError('TOLERANCE_RANGE_VALIDATION_ERROR', err.message, { value });
-            setError({ type: 'error', message: err.message });
+    const sendConfigToThingSpeak = useCallback(async (targetPh, toleranceRange, mode) => {
+        if (!THINGSPEAK_WRITE_API_KEY) {
+            return;
         }
-    };
 
-    // Wrapper para setDosingMode con guardado en Firebase
-    const safeDosingModeSet = async (value) => {
-        setDosingMode(value);
-        await saveConfigToFirebase({ dosingMode: value });
-        
-        // Enviar configuración a ThingSpeak para el ESP32
-        await sendConfigToThingSpeak(phTolerance, phToleranceRange, value);
-    };
-    
-    // Función para enviar configuración a ThingSpeak Field8
-    const sendConfigToThingSpeak = async (phTarget, tolerance, mode) => {
         try {
             const autoMode = mode === 'automatic' ? '1' : '0';
-            const configStr = `phTarget:${phTarget},tolerance:${tolerance},autoMode:${autoMode}`;
-            
-            if (!THINGSPEAK_WRITE_API_KEY) {
-                console.warn('⚠️ VITE_THINGSPEAK_WRITE_API_KEY no configurada, no se envia config a ThingSpeak');
-                return;
-            }
-
+            const configStr = `phTarget:${targetPh},tolerance:${toleranceRange},autoMode:${autoMode}`;
             const url = `https://api.thingspeak.com/update?api_key=${THINGSPEAK_WRITE_API_KEY}&field8=${encodeURIComponent(configStr)}`;
-            
             await fetch(url, { method: 'GET' });
-            console.log('✅ Configuración enviada a ThingSpeak:', configStr);
-        } catch (error) {
-            console.error('❌ Error enviando configuración a ThingSpeak:', error);
+        } catch {
+            // Keep local state; remote sync can recover on next change.
         }
-    };
+    }, []);
 
-    // Verificar conexión ESP32 vía Firebase
-    const checkConnection = async () => {
+    const safePoolVolumeSet = useCallback(
+        async (value) => {
+            setPoolVolume(value);
+            await saveConfigToFirebase({ poolVolume: value });
+        },
+        [saveConfigToFirebase]
+    );
+
+    const safeSetIsConfigured = useCallback(
+        async (value) => {
+            setIsConfigured(value);
+            await saveConfigToFirebase({ isConfigured: value });
+        },
+        [saveConfigToFirebase]
+    );
+
+    const safeToleranceSet = useCallback(
+        async (value) => {
+            try {
+                const validatedValue = Number.parseFloat(value);
+                if (!Number.isFinite(validatedValue)) {
+                    throw new Error(ErrorMessages.INVALID_INPUT);
+                }
+
+                validateToleranceRange(validatedValue, phToleranceRange);
+                setPhTolerance(validatedValue);
+                await saveConfigToFirebase({ phTolerance: validatedValue });
+                await sendConfigToThingSpeak(validatedValue, phToleranceRange, dosingMode);
+                setError(null);
+            } catch (err) {
+                logError('TOLERANCE_VALIDATION_ERROR', err.message, { value });
+                setError({ type: 'error', message: err.message });
+            }
+        },
+        [dosingMode, phToleranceRange, saveConfigToFirebase, sendConfigToThingSpeak]
+    );
+
+    const safeToleranceRangeSet = useCallback(
+        async (value) => {
+            try {
+                const validatedValue = validateTolerance(value);
+                validateToleranceRange(phTolerance, validatedValue);
+                setPhToleranceRange(validatedValue);
+                await saveConfigToFirebase({ phToleranceRange: validatedValue });
+                await sendConfigToThingSpeak(phTolerance, validatedValue, dosingMode);
+                setError(null);
+            } catch (err) {
+                logError('TOLERANCE_RANGE_VALIDATION_ERROR', err.message, { value });
+                setError({ type: 'error', message: err.message });
+            }
+        },
+        [dosingMode, phTolerance, saveConfigToFirebase, sendConfigToThingSpeak]
+    );
+
+    const safeDosingModeSet = useCallback(
+        async (value) => {
+            setDosingMode(value);
+            await saveConfigToFirebase({ dosingMode: value });
+            await sendConfigToThingSpeak(phTolerance, phToleranceRange, value);
+        },
+        [phTolerance, phToleranceRange, saveConfigToFirebase, sendConfigToThingSpeak]
+    );
+
+    const checkConnection = useCallback(async () => {
         if (!user?.uid) return false;
-        
+
         try {
             const isConnected = await checkESP32Connection(user.uid);
             setEsp32Connected(isConnected);
             return isConnected;
-        } catch (error) {
+        } catch {
             setEsp32Connected(false);
             return false;
         }
-    };
+    }, [user?.uid]);
 
-    // Comunicación con ESP32 vía Firebase
-    const handleDataReceived = (phData) => {
-        try {
-            console.log('📊 [PHContext] Datos recibidos de Firebase:', phData);
-            
-            if (!phData || !phData.ph) {
-                console.warn('⚠️ [PHContext] Datos inválidos recibidos:', phData);
-                return;
+    const handleDataReceived = useCallback(
+        (phData) => {
+            try {
+                if (!phData || !Number.isFinite(Number(phData.ph))) {
+                    return;
+                }
+
+                const safePh = Number(phData.ph);
+                const wasUpdated = safePHSet(safePh, { trackHistory: false });
+                if (!wasUpdated) {
+                    return;
+                }
+
+                setLastDataReceived(new Date(phData.timestamp));
+                setEsp32Connected(Boolean(phData.isRecent));
+                updatePhHistory(safePh);
+            } catch (receivedError) {
+                logError('ESP32_DATA_ERROR', receivedError.message, phData);
             }
-            
-            safePHSet(phData.ph);
-            setLastDataReceived(new Date(phData.timestamp));
-            setEsp32Connected(phData.isRecent);
-            
-            console.log('✅ [PHContext] pH actualizado:', phData.ph, 'Conectado:', phData.isRecent);
-            
-            // Actualizar historial
-            const now = new Date();
-            const hour = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const timeString = `${hour}:${minutes}`;
-            
-            setPhHistory(prev => {
-                const filtered = prev.filter(item => item.hour !== timeString);
-                const newHistory = [...filtered, { hour: timeString, value: phData.ph }];
-                return newHistory.slice(-24);
-            });
-        } catch (error) {
-            console.error('❌ [PHContext] Error procesando datos:', error);
-            logError('ESP32_DATA_ERROR', error.message, phData);
-        }
-    };
+        },
+        [safePHSet, updatePhHistory]
+    );
 
-    // Inicializar suscripción a Firebase cuando el usuario esté disponible
     useEffect(() => {
         if (!user?.uid) {
-            console.log('⏳ Esperando autenticación de usuario...');
-            return;
+            return undefined;
         }
 
-        console.log('🔌 Iniciando suscripción a Firebase para usuario:', user.uid);
-        
-        // Suscribirse a cambios en tiempo real
         const unsubscribe = subscribeToPHData(user.uid, handleDataReceived);
-        
-        // Verificación inicial de conexión
-        checkESP32Connection(user.uid).then(isConnected => {
-            console.log('📡 Estado inicial de conexión:', isConnected);
-            setEsp32Connected(isConnected);
-        });
-        
+        checkConnection();
+
         return () => {
-            console.log('🔌 Cerrando suscripción a Firebase');
             unsubscribe();
         };
-    }, [user?.uid]); // Reiniciar cuando cambie el usuario
+    }, [checkConnection, handleDataReceived, user?.uid]);
 
-    // Actualizar historial cuando cambia el pH
-    useEffect(() => {
-        try {
-            const now = new Date();
-            const hour = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const timeString = `${hour}:${minutes}`;
-            
-            setPhHistory(prev => {
-                // Evitar duplicados del mismo minuto
-                const filtered = prev.filter(item => item.hour !== timeString);
-                const newHistory = [...filtered, { hour: timeString, value: ph }];
-                return newHistory.slice(-24);
-            });
-        } catch (err) {
-            logError('HISTORY_UPDATE_ERROR', err.message, { ph });
-        }
-    }, [ph]);
-    
-    return (
-        <PHContext.Provider value={{ 
-            // Estados de configuración
+    const contextValue = useMemo(
+        () => ({
             isConfigured,
             setIsConfigured: safeSetIsConfigured,
             poolVolume,
@@ -401,23 +377,17 @@ export const PHProvider = ({ children }) => {
             setChlorineType,
             acidType,
             setAcidType,
-            
-            // Estados de conexión ESP32
             esp32Connected,
             setEsp32Connected,
             lastDataReceived,
             setLastDataReceived,
-            
-            // Estados de pH
-            ph, 
-            setPH: safePHSet, 
-            phTolerance, 
-            setPhTolerance: safeToleranceSet, 
-            phToleranceRange, 
-            setPhToleranceRange: safeToleranceRangeSet, 
+            ph,
+            setPH: safePHSet,
+            phTolerance,
+            setPhTolerance: safeToleranceSet,
+            phToleranceRange,
+            setPhToleranceRange: safeToleranceRangeSet,
             phHistory,
-            
-            // Estados de error y dosificación
             error,
             setError,
             dosingMode,
@@ -426,21 +396,47 @@ export const PHProvider = ({ children }) => {
             setManualDosingConfig,
             dosingHistory,
             setDosingHistory,
-            
-            // Funciones adicionales
             checkConnection,
             saveConfigToFirebase,
             hasConfiguredDevice,
             ensureDeviceConfigured,
             openDeviceRegistrationModal,
-            
-            // Información de usuario
             user,
-            userConfig
-        }}>
-            {children}
-        </PHContext.Provider>
+            userConfig,
+        }),
+        [
+            acidType,
+            alkalinity,
+            checkConnection,
+            chlorineType,
+            dosingHistory,
+            dosingMode,
+            ensureDeviceConfigured,
+            error,
+            esp32Connected,
+            hasConfiguredDevice,
+            isConfigured,
+            lastDataReceived,
+            manualDosingConfig,
+            openDeviceRegistrationModal,
+            ph,
+            phHistory,
+            phTolerance,
+            phToleranceRange,
+            poolVolume,
+            safeDosingModeSet,
+            safePHSet,
+            safePoolVolumeSet,
+            safeSetIsConfigured,
+            safeToleranceRangeSet,
+            safeToleranceSet,
+            saveConfigToFirebase,
+            user,
+            userConfig,
+        ]
     );
-}
+
+    return <PHContext.Provider value={contextValue}>{children}</PHContext.Provider>;
+};
 
 export default PHContext;

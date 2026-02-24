@@ -4,8 +4,8 @@ import { PHContext } from './PHContext';
 import InfoHint from './InfoHint';
 
 const SWIPE_THRESHOLD = 42;
-const GAUGE_MIN = 6.0;
-const GAUGE_MAX = 8.5;
+const GAUGE_MIN = 0;
+const GAUGE_MAX = 14;
 const GAUGE_START_ANGLE = -120;
 const GAUGE_END_ANGLE = 120;
 
@@ -24,6 +24,11 @@ const describeArc = (cx, cy, radius, startAngle, endAngle) => {
   const end = polarToCartesian(cx, cy, radius, startAngle);
   const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
   return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+};
+
+const valueToAngle = (value) => {
+  const ratio = (value - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN);
+  return GAUGE_START_ANGLE + ratio * (GAUGE_END_ANGLE - GAUGE_START_ANGLE);
 };
 
 const ShowpH = ({ phValue }) => {
@@ -46,11 +51,6 @@ const ShowpH = ({ phValue }) => {
   const idealMinValue = clamp(phTolerance - phToleranceRange, GAUGE_MIN, GAUGE_MAX);
   const idealMaxValue = clamp(phTolerance + phToleranceRange, GAUGE_MIN, GAUGE_MAX);
   const phOnGauge = clamp(currentPh, GAUGE_MIN, GAUGE_MAX);
-
-  const valueToAngle = (value) => {
-    const ratio = (value - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN);
-    return GAUGE_START_ANGLE + ratio * (GAUGE_END_ANGLE - GAUGE_START_ANGLE);
-  };
 
   const needleAngle = valueToAngle(phOnGauge);
   const idealStartAngle = valueToAngle(idealMinValue);

@@ -1,241 +1,147 @@
-/*
- * =====================================================
- *    COMUNICACIÓN ESP32 VÍA FIREBASE - NUEVO FLUJO
- * =====================================================
- * 
- * Flujo optimizado:
- * 1. Arduino → ThingSpeak (datos del sensor)
- * 2. Cloud Functions → Firebase (datos + decisiones)
- * 3. App Web ↔ Firebase (monitoreo + comandos)
- * 4. Cloud Functions → ThingSpeak → Arduino (comandos)
- * 
- * Ventajas:
- * - Sin conflictos de escritura
- * - Actualizaciones en tiempo real
- * - Sin polling innecesario
- * - Escalable y confiable
- * 
- * Versión: 4.0 - Firebase Integration
- * =====================================================
- */
-
-import { ref, onValue, off, get, push, set } from 'firebase/database';
+﻿import { ref, onValue, off, get, push, set } from 'firebase/database';
 import { database } from './firebase';
 
-// =====================================================
-// CONFIGURACIÓN
-// =====================================================
-
 export const ESP32_CONFIG = {
-    // Cloud Functions endpoints
     CLOUD_FUNCTIONS_BASE: 'https://us-central1-control-ph-82951.cloudfunctions.net',
     MANUAL_DOSING_ENDPOINT: '/sendManualDosingCommand',
     FORCE_CHECK_ENDPOINT: '/forceCheck',
-    
-    // Timeouts
     TIMEOUT: 10000,
-    
-    // Data validation
     MIN_PH: 0,
     MAX_PH: 14,
     MIN_VOLTAGE: 0,
     MAX_VOLTAGE: 5,
-    
-    // Tiempo máximo de antigüedad de datos (2 minutos)
-    MAX_DATA_AGE: 120000
+    MAX_DATA_AGE: 120000,
 };
 
-// =====================================================
-// LECTURA DE DATOS DEL SENSOR DESDE FIREBASE
-// =====================================================
+const PRODUCT_MAP = {
+    'sodium-hypochlorite': 'ph_plus',
+    'calcium-hypochlorite': 'ph_plus',
+    muriatic: 'ph_minus',
+    bisulfate: 'ph_minus',
+    'chlorine-gas': 'ph_minus',
+    ph_plus: 'ph_plus',
+    ph_minus: 'ph_minus',
+};
 
-/**
- * Obtiene los datos actuales del sensor desde Firebase
- * @param {string} userId - ID del usuario
- * @returns {Promise<Object|null>} Datos del sensor o null si hay error
- */
+const toFiniteNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const resolvePHValue = (data) => {
+    const direct = toFiniteNumber(data?.ph);
+    if (direct !== null) return direct;
+    return toFiniteNumber(data?.currentPH);
+};
+
+const resolveTimestampMs = (data) => {
+    const timestamp = toFiniteNumber(data?.lastUpdate ?? data?.timestamp);
+    if (timestamp !== null && timestamp > 0) return timestamp;
+    return Date.now();
+};
+
+const buildProcessedSensorData = (data) => {
+    const phValue = resolvePHValue(data);
+    if (phValue === null || phValue < ESP32_CONFIG.MIN_PH || phValue > ESP32_CONFIG.MAX_PH) {
+        return null;
+    }
+
+    const timestampMs = resolveTimestampMs(data);
+    const dataAgeMs = Math.max(0, Date.now() - timestampMs);
+    const isRecent = dataAgeMs < ESP32_CONFIG.MAX_DATA_AGE;
+    const voltage = toFiniteNumber(data?.voltage) ?? 0;
+    const wifiRSSI = toFiniteNumber(data?.wifiRSSI) ?? -50;
+    const uptime = toFiniteNumber(data?.uptime) ?? 0;
+
+    return {
+        ph: phValue,
+        voltage,
+        wifi_rssi: wifiRSSI,
+        uptime,
+        timestamp: new Date(timestampMs),
+        device_id: data?.deviceId || 'esp32-firebase',
+        location: 'piscina_principal',
+        source: 'firebase-realtime',
+        isRecent,
+        dataAge: Math.round(dataAgeMs / 1000),
+        phStatus: getPHStatus(phValue),
+        lastUpdate: new Date(timestampMs).toLocaleString(),
+        connectionQuality: getConnectionQuality(wifiRSSI),
+        systemHealth: getSystemHealth(isRecent, phValue, voltage),
+    };
+};
+
 export const getPHDataFromFirebase = async (userId) => {
     try {
         if (!userId) {
-            console.error('❌ userId es requerido');
             return null;
         }
 
         const sensorDataRef = ref(database, `users/${userId}/sensorData`);
         const snapshot = await get(sensorDataRef);
-        
         if (!snapshot.exists()) {
-            console.warn('⚠️ No hay datos del sensor en Firebase');
             return null;
         }
-        
-        const data = snapshot.val();
-        
-        // Validar datos (soportar ambos formatos: ph y currentPH)
-        const phValue = data.ph || data.currentPH;
-        
-        if (!phValue || isNaN(phValue)) {
-            console.error('❌ Datos de pH inválidos');
-            return null;
-        }
-        
-        // Verificar antigüedad de los datos
-        const dataAge = Date.now() - (data.lastUpdate || data.timestamp);
-        const isRecent = dataAge < ESP32_CONFIG.MAX_DATA_AGE;
-        
-        return {
-            ph: phValue,
-            voltage: data.voltage || 0,
-            wifi_rssi: data.wifiRSSI || -50,
-            uptime: data.uptime || 0,
-            timestamp: new Date(data.timestamp || data.lastUpdate),
-            device_id: data.deviceId || 'esp32-firebase',
-            location: 'piscina_principal',
-            source: 'firebase-realtime',
-            isRecent: isRecent,
-            dataAge: Math.round(dataAge / 1000),
-            phStatus: getPHStatus(phValue),
-            lastUpdate: new Date(data.lastUpdate || data.timestamp).toLocaleString(),
-            connectionQuality: getConnectionQuality(data.wifiRSSI || -50),
-            systemHealth: getSystemHealth(isRecent, phValue, data.voltage || 0)
-        };
-        
+
+        return buildProcessedSensorData(snapshot.val());
     } catch (error) {
-        console.error('❌ Error leyendo datos de Firebase:', error);
+        console.error('Error leyendo datos de Firebase:', error);
         return null;
     }
 };
 
-/**
- * Suscribirse a cambios en tiempo real de los datos del sensor
- * @param {string} userId - ID del usuario
- * @param {Function} callback - Función a llamar cuando hay nuevos datos
- * @returns {Function} Función para cancelar la suscripción
- */
 export const subscribeToPHData = (userId, callback) => {
     if (!userId) {
-        console.error('❌ [Firebase] userId es requerido');
         return () => {};
     }
 
-    console.log('🔌 [Firebase] Suscribiéndose a:', `users/${userId}/sensorData`);
     const sensorDataRef = ref(database, `users/${userId}/sensorData`);
-    
-    onValue(sensorDataRef, (snapshot) => {
-        console.log('📡 [Firebase] Snapshot recibido, existe:', snapshot.exists());
-        
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            console.log('📊 [Firebase] Datos crudos:', data);
-            
-            // Validar y procesar datos (soportar ambos formatos: ph y currentPH)
-            const phValue = data.ph || data.currentPH;
-            
-            if (phValue && !isNaN(phValue)) {
-                const dataAge = Date.now() - (data.lastUpdate || data.timestamp);
-                const isRecent = dataAge < ESP32_CONFIG.MAX_DATA_AGE;
-                
-                console.log('✅ [Firebase] pH válido:', phValue, 'Antigüedad:', Math.round(dataAge/1000), 's');
-                
-                const processedData = {
-                    ph: phValue,
-                    voltage: data.voltage || 0,
-                    wifi_rssi: data.wifiRSSI || -50,
-                    uptime: data.uptime || 0,
-                    timestamp: new Date(data.timestamp || data.lastUpdate),
-                    device_id: data.deviceId || 'esp32-firebase',
-                    location: 'piscina_principal',
-                    source: 'firebase-realtime',
-                    isRecent: isRecent,
-                    dataAge: Math.round(dataAge / 1000),
-                    phStatus: getPHStatus(phValue),
-                    lastUpdate: new Date(data.lastUpdate || data.timestamp).toLocaleString(),
-                    connectionQuality: getConnectionQuality(data.wifiRSSI || -50),
-                    systemHealth: getSystemHealth(isRecent, phValue, data.voltage || 0)
-                };
-                
-                callback(processedData);
-            } else {
-                console.warn('⚠️ [Firebase] pH inválido o no existe:', phValue);
+    const unsubscribe = onValue(
+        sensorDataRef,
+        (snapshot) => {
+            if (!snapshot.exists()) {
+                return;
             }
-        } else {
-            console.warn('⚠️ [Firebase] No hay datos en:', `users/${userId}/sensorData`);
-            console.log('💡 [Firebase] Verifica que:');
-            console.log('   1. El Device ID esté registrado');
-            console.log('   2. El Arduino esté enviando datos');
-            console.log('   3. Las Cloud Functions estén desplegadas');
+
+            const processedData = buildProcessedSensorData(snapshot.val());
+            if (processedData) {
+                callback(processedData);
+            }
+        },
+        (error) => {
+            console.error('Error en suscripcion de sensorData:', error);
         }
-    }, (error) => {
-        console.error('❌ [Firebase] Error en suscripción:', error);
-    });
-    
+    );
+
     return () => {
-        console.log('🔌 [Firebase] Cerrando suscripción');
+        unsubscribe();
         off(sensorDataRef);
     };
 };
 
-// =====================================================
-// VERIFICACIÓN DE CONEXIÓN
-// =====================================================
-
-/**
- * Verifica si el ESP32 está conectado (datos recientes en Firebase)
- * @param {string} userId - ID del usuario
- * @returns {Promise<boolean>} true si está conectado
- */
 export const checkESP32Connection = async (userId) => {
     try {
         const data = await getPHDataFromFirebase(userId);
         return data !== null && data.isRecent;
     } catch (error) {
-        console.error('❌ Error verificando conexión:', error);
+        console.error('Error verificando conexion ESP32:', error);
         return false;
     }
 };
 
-// =====================================================
-// COMANDOS DE DOSIFICACIÓN
-// =====================================================
-
-/**
- * Envía un comando de dosificación manual a través de Cloud Functions
- * @param {string} userId - ID del usuario
- * @param {string} product - Producto a dosificar ('ph_plus' o 'ph_minus')
- * @param {number} durationSeconds - Duración en segundos
- * @returns {Promise<Object>} Resultado del comando
- */
 export const sendManualDosingCommand = async (userId, product, durationSeconds) => {
     try {
-        console.log('💊 Enviando comando manual de dosificación...');
-        console.log('   Usuario:', userId);
-        console.log('   Producto:', product);
-        console.log('   Duración:', durationSeconds, 's');
-        
-        // Mapear productos de la app a formato Cloud Functions
-        const productMap = {
-            'sodium-hypochlorite': 'ph_plus',
-            'calcium-hypochlorite': 'ph_plus',
-            'muriatic': 'ph_minus',
-            'bisulfate': 'ph_minus',
-            'chlorine-gas': 'ph_minus'
-        };
-        
-        const mappedProduct = productMap[product] || product;
-        
-        // Validar producto
-        if (mappedProduct !== 'ph_plus' && mappedProduct !== 'ph_minus') {
-            throw new Error('Producto inválido');
+        const mappedProduct = PRODUCT_MAP[product];
+        if (!mappedProduct) {
+            throw new Error('Producto invalido');
         }
-        
-        // Validar duración
-        if (durationSeconds < 1 || durationSeconds > 3600) {
-            throw new Error('Duración debe estar entre 1 y 3600 segundos');
+
+        const normalizedDuration = Number(durationSeconds);
+        if (!Number.isFinite(normalizedDuration) || normalizedDuration < 1 || normalizedDuration > 3600) {
+            throw new Error('Duracion debe estar entre 1 y 3600 segundos');
         }
-        
-        // Llamar a Cloud Function
+
         const url = `${ESP32_CONFIG.CLOUD_FUNCTIONS_BASE}${ESP32_CONFIG.MANUAL_DOSING_ENDPOINT}`;
-        
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -244,137 +150,111 @@ export const sendManualDosingCommand = async (userId, product, durationSeconds) 
             body: JSON.stringify({
                 userId,
                 product: mappedProduct,
-                duration: durationSeconds
+                duration: normalizedDuration,
             }),
-            signal: AbortSignal.timeout(ESP32_CONFIG.TIMEOUT)
+            signal: AbortSignal.timeout(ESP32_CONFIG.TIMEOUT),
         });
-        
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.error || `HTTP ${response.status}`);
         }
-        
+
         const result = await response.json();
-        
-        console.log('✅ Comando enviado exitosamente');
-        console.log('   Respuesta:', result);
-        
         return {
             success: true,
             message: result.message || 'Comando enviado',
             timestamp: result.timestamp || Date.now(),
             method: 'cloud-functions',
             product: mappedProduct,
-            duration: durationSeconds
+            duration: normalizedDuration,
         };
-        
     } catch (error) {
-        console.error('❌ Error enviando comando:', error);
         return {
             success: false,
             message: error.message,
             timestamp: Date.now(),
-            method: 'failed'
+            method: 'failed',
         };
     }
 };
 
-/**
- * Alias para compatibilidad con código existente
- */
 export const sendRealDosingCommand = async (product, durationSeconds, userId) => {
     if (!userId) {
-        console.error('❌ userId es requerido para sendRealDosingCommand');
         return {
             success: false,
             message: 'userId es requerido',
-            timestamp: Date.now()
+            timestamp: Date.now(),
         };
     }
-    
-    return await sendManualDosingCommand(userId, product, durationSeconds);
+
+    return sendManualDosingCommand(userId, product, durationSeconds);
 };
 
-// =====================================================
-// ESTADO DEL SISTEMA
-// =====================================================
-
-/**
- * Obtiene el estado del sistema desde Firebase
- * @param {string} userId - ID del usuario
- * @returns {Promise<Object|null>} Estado del sistema
- */
 export const getSystemStatus = async (userId) => {
     try {
         const statusRef = ref(database, `users/${userId}/systemStatus`);
         const snapshot = await get(statusRef);
-        
         if (!snapshot.exists()) {
             return null;
         }
-        
+
         return snapshot.val();
     } catch (error) {
-        console.error('❌ Error obteniendo estado del sistema:', error);
+        console.error('Error obteniendo systemStatus:', error);
         return null;
     }
 };
 
-/**
- * Suscribirse a cambios en el estado del sistema
- * @param {string} userId - ID del usuario
- * @param {Function} callback - Función a llamar cuando cambia el estado
- * @returns {Function} Función para cancelar la suscripción
- */
 export const subscribeToSystemStatus = (userId, callback) => {
     if (!userId) {
-        console.error('❌ userId es requerido');
         return () => {};
     }
 
     const statusRef = ref(database, `users/${userId}/systemStatus`);
-    
-    onValue(statusRef, (snapshot) => {
-        if (snapshot.exists()) {
-            callback(snapshot.val());
+    const unsubscribe = onValue(
+        statusRef,
+        (snapshot) => {
+            if (snapshot.exists()) {
+                callback(snapshot.val());
+            }
+        },
+        (error) => {
+            console.error('Error en suscripcion systemStatus:', error);
         }
-    }, (error) => {
-        console.error('❌ Error en suscripción al estado:', error);
-    });
-    
-    return () => off(statusRef);
-};
+    );
 
-// =====================================================
-// FUNCIONES AUXILIARES
-// =====================================================
+    return () => {
+        unsubscribe();
+        off(statusRef);
+    };
+};
 
 function getPHStatus(ph) {
     if (ph < 6.5) {
         return {
             status: 'acidic',
-            label: 'Ácido',
-            description: 'pH bajo - Necesita subir pH',
+            label: 'Acido',
+            description: 'pH bajo - necesita subir',
             color: '#FF5722',
-            icon: '🔴'
-        };
-    } else if (ph > 7.5) {
-        return {
-            status: 'basic',
-            label: 'Básico',
-            description: 'pH alto - Necesita bajar pH',
-            color: '#9C27B0',
-            icon: '🟣'
-        };
-    } else {
-        return {
-            status: 'neutral',
-            label: 'Neutro',
-            description: 'pH ideal para piscina',
-            color: '#4CAF50',
-            icon: '🟢'
         };
     }
+
+    if (ph > 7.5) {
+        return {
+            status: 'basic',
+            label: 'Basico',
+            description: 'pH alto - necesita bajar',
+            color: '#9C27B0',
+        };
+    }
+
+    return {
+        status: 'neutral',
+        label: 'Neutro',
+        description: 'pH ideal para piscina',
+        color: '#4CAF50',
+    };
 }
 
 function getConnectionQuality(rssi) {
@@ -386,202 +266,123 @@ function getConnectionQuality(rssi) {
 
 function getSystemHealth(isRecent, ph, voltage) {
     const issues = [];
-    
+
     if (!isRecent) issues.push('Datos obsoletos');
     if (ph < 6.0 || ph > 8.5) issues.push('pH fuera de rango seguro');
-    if (voltage < 0.1 || voltage > 4.0) issues.push('Voltaje anómalo');
-    
+    if (voltage < 0.1 || voltage > 4.0) issues.push('Voltaje anomalo');
+
     if (issues.length === 0) {
         return { status: 'healthy', label: 'Saludable', issues: [] };
-    } else {
-        return { status: 'warning', label: 'Advertencia', issues: issues };
     }
+
+    return { status: 'warning', label: 'Advertencia', issues };
 }
 
-// =====================================================
-// UTILIDADES
-// =====================================================
-
 export const formatPHValue = (ph) => {
-    if (typeof ph !== 'number' || isNaN(ph)) return '--';
+    if (typeof ph !== 'number' || Number.isNaN(ph)) return '--';
     return ph.toFixed(2);
 };
 
 export const formatVoltage = (voltage) => {
-    if (typeof voltage !== 'number' || isNaN(voltage)) return '--';
-    return voltage.toFixed(3) + 'V';
+    if (typeof voltage !== 'number' || Number.isNaN(voltage)) return '--';
+    return `${voltage.toFixed(3)}V`;
 };
 
 export const formatUptime = (seconds) => {
-    if (typeof seconds !== 'number' || isNaN(seconds)) return '--';
-    
+    if (typeof seconds !== 'number' || Number.isNaN(seconds)) return '--';
+
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
-    if (hours > 0) {
-        return `${hours}h ${minutes}m ${secs}s`;
-    } else if (minutes > 0) {
-        return `${minutes}m ${secs}s`;
-    } else {
-        return `${secs}s`;
-    }
+
+    if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
 };
 
 export const isDataRecent = (timestamp, maxAge = ESP32_CONFIG.MAX_DATA_AGE) => {
     const now = Date.now();
     const dataTime = new Date(timestamp).getTime();
-    return (now - dataTime) < maxAge;
+    return now - dataTime < maxAge;
 };
 
-// Exportar configuración
 export { ESP32_CONFIG as config };
 
-// =====================================================
-// FUNCIONES DE COMPATIBILIDAD (DEPRECATED)
-// =====================================================
-
-/**
- * @deprecated Usar subscribeToPHData en su lugar
- */
 export const getPHDataFromESP32 = async (userId) => {
-    console.warn('⚠️ getPHDataFromESP32 está deprecated, usar getPHDataFromFirebase');
-    return await getPHDataFromFirebase(userId);
+    return getPHDataFromFirebase(userId);
 };
 
-/**
- * @deprecated Usar subscribeToPHData en su lugar
- */
 export const useESP32Connection = (userId, onDataReceived, onConnectionChange) => {
-    console.warn('⚠️ useESP32Connection está deprecated, usar subscribeToPHData');
-    
     let unsubscribe = null;
-    
+
     const startConnection = () => {
         unsubscribe = subscribeToPHData(userId, (data) => {
             onDataReceived(data);
             onConnectionChange(data.isRecent);
         });
     };
-    
+
     const stopConnection = () => {
         if (unsubscribe) {
             unsubscribe();
             unsubscribe = null;
         }
     };
-    
-    const getStatus = () => {
-        return {
-            running: unsubscribe !== null,
-            interval: false,
-            config: ESP32_CONFIG
-        };
-    };
-    
+
+    const getStatus = () => ({
+        running: unsubscribe !== null,
+        interval: false,
+        config: ESP32_CONFIG,
+    });
+
     return { startConnection, stopConnection, getStatus };
 };
 
-
-// =====================================================
-// ENVÍO DE COMANDOS DIRECTO A FIREBASE
-// =====================================================
-
-/**
- * Envía un comando de dosificación directamente a Firebase Realtime Database
- * El Arduino lo leerá en su próximo polling (cada 5 segundos)
- * 
- * @param {string} userId - ID del usuario
- * @param {string} product - Producto ('sodium-hypochlorite', 'muriatic', etc.)
- * @param {number} durationSeconds - Duración en segundos
- * @returns {Promise<Object>} Resultado con commandId
- */
 export const sendDosingCommandToFirebase = async (userId, product, durationSeconds) => {
     try {
-        console.log('💊 [Firebase] Enviando comando de dosificación...');
-        console.log('   Usuario:', userId);
-        console.log('   Producto:', product);
-        console.log('   Duración:', durationSeconds, 's');
-        
         if (!userId) {
             throw new Error('userId es requerido');
         }
-        
-        // Mapear productos a formato Arduino
-        const productMap = {
-            'sodium-hypochlorite': 'ph_plus',
-            'calcium-hypochlorite': 'ph_plus',
-            'muriatic': 'ph_minus',
-            'bisulfate': 'ph_minus',
-            'chlorine-gas': 'ph_minus',
-            'ph_plus': 'ph_plus',
-            'ph_minus': 'ph_minus'
-        };
-        
-        const mappedProduct = productMap[product] || 'ph_plus';
-        console.log('   Producto mapeado:', mappedProduct);
-        
-        // Validar duración
-        if (durationSeconds < 1 || durationSeconds > 300) {
-            throw new Error('Duración debe estar entre 1 y 300 segundos');
+
+        const mappedProduct = PRODUCT_MAP[product];
+        if (!mappedProduct) {
+            throw new Error('Producto no reconocido');
         }
-        
-        // Crear comando en Firebase
-        console.log('📝 [Firebase] Creando referencia a comandos...');
+
+        const normalizedDuration = Number(durationSeconds);
+        if (!Number.isFinite(normalizedDuration) || normalizedDuration < 1 || normalizedDuration > 300) {
+            throw new Error('Duracion debe estar entre 1 y 300 segundos');
+        }
+
         const commandsRef = ref(database, `users/${userId}/commands`);
-        console.log('   Ruta:', `users/${userId}/commands`);
-        
-        console.log('📝 [Firebase] Generando nuevo comando...');
         const newCommandRef = push(commandsRef);
-        console.log('   Command ID generado:', newCommandRef.key);
-        
+
         const commandData = {
             product: mappedProduct,
-            duration: durationSeconds,
+            duration: normalizedDuration,
             status: 'pending',
             createdAt: Date.now(),
-            timestamp: Date.now()
+            timestamp: Date.now(),
         };
-        
-        console.log('📝 [Firebase] Datos del comando:', commandData);
-        console.log('💾 [Firebase] Escribiendo en Firebase...');
-        
+
         await set(newCommandRef, commandData);
-        
-        const commandId = newCommandRef.key;
-        
-        console.log('✅ [Firebase] Comando creado exitosamente!');
-        console.log('   Command ID:', commandId);
-        console.log('   Ruta completa:', `users/${userId}/commands/${commandId}`);
-        console.log('   Arduino lo leerá en ~5 segundos');
-        
+
         return {
             success: true,
-            commandId: commandId,
+            commandId: newCommandRef.key,
             product: mappedProduct,
-            duration: durationSeconds,
-            message: 'Comando enviado a Firebase. Arduino lo ejecutará en breve.'
+            duration: normalizedDuration,
+            message: 'Comando enviado a Firebase. Arduino lo ejecutara en breve.',
         };
-        
     } catch (error) {
-        console.error('❌ [Firebase] Error enviando comando:', error);
-        console.error('   Error completo:', error.message);
-        console.error('   Stack:', error.stack);
         return {
             success: false,
             error: error.message,
-            message: 'Error enviando comando a Firebase: ' + error.message
+            message: `Error enviando comando a Firebase: ${error.message}`,
         };
     }
 };
 
-/**
- * Envia comando prioritario de parada de emergencia a Firebase.
- * Usa una clave fija lexicograficamente menor para que getCommand lo entregue primero.
- *
- * @param {string} userId - ID del usuario
- * @returns {Promise<Object>} Resultado con commandId
- */
 export const sendEmergencyStopCommand = async (userId) => {
     try {
         if (!userId) {
@@ -598,93 +399,75 @@ export const sendEmergencyStopCommand = async (userId) => {
             priority: 'critical',
             source: 'web-app',
             createdAt: Date.now(),
-            timestamp: Date.now()
+            timestamp: Date.now(),
         };
 
         await set(emergencyRef, commandData);
-
-        console.log('[EMERGENCY] Comando de parada enviado:', `users/${userId}/commands/${commandId}`);
 
         return {
             success: true,
             commandId,
             product: 'emergency_stop',
-            message: 'Parada de emergencia enviada al ESP32'
+            message: 'Parada de emergencia enviada al ESP32',
         };
     } catch (error) {
-        console.error('[EMERGENCY] Error enviando parada de emergencia:', error);
         return {
             success: false,
             error: error.message,
-            message: 'No se pudo enviar la parada de emergencia'
+            message: 'No se pudo enviar la parada de emergencia',
         };
     }
 };
 
-/**
- * Espera confirmación de que el comando fue ejecutado
- * Monitorea el estado del comando en Firebase
- * 
- * @param {string} userId - ID del usuario
- * @param {string} commandId - ID del comando
- * @param {number} maxWaitTime - Tiempo máximo de espera en ms (default: 60000)
- * @returns {Promise<boolean>} true si se confirmó, false si timeout
- */
 export const waitForCommandConfirmation = async (userId, commandId, maxWaitTime = 60000) => {
     try {
-        console.log(`⏳ [Firebase] Esperando confirmación del comando: ${commandId}`);
-        
         const commandRef = ref(database, `users/${userId}/commands/${commandId}`);
         const startTime = Date.now();
-        
-        return new Promise((resolve) => {
+
+        return await new Promise((resolve) => {
+            let settled = false;
+            let timeoutId = null;
+
+            const finish = (value, unsubscribe) => {
+                if (settled) return;
+                settled = true;
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                unsubscribe();
+                resolve(value);
+            };
+
             const unsubscribe = onValue(commandRef, (snapshot) => {
                 if (!snapshot.exists()) {
-                    console.warn('⚠️ [Firebase] Comando no encontrado');
-                    unsubscribe();
-                    resolve(false);
+                    finish(false, unsubscribe);
                     return;
                 }
-                
+
                 const command = snapshot.val();
                 const elapsed = Date.now() - startTime;
-                
-                console.log(`📊 [Firebase] Estado del comando: ${command.status} (${Math.round(elapsed/1000)}s)`);
-                
-                // Si el comando fue completado
+
                 if (command.status === 'completed') {
-                    console.log('✅ [Firebase] Comando confirmado como completado');
-                    unsubscribe();
-                    resolve(true);
+                    finish(true, unsubscribe);
                     return;
                 }
-                
-                // Si el comando falló
+
                 if (command.status === 'failed') {
-                    console.error('❌ [Firebase] Comando falló');
-                    unsubscribe();
-                    resolve(false);
+                    finish(false, unsubscribe);
                     return;
                 }
-                
-                // Timeout
+
                 if (elapsed > maxWaitTime) {
-                    console.warn('⏱️ [Firebase] Timeout esperando confirmación');
-                    unsubscribe();
-                    resolve(false);
-                    return;
+                    finish(false, unsubscribe);
                 }
             });
-            
-            // Timeout de seguridad
-            setTimeout(() => {
-                unsubscribe();
-                resolve(false);
+
+            timeoutId = setTimeout(() => {
+                finish(false, unsubscribe);
             }, maxWaitTime + 1000);
         });
-        
     } catch (error) {
-        console.error('❌ [Firebase] Error esperando confirmación:', error);
+        console.error('Error esperando confirmacion de comando:', error);
         return false;
     }
 };
