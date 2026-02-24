@@ -113,24 +113,26 @@
     font-size: 0.9em;
 }
 
-.litersInput {
-    width: 100%;
-    max-width: 200px;
-    display: block;
+.calculatedVolumeBox {
+    max-width: 340px;
     margin: 0 auto;
-    padding: 0.8em;
+    padding: 0.85em 1em;
+    border-radius: 0.6em;
     border: 1px solid var(--border-color);
-    border-radius: 0.5em;
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    font-size: 1em;
+    background: var(--bg-secondary);
     text-align: center;
 }
 
-.litersInput:focus {
-    outline: none;
-    border-color: var(--success-color);
-    background-color: var(--bg-card-hover);
+.calculatedVolumeBox strong {
+    display: block;
+    color: var(--success-color);
+    font-size: 1.25em;
+    margin-bottom: 0.2em;
+}
+
+.calculatedVolumeBox small {
+    color: var(--text-secondary);
+    font-size: 0.85em;
 }
 
 .dosifyBtn {

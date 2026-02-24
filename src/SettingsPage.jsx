@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from 'react';
+﻿import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import WiFiConfig from './WiFiConfig';
 import AdminPanel from './AdminPanel';
@@ -219,16 +219,18 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [uiMessage, setUiMessage] = useState(null);
 
-  // Estados locales para sliders suaves (sin lag)
   const [localPhTolerance, setLocalPhTolerance] = useState(phTolerance);
   const [localPhToleranceRange, setLocalPhToleranceRange] = useState(phToleranceRange);
-  const adminEmailAllowlist = (import.meta.env.VITE_ADMIN_ACCESS_EMAILS || '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
+  const adminEmailAllowlist = useMemo(
+    () =>
+      (import.meta.env.VITE_ADMIN_ACCESS_EMAILS || '')
+        .split(',')
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    []
+  );
   const canAccessAdmin = Boolean(user?.email) && adminEmailAllowlist.includes(user.email.toLowerCase());
 
-  // Sincronizar estados locales cuando cambian los valores del contexto
   useEffect(() => {
     setLocalPhTolerance(phTolerance);
   }, [phTolerance]);
@@ -243,12 +245,10 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     return () => window.removeEventListener('device-registration:open', openDeviceModal);
   }, []);
 
-  // Debounce para pH tolerance (guardar 500ms después de que pare de mover)
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
       if (localPhTolerance !== phTolerance && localPhTolerance >= 0 && localPhTolerance <= 14) {
         try {
-          console.log('[SettingsPage] Guardando pH tolerance (debounced):', localPhTolerance);
           await setPhTolerance(localPhTolerance);
         } catch (error) {
           console.error('[Settings] Error guardando pH tolerance:', error);
@@ -259,12 +259,10 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     return () => clearTimeout(timeoutId);
   }, [localPhTolerance, phTolerance, setPhTolerance]);
 
-  // Debounce para pH tolerance range (guardar 500ms después de que pare de mover)
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
       if (localPhToleranceRange !== phToleranceRange && localPhToleranceRange > 0 && localPhToleranceRange <= 5) {
         try {
-          console.log('[SettingsPage] Guardando pH tolerance range (debounced):', localPhToleranceRange);
           await setPhToleranceRange(localPhToleranceRange);
         } catch (error) {
           console.error('[Settings] Error guardando pH tolerance range:', error);
@@ -274,43 +272,19 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
     return () => clearTimeout(timeoutId);
   }, [localPhToleranceRange, phToleranceRange, setPhToleranceRange]);
-
-  // Debug logs
-  useEffect(() => {
-    console.log('[SettingsPage] Componente renderizado:', {
-      phTolerance,
-      phToleranceRange,
-      localPhTolerance,
-      localPhToleranceRange,
-      dosingMode,
-      esp32Connected,
-      lastDataReceived: lastDataReceived ? lastDataReceived.toLocaleString() : 'Nunca',
-      setPhTolerance: typeof setPhTolerance,
-      setPhToleranceRange: typeof setPhToleranceRange
-    });
-  }, [phTolerance, phToleranceRange, localPhTolerance, localPhToleranceRange, dosingMode, esp32Connected, lastDataReceived]);
-
-  const handleToleranceChange = (e) => {
+  const handleToleranceChange = useCallback((e) => {
     const value = parseFloat(e.target.value);
-    console.log('[SettingsPage] Cambiando tolerancia (local):', value);
-    
     if (!isNaN(value) && value >= 0 && value <= 14) {
-      setLocalPhTolerance(value); // Cambio inmediato sin lag
-    } else {
-      console.warn('[SettingsPage] Valor de tolerancia inválido:', value);
+      setLocalPhTolerance(value);
     }
-  };
+  }, []);
 
-  const handleRangeChange = (e) => {
+  const handleRangeChange = useCallback((e) => {
     const value = parseFloat(e.target.value);
-    console.log('[SettingsPage] Cambiando rango (local):', value);
-    
     if (!isNaN(value) && value > 0 && value <= 5) {
-      setLocalPhToleranceRange(value); // Cambio inmediato sin lag
-    } else {
-      console.warn('[SettingsPage] Valor de rango inválido:', value);
+      setLocalPhToleranceRange(value);
     }
-  };
+  }, []);
 
   const handleTestConnection = async () => {
     if (!ensureDeviceConfigured('probar la conexion')) {
@@ -319,25 +293,23 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
     setIsTestingConnection(true);
     try {
-      console.log('[Settings] Probando conexión manual...');
       await checkConnection();
-      console.log('[Settings] Test de conexión completado');
     } catch (error) {
-      console.error('[Settings] Error en test de conexión:', error);
+      console.error('[Settings] Error en test de conexiÃ³n:', error);
     } finally {
       setIsTestingConnection(false);
     }
   };
 
-  const notify = (type, message) => {
+  const notify = useCallback((type, message) => {
     setUiMessage({
       id: Date.now(),
       type,
       message
     });
-  };
+  }, []);
 
-  const handleAdminAccess = () => {
+  const handleAdminAccess = useCallback(() => {
     if (canAccessAdmin) {
       setShowAdminPanel(true);
       return;
@@ -352,7 +324,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     }
 
     notify('error', 'Tu cuenta no tiene permisos para abrir el panel administrador.');
-  };
+  }, [adminEmailAllowlist.length, canAccessAdmin, notify]);
 
   const requestDeleteAccount = () => {
     if (!user || isDeletingAccount) return;
@@ -376,22 +348,21 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     }
   };
 
-  const handleOpenTracking = () => {
+  const handleOpenTracking = useCallback(() => {
     setShowTrackingModal(true);
-  };
+  }, []);
 
   const handlePlaceholderAction = (actionName) => {
     notify('info', `${actionName} estara disponible en la siguiente version.`);
   };
 
-  const latestReadings = [...(phHistory || [])].slice(-8).reverse();
-  const latestDosingEntries = [...(dosingHistory || [])].slice(-5).reverse();
+  const latestReadings = useMemo(() => [...(phHistory || [])].slice(-8).reverse(), [phHistory]);
+  const latestDosingEntries = useMemo(() => [...(dosingHistory || [])].slice(-5).reverse(), [dosingHistory]);
   const latestDosing = latestDosingEntries[0] || null;
 
   return (
     <div className="settings-page fade-in">
-      {/* Header */}
-      <div className="settings-header">
+            <div className="settings-header">
         <button 
           className="settings-back-btn"
           onClick={onBack}
@@ -403,15 +374,13 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
         </button>
         <h1 className="settings-title">
           <UiIcon name="settings" className="title-icon" />
-          <span>Configuración</span>
+          <span>ConfiguraciÃ³n</span>
         </h1>
       </div>
 
-      {/* Contenido */}
-      <div className="settings-content">
+            <div className="settings-content">
         
-        {/* Apariencia */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="appearance" className="heading-icon" />
             <span>Apariencia</span>
@@ -419,7 +388,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           
           <div className="setting-item">
             <label className="setting-label">
-              Tema de la aplicación
+              Tema de la aplicaciÃ³n
               <span className="setting-description">
                 Modo {theme === 'dark' ? 'oscuro' : 'claro'} activado
               </span>
@@ -434,11 +403,10 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </div>
         </div>
         
-        {/* Configuración de pH */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="ph" className="heading-icon" />
-            <span>Configuración de pH</span>
+            <span>ConfiguraciÃ³n de pH</span>
           </h3>
           
           <div className="setting-item">
@@ -459,9 +427,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 />
                 <div className="slider-track">
                   <div className="slider-zones">
-                    <span className="zone acidic">Ácido</span>
+                    <span className="zone acidic">Ãcido</span>
                     <span className="zone neutral">Neutro</span>
-                    <span className="zone basic">Básico</span>
+                    <span className="zone basic">BÃ¡sico</span>
                   </div>
                 </div>
               </div>
@@ -483,7 +451,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           <div className="setting-item">
             <label className="setting-label">
               Tolerancia
-              <span className="setting-description">Rango permitido de variación (±)</span>
+              <span className="setting-description">Rango permitido de variaciÃ³n (Â±)</span>
             </label>
             <div className="setting-control-slider">
               <div className="slider-container">
@@ -511,7 +479,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                   onChange={handleRangeChange}
                   className="setting-input-small"
                 />
-                <span className="setting-unit">±</span>
+                <span className="setting-unit">Â±</span>
               </div>
             </div>
           </div>
@@ -526,11 +494,10 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </div>
         </div>
 
-        {/* Modo de Dosificación */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="dosing" className="heading-icon" />
-            <span>Modo de Dosificación</span>
+            <span>Modo de DosificaciÃ³n</span>
           </h3>
           
           <div className="dosing-modes">
@@ -543,7 +510,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                   }
                   await setDosingMode('automatic');
                 } catch (error) {
-                  console.error('[Settings] Error cambiando a modo automático:', error);
+                  console.error('[Settings] Error cambiando a modo automÃ¡tico:', error);
                 }
               }}
             >
@@ -551,8 +518,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                 <UiIcon name="automatic" />
               </div>
               <div className="mode-info">
-                <div className="mode-title">Automático</div>
-                <div className="mode-desc">El sistema ajusta el pH automáticamente</div>
+                <div className="mode-title">AutomÃ¡tico</div>
+                <div className="mode-desc">El sistema ajusta el pH automÃ¡ticamente</div>
               </div>
             </button>
 
@@ -574,17 +541,16 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               </div>
               <div className="mode-info">
                 <div className="mode-title">Manual</div>
-                <div className="mode-desc">Control manual de la dosificación</div>
+                <div className="mode-desc">Control manual de la dosificaciÃ³n</div>
               </div>
             </button>
           </div>
         </div>
 
-        {/* Configuración ESP32 */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="esp32" className="heading-icon" />
-            <span>Configuración ESP32</span>
+            <span>ConfiguraciÃ³n ESP32</span>
           </h3>
           
           <button 
@@ -613,8 +579,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               <UiIcon name="wifi" />
             </div>
             <div className="config-info">
-              <div className="config-title">Configuración WiFi</div>
-              <div className="config-desc">Configurar conexión del sensor</div>
+              <div className="config-title">ConfiguraciÃ³n WiFi</div>
+              <div className="config-desc">Configurar conexiÃ³n del sensor</div>
             </div>
             <div className="config-arrow">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -624,11 +590,10 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </button>
         </div>
 
-        {/* Administración de Piscinas */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="pool" className="heading-icon" />
-            <span>Gestión de Piscinas</span>
+            <span>GestiÃ³n de Piscinas</span>
           </h3>
           
           <button 
@@ -678,40 +643,38 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
         </div>
 
 
-        {/* Información del Sistema */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="info" className="heading-icon" />
-            <span>Información del Sistema</span>
+            <span>InformaciÃ³n del Sistema</span>
           </h3>
           
           <div className="system-info">
             <div className="info-item">
-              <span className="info-label">Versión:</span>
-              <span className="info-value">3.0.0</span>
+              <span className="info-label">VersiÃ³n:</span>
+              <span className="info-value">4.3.0</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Última actualización:</span>
+              <span className="info-label">Ãšltima actualizaciÃ³n:</span>
               <span className="info-value">{new Date().toLocaleDateString()}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Estado:</span>
               <span className={`info-value info-value-with-icon ${esp32Connected ? 'status-online' : 'status-offline'}`}>
                 <UiIcon name={esp32Connected ? 'statusOn' : 'statusOff'} className="status-icon" size={14} />
-                {esp32Connected ? 'En línea' : 'Desconectado'}
+                {esp32Connected ? 'En lÃ­nea' : 'Desconectado'}
               </span>
             </div>
             {lastDataReceived && (
               <div className="info-item">
-                <span className="info-label">Última lectura:</span>
+                <span className="info-label">Ãšltima lectura:</span>
                 <span className="info-value">{new Date(lastDataReceived).toLocaleString()}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Acciones */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="actions" className="heading-icon" />
             <span>Acciones</span>
@@ -758,8 +721,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </div>
         </div>
 
-        {/* Modo Administrador */}
-        <div className="settings-section scale-in">
+                <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="admin" className="heading-icon" />
             <span>Modo Administrador</span>
@@ -788,8 +750,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
       </div>
 
-      {/* Modal WiFi Config */}
-      {showWiFiConfig && (
+            {showWiFiConfig && (
         <div className="wifi-modal-overlay" onClick={() => setShowWiFiConfig(false)}>
           <div className="wifi-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="wifi-modal-header">
@@ -808,13 +769,11 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </div>
         </div>
       )}
-      {/* Panel de Administrador */}
-      {showAdminPanel && (
+            {showAdminPanel && (
         <AdminPanel onClose={() => setShowAdminPanel(false)} />
       )}
 
-      {/* Modal de Registro de Dispositivo */}
-      {showDeviceRegistration && (
+            {showDeviceRegistration && (
         <div className="modal-overlay" onClick={() => setShowDeviceRegistration(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setShowDeviceRegistration(false)}>
@@ -928,6 +887,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 };
 
 export default SettingsPage;
+
+
+
 
 
 

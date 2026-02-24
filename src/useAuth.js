@@ -61,8 +61,6 @@ export const useAuth = () => {
   const loginWithGoogle = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      console.log('Login exitoso:', result.user.displayName);
-
       await createUserDocument(result.user);
 
       return result.user;
@@ -77,7 +75,6 @@ export const useAuth = () => {
   const logout = async () => {
     try {
       await signOut(auth);
-      console.log('Logout exitoso');
     } catch (error) {
       console.error('Error logout:', error.message);
       throw error;
@@ -94,10 +91,8 @@ export const useAuth = () => {
     const uid = currentUser.uid;
 
     try {
-      // Firebase exige reautenticacion para eliminar la cuenta
       await reauthenticateWithPopup(currentUser, googleProvider);
 
-      // Firestore: eliminar perfil y dispositivos vinculados
       const batch = writeBatch(db);
       const userRef = doc(db, 'users', uid);
       batch.delete(userRef);
@@ -134,11 +129,9 @@ export const useAuth = () => {
 
       await batch.commit();
 
-      // Realtime Database: eliminar todo el arbol del usuario
       const userRealtimeRef = ref(database, `users/${uid}`);
       await remove(userRealtimeRef);
 
-      // Auth: eliminar credenciales del usuario
       await deleteUser(currentUser);
 
       localStorage.removeItem('poolConfig');

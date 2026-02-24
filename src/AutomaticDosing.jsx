@@ -64,7 +64,10 @@ const AutomaticDosing = () => {
       if (!snapshot.exists()) return;
       const history = snapshot.val();
       const events = Object.values(history);
-      const lastEvent = events.sort((a, b) => b.timestamp - a.timestamp)[0];
+      const lastEvent = events.reduce((latest, current) => {
+        if (!latest) return current;
+        return (current?.timestamp || 0) > (latest?.timestamp || 0) ? current : latest;
+      }, null);
       setLastDosingEvent(lastEvent);
     });
 

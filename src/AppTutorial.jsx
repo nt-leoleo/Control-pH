@@ -157,7 +157,7 @@ const STEP_LIST = [
     title: 'Modo manual',
     description: 'En manual manejas toda la dosificacion paso a paso.',
     overviewDescription:
-      'En este panel vos controlas la dosificacion. Elegis producto, cantidad y tiempo antes de ejecutar.',
+      'En este panel vos controlas la dosificacion. Elegis producto y tiempo; el volumen se calcula automaticamente por caudal.',
     selector: '[data-tutorial="manual-module"]',
     requiredMode: 'manual',
     parts: [
@@ -172,9 +172,9 @@ const STEP_LIST = [
         selector: '[data-tutorial="manual-time"]',
       },
       {
-        title: '3. Definir litros',
-        description: 'Indica cuantos litros queres dosificar en esta accion.',
-        selector: '[data-tutorial="manual-liters"]',
+        title: '3. Revisar volumen automatico',
+        description: 'El sistema calcula los litros segun el tiempo y el caudal de bomba configurado.',
+        selector: '[data-tutorial="manual-volume"]',
       },
       {
         title: '4. Revisar estimacion',

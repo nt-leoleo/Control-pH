@@ -11,9 +11,17 @@ export const getChemicalName = (code) => {
   return CHEMICAL_NAMES[code] || code;
 };
 
+const RAISE_PRODUCTS = ['sodium-hypochlorite', 'calcium-hypochlorite'];
+const LOWER_PRODUCTS = ['muriatic', 'bisulfate', 'chlorine-gas'];
+
+const sanitizeConfiguredProduct = (code, allowed, fallback) => {
+  if (!code) return fallback;
+  return allowed.includes(code) ? code : fallback;
+};
+
 export const getConfiguredProducts = (chlorineType, acidType) => {
-  const raiseCode = chlorineType || 'sodium-hypochlorite';
-  const lowerCode = acidType || 'muriatic';
+  const raiseCode = sanitizeConfiguredProduct(chlorineType, RAISE_PRODUCTS, 'sodium-hypochlorite');
+  const lowerCode = sanitizeConfiguredProduct(acidType, LOWER_PRODUCTS, 'muriatic');
   return {
     raiseCode,
     lowerCode,
