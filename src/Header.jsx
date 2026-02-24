@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ConfigButton } from './Buttons';
 import ConnectionStatus from './ConnectionStatus';
+import ConfirmDialog from './ConfirmDialog';
+import ErrorNotification from './ErrorNotification';
 import { useAuth } from './useAuth';
 import './header.css';
 
@@ -9,6 +11,8 @@ const Header = ({ onConfigClick }) => {
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [uiMessage, setUiMessage] = useState(null);
 
   useEffect(() => {
     setAvatarBroken(false);
@@ -44,13 +48,21 @@ const Header = ({ onConfigClick }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogout = async () => {
-    if (confirm('Estas seguro que quieres cerrar sesion?')) {
-      try {
-        await logout();
-      } catch (error) {
-        alert('Error al cerrar sesion: ' + error.message);
-      }
+  const notify = (type, message) => {
+    setUiMessage({
+      id: Date.now(),
+      type,
+      message
+    });
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutConfirm(false);
+
+    try {
+      await logout();
+    } catch (error) {
+      notify('error', `No se pudo cerrar sesion: ${error.message}`);
     }
   };
 
@@ -84,7 +96,7 @@ const Header = ({ onConfigClick }) => {
           )}
           <ConfigButton onClick={onConfigClick} data-tutorial="open-settings" />
           {user && (
-            <button className="logout-btn" onClick={handleLogout} title="Cerrar sesion">
+            <button className="logout-btn" onClick={() => setShowLogoutConfirm(true)} title="Cerrar sesion">
               Salir
             </button>
           )}
@@ -94,6 +106,25 @@ const Header = ({ onConfigClick }) => {
       <div className="header-status-row">
         <ConnectionStatus compact />
       </div>
+
+      {uiMessage && (
+        <ErrorNotification
+          key={uiMessage.id}
+          message={uiMessage.message}
+          type={uiMessage.type}
+          duration={4500}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Cerrar sesion"
+        message="Vas a salir de tu cuenta en este navegador."
+        details="Podras volver a entrar con Google cuando quieras."
+        confirmLabel="Cerrar sesion"
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+      />
     </header>
   );
 };

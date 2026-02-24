@@ -300,13 +300,15 @@ export const PHProvider = ({ children }) => {
 
     // Verificar conexión ESP32 vía Firebase
     const checkConnection = async () => {
-        if (!user?.uid) return;
+        if (!user?.uid) return false;
         
         try {
             const isConnected = await checkESP32Connection(user.uid);
             setEsp32Connected(isConnected);
+            return isConnected;
         } catch (error) {
             setEsp32Connected(false);
+            return false;
         }
     };
 
