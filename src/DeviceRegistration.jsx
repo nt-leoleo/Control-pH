@@ -24,6 +24,14 @@ const DeviceRegistration = () => {
   const [message, setMessage] = useState(null);
   const [registeredDevices, setRegisteredDevices] = useState([]);
 
+  const notifyDeviceState = (hasDevice) => {
+    window.dispatchEvent(
+      new CustomEvent('device-registration:updated', {
+        detail: { hasDevice }
+      })
+    );
+  };
+
   useEffect(() => {
     if (user?.uid) {
       loadUserDevices();
@@ -51,9 +59,12 @@ const DeviceRegistration = () => {
 
       const devices = Array.from(merged.values());
       setRegisteredDevices(devices);
+      notifyDeviceState(devices.length > 0);
 
       if (devices.length > 0) {
         localStorage.setItem('esp32_device_id', devices[0].id);
+      } else {
+        localStorage.removeItem('esp32_device_id');
       }
     } catch (error) {
       console.error('Error cargando dispositivos:', error);
