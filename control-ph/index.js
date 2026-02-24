@@ -37,6 +37,50 @@ function getDeviceUserIds(deviceData = {}) {
   return [];
 }
 
+async function getLinkedUserIdsFromUsersCollection(deviceId) {
+  const linkedUsersSnapshot = await firestore
+    .collection('users')
+    .where('linkedDeviceIds', 'array-contains', deviceId)
+    .get();
+
+  const linkedUserIds = [];
+  linkedUsersSnapshot.forEach((userDoc) => {
+    if (userDoc.id) {
+      linkedUserIds.push(userDoc.id);
+    }
+  });
+
+  return linkedUserIds;
+}
+
+async function resolveDeviceUserIds(deviceId) {
+  const deviceDoc = await firestore.collection('devices').doc(deviceId).get();
+  const fromDeviceDoc = deviceDoc.exists ? getDeviceUserIds(deviceDoc.data() || {}) : [];
+  const fromUsersCollection = await getLinkedUserIdsFromUsersCollection(deviceId);
+  const userIds = [...new Set([...fromDeviceDoc, ...fromUsersCollection])];
+
+  if (userIds.length > 0) {
+    const primaryUserId = userIds[0];
+    await firestore
+      .collection('devices')
+      .doc(deviceId)
+      .set(
+        {
+          userId: primaryUserId,
+          userIds,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+  }
+
+  return {
+    userIds,
+    deviceExists: deviceDoc.exists,
+  };
+}
+
 function sortCommandCandidates(a, b) {
   const aCreated = Number(a.command?.createdAt || a.command?.timestamp || 0);
   const bCreated = Number(b.command?.createdAt || b.command?.timestamp || 0);
@@ -78,23 +122,18 @@ exports.receiveSensorData = onRequest(async (req, res) => {
       return;
     }
     
-    // Buscar userId por deviceId
+    // Resolver cuentas vinculadas por deviceId
     logger.info(`🔍 Buscando dispositivo: ${deviceId}`);
-    const deviceDoc = await firestore.collection('devices').doc(deviceId).get();
-    
-    if (!deviceDoc.exists) {
-      logger.error(`❌ Dispositivo no registrado: ${deviceId}`);
-      res.status(404).json({ error: 'Device not registered' });
-      return;
-    }
-    
-    const deviceData = deviceDoc.data();
-    const userIds = getDeviceUserIds(deviceData);
+    const { userIds, deviceExists } = await resolveDeviceUserIds(deviceId);
 
     if (userIds.length === 0) {
       logger.error(`❌ Dispositivo sin cuentas vinculadas: ${deviceId}`);
       res.status(404).json({ error: 'Device has no linked users' });
       return;
+    }
+
+    if (!deviceExists) {
+      logger.warn(`⚠️ Dispositivo sin documento en /devices. Vinculos resueltos desde /users: ${deviceId}`);
     }
     
     logger.info(`✅ Dispositivo encontrado. cuentas vinculadas: ${userIds.join(', ')}`);
@@ -140,15 +179,8 @@ exports.getCommand = onRequest(async (req, res) => {
       return;
     }
     
-    // Buscar userId por deviceId
-    const deviceDoc = await firestore.collection('devices').doc(deviceId).get();
-    
-    if (!deviceDoc.exists) {
-      res.status(404).json({ error: 'Device not registered' });
-      return;
-    }
-    
-    const userIds = getDeviceUserIds(deviceDoc.data());
+    // Resolver cuentas vinculadas por deviceId
+    const { userIds } = await resolveDeviceUserIds(deviceId);
 
     if (userIds.length === 0) {
       res.status(404).json({ error: 'Device has no linked users' });
@@ -244,15 +276,8 @@ exports.confirmCommand = onRequest(async (req, res) => {
       return;
     }
     
-    // Buscar userId por deviceId
-    const deviceDoc = await firestore.collection('devices').doc(deviceId).get();
-    
-    if (!deviceDoc.exists) {
-      res.status(404).json({ error: 'Device not registered' });
-      return;
-    }
-    
-    const deviceUserIds = getDeviceUserIds(deviceDoc.data());
+    // Resolver cuentas vinculadas por deviceId
+    const { userIds: deviceUserIds } = await resolveDeviceUserIds(deviceId);
 
     if (deviceUserIds.length === 0) {
       res.status(404).json({ error: 'Device has no linked users' });
