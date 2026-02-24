@@ -25,6 +25,7 @@ setGlobalOptions({ maxInstances: 10 });
 // Referencias a las bases de datos
 const firestore = admin.firestore();
 const realtimeDb = admin.database();
+const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
 
 function getDeviceUserIds(deviceData = {}) {
   const userIds = Array.isArray(deviceData.userIds) ? deviceData.userIds.filter(Boolean) : [];
@@ -35,6 +36,25 @@ function getDeviceUserIds(deviceData = {}) {
     return [deviceData.userId];
   }
   return [];
+}
+
+function normalizeDeviceId(rawValue) {
+  const upper = String(rawValue || '').toUpperCase();
+  const candidates = upper.match(/[A-Z0-9_-]{6,64}/g) || [];
+  if (candidates.length === 0) {
+    return '';
+  }
+  return candidates.sort((a, b) => b.length - a.length)[0];
+}
+
+async function verifyAuthenticatedRequest(req) {
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    throw new Error('AUTH_MISSING');
+  }
+
+  const idToken = authHeader.slice(7);
+  return admin.auth().verifyIdToken(idToken);
 }
 
 async function getLinkedUserIdsFromUsersCollection(deviceId) {
@@ -331,6 +351,98 @@ exports.confirmCommand = onRequest(async (req, res) => {
   } catch (error) {
     logger.error('❌ Error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Vincula un Device ID a la cuenta autenticada.
+ * Se ejecuta con Admin SDK (no depende de reglas de cliente en /devices).
+ */
+exports.linkDeviceToAccount = onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const decoded = await verifyAuthenticatedRequest(req);
+    const uid = decoded.uid;
+    const email = decoded.email || '';
+
+    const normalizedDeviceId = normalizeDeviceId(req.body?.deviceId);
+    const requestedName = String(req.body?.deviceName || '').trim();
+    const deviceName = requestedName || 'Piscina principal';
+
+    if (!normalizedDeviceId || !DEVICE_ID_REGEX.test(normalizedDeviceId)) {
+      res.status(400).json({ error: 'Invalid deviceId' });
+      return;
+    }
+
+    const userRef = firestore.collection('users').doc(uid);
+    const deviceRef = firestore.collection('devices').doc(normalizedDeviceId);
+
+    await userRef.set(
+      {
+        linkedDeviceIds: admin.firestore.FieldValue.arrayUnion(normalizedDeviceId),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    await userRef.set(
+      {
+        linkedDeviceNames: {
+          [normalizedDeviceId]: deviceName,
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const deviceSnap = await deviceRef.get();
+    if (deviceSnap.exists) {
+      await deviceRef.update({
+        userIds: admin.firestore.FieldValue.arrayUnion(uid),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      await deviceRef.set({
+        userId: uid,
+        userIds: [uid],
+        name: deviceName,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: {
+          registeredFrom: 'cloud-function-link',
+          userEmail: email,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      userId: uid,
+      deviceId: normalizedDeviceId,
+    });
+  } catch (error) {
+    if (error.message === 'AUTH_MISSING') {
+      res.status(401).json({ error: 'Authorization header missing' });
+      return;
+    }
+
+    logger.error('❌ Error en linkDeviceToAccount:', error);
+    res.status(500).json({ error: error.message || 'Unexpected error' });
   }
 });
 

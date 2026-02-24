@@ -207,7 +207,7 @@ const STEP_LIST = [
     title: 'Configuracion de usuario',
     description:
       'Desde Ajustes podes configurar objetivo y tolerancia de pH, modos, ESP32, WiFi y gestion de piscinas.',
-    selector: '[data-tutorial="open-settings"]',
+    selector: '[data-tutorial="dashboard-root"]',
     scrollTop: true,
   },
 ];
@@ -220,7 +220,7 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 const YOUTUBE_VIDEO_ID = 'PQjgO6SIOas';
 const YOUTUBE_START_SECONDS = 9 * 60 + 30;
-const YOUTUBE_TARGET_VOLUME = 24;
+const YOUTUBE_TARGET_VOLUME = 12;
 const YOUTUBE_FADE_IN_MS = 2200;
 const YOUTUBE_FADE_OUT_MS = 7000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
@@ -415,6 +415,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const trackBadgeTimeoutRef = useRef(null);
   const demoPhIntervalRef = useRef(null);
   const closeTimeoutRef = useRef(null);
+  const isAudioMutedRef = useRef(false);
   const isProgrammaticScrollRef = useRef(false);
   const lockedWindowScrollRef = useRef({ x: 0, y: 0 });
   const lockedElementScrollRef = useRef(new WeakMap());
@@ -429,6 +430,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const [needsAudioInteraction, setNeedsAudioInteraction] = useState(false);
   const [showTrackBadge, setShowTrackBadge] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
 
   const step = STEP_LIST[stepIndex];
   const parts = useMemo(() => buildStepParts(step), [step]);
@@ -442,6 +444,10 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
 
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
+
+  useEffect(() => {
+    isAudioMutedRef.current = isAudioMuted;
+  }, [isAudioMuted]);
 
   const syncScrollLockSnapshot = useCallback(() => {
     lockedWindowScrollRef.current = {
@@ -589,6 +595,9 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
 
       player.seekTo(YOUTUBE_START_SECONDS, true);
       player.setVolume(0);
+      if (!isAudioMutedRef.current && typeof player.unMute === 'function') {
+        player.unMute();
+      }
       player.playVideo();
 
       await wait(600);
@@ -600,7 +609,17 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
       }
 
       setNeedsAudioInteraction(false);
-      fadeYoutubeTo(YOUTUBE_TARGET_VOLUME, YOUTUBE_FADE_IN_MS);
+      if (isAudioMutedRef.current) {
+        if (typeof player.mute === 'function') {
+          player.mute();
+        }
+        player.setVolume(0);
+      } else {
+        if (typeof player.unMute === 'function') {
+          player.unMute();
+        }
+        fadeYoutubeTo(YOUTUBE_TARGET_VOLUME, YOUTUBE_FADE_IN_MS);
+      }
       return true;
     } catch (error) {
       console.warn('[Tutorial] No se pudo iniciar audio de YouTube:', error);
@@ -636,6 +655,38 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
     [clearYoutubeVolumeInterval, fadeYoutubeTo]
   );
 
+  const toggleAudioMute = useCallback(() => {
+    setIsAudioMuted((previous) => {
+      const next = !previous;
+      const player = youtubePlayerRef.current;
+
+      if (!player) {
+        return next;
+      }
+
+      clearYoutubeVolumeInterval();
+
+      if (next) {
+        if (typeof player.mute === 'function') {
+          player.mute();
+        }
+        if (typeof player.setVolume === 'function') {
+          player.setVolume(0);
+        }
+      } else {
+        if (typeof player.unMute === 'function') {
+          player.unMute();
+        }
+        if (typeof player.playVideo === 'function') {
+          player.playVideo();
+        }
+        fadeYoutubeTo(YOUTUBE_TARGET_VOLUME, 380);
+      }
+
+      return next;
+    });
+  }, [clearYoutubeVolumeInterval, fadeYoutubeTo]);
+
   const handleCloseWithFade = useCallback(
     (reason) => {
       if (isClosing) {
@@ -664,10 +715,11 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
     }
 
     if (step?.selector && step.selector !== activeSelector) {
-      return document.querySelector(step.selector);
+      const stepTarget = document.querySelector(step.selector);
+      if (stepTarget) return stepTarget;
     }
 
-    return null;
+    return document.querySelector('[data-tutorial="dashboard-root"]');
   }, [activeSelector, step?.selector]);
 
   const syncMeterSlide = useCallback(async (slideIndexToShow) => {
@@ -731,6 +783,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   useEffect(() => {
     if (!isOpen) return;
     setIsClosing(false);
+    setIsAudioMuted(false);
     setStepIndex(TUTORIAL_START_INDEX);
     setPartIndex(0);
     setCardPosition(null);
@@ -889,90 +942,96 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
 
     const prepareStep = async () => {
       setIsPreparing(true);
-
-      if (step.scrollTop) {
-        await runProgrammaticScroll(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 560);
-      }
-
-      if (step.requiredMode && dosingMode !== step.requiredMode) {
-        try {
-          await setDosingMode(step.requiredMode);
-          await wait(320);
-        } catch (error) {
-          console.error('[Tutorial] No se pudo cambiar el modo:', error);
+      try {
+        if (step.scrollTop) {
+          await runProgrammaticScroll(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 560);
         }
-      }
 
-      if (activeSlide === 0 || activeSlide === 1) {
-        await syncMeterSlide(activeSlide);
-      }
+        if (step.requiredMode && dosingMode !== step.requiredMode) {
+          try {
+            await setDosingMode(step.requiredMode);
+            await wait(320);
+          } catch (error) {
+            console.error('[Tutorial] No se pudo cambiar el modo:', error);
+          }
+        }
 
-      let targetElement = null;
-      for (let attempt = 0; attempt < 25; attempt += 1) {
+        if (activeSlide === 0 || activeSlide === 1) {
+          await syncMeterSlide(activeSlide);
+        }
+
+        let targetElement = null;
+        for (let attempt = 0; attempt < 25; attempt += 1) {
+          if (cancelled) return;
+
+          targetElement = findTargetElement();
+          if (targetElement) break;
+          await wait(120);
+        }
+
         if (cancelled) return;
 
-        targetElement = findTargetElement();
-        if (targetElement) break;
-        await wait(120);
-      }
+        if (targetElement) {
+          const alignTarget = async (behavior) => {
+            const useSmallTargetAnchor = !activeScrollPreference && isSmallTutorialTarget(targetElement);
 
-      if (cancelled) return;
+            await runProgrammaticScroll(() => {
+              if (useSmallTargetAnchor) {
+                const rect = targetElement.getBoundingClientRect();
+                const targetCenter = rect.top + rect.height / 2;
+                const desiredCenter = window.innerHeight * SMALL_TARGET_VIEWPORT_ANCHOR;
+                const delta = targetCenter - desiredCenter;
 
-      if (targetElement) {
-        const alignTarget = async (behavior) => {
-          const useSmallTargetAnchor = !activeScrollPreference && isSmallTutorialTarget(targetElement);
+                window.scrollTo({
+                  top: Math.max(0, window.scrollY + delta),
+                  behavior,
+                });
+                return;
+              }
 
-          await runProgrammaticScroll(() => {
-            if (useSmallTargetAnchor) {
-              const rect = targetElement.getBoundingClientRect();
-              const targetCenter = rect.top + rect.height / 2;
-              const desiredCenter = window.innerHeight * SMALL_TARGET_VIEWPORT_ANCHOR;
-              const delta = targetCenter - desiredCenter;
-
-              window.scrollTo({
-                top: Math.max(0, window.scrollY + delta),
+              targetElement.scrollIntoView({
                 behavior,
+                block: activeScrollBlock,
+                inline: 'nearest',
               });
+            }, behavior === 'smooth' ? 560 : 140);
+          };
+
+          const nudgeTargetDownIfTooHigh = async () => {
+            const rect = targetElement.getBoundingClientRect();
+            const delta = TOP_TARGET_MIN_VIEWPORT_OFFSET - rect.top;
+
+            if (delta <= 6) {
               return;
             }
 
-            targetElement.scrollIntoView({
-              behavior,
-              block: activeScrollBlock,
-              inline: 'nearest',
-            });
-          }, behavior === 'smooth' ? 560 : 140);
-        };
+            await runProgrammaticScroll(() => {
+              window.scrollTo({
+                top: Math.max(0, window.scrollY - delta),
+                behavior: 'auto',
+              });
+            }, 140);
+          };
 
-        const nudgeTargetDownIfTooHigh = async () => {
-          const rect = targetElement.getBoundingClientRect();
-          const delta = TOP_TARGET_MIN_VIEWPORT_OFFSET - rect.top;
-
-          if (delta <= 6) {
-            return;
-          }
-
-          await runProgrammaticScroll(() => {
-            window.scrollTo({
-              top: Math.max(0, window.scrollY - delta),
-              behavior: 'auto',
-            });
-          }, 140);
-        };
-
-        await alignTarget('smooth');
-        await nudgeTargetDownIfTooHigh();
-
-        if (!isInViewport(targetElement, 12)) {
-          await alignTarget('auto');
+          await alignTarget('smooth');
           await nudgeTargetDownIfTooHigh();
+
+          if (!isInViewport(targetElement, 12)) {
+            await alignTarget('auto');
+            await nudgeTargetDownIfTooHigh();
+          }
+        }
+
+        updateSpotlightForCurrentPart();
+      } catch (error) {
+        console.error('[Tutorial] Error preparando paso:', error);
+      } finally {
+        if (!cancelled) {
+          setIsPreparing(false);
         }
       }
-
-      updateSpotlightForCurrentPart();
-      setIsPreparing(false);
     };
 
     prepareStep();
@@ -1147,6 +1206,30 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
             : undefined
         }
       >
+        <button
+          type="button"
+          className="tutorial-audio-toggle"
+          onClick={toggleAudioMute}
+          aria-label={isAudioMuted ? 'Activar sonido ambiental' : 'Silenciar sonido ambiental'}
+          title={isAudioMuted ? 'Activar sonido' : 'Silenciar sonido'}
+        >
+          {isAudioMuted ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M16.5 12L21 16.5 19.5 18 15 13.5 10.5 18H9v-3.5L6.5 12H3v-2h3.5L9 7.5V4h1.5L15 8.5 19.5 4 21 5.5z"
+              />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M3 10v4h4l5 5V5L7 10H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.06A4.49 4.49 0 0 0 16.5 12zM14 3.23v2.06c2.89.86 5 3.54 5 6.71 0 3.17-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77 0-4.28-2.99-7.86-7-8.77z"
+              />
+            </svg>
+          )}
+        </button>
+
         <p className="tutorial-step-counter">Sección {step.number} de {TOTAL_SECTIONS}</p>
 
         <h3>{panelTitle}</h3>
