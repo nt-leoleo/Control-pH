@@ -26,6 +26,7 @@ setGlobalOptions({ maxInstances: 10 });
 const firestore = admin.firestore();
 const realtimeDb = admin.database();
 const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
+const COMMAND_PROCESSING_TIMEOUT_MS = 2 * 60 * 1000;
 
 function getDeviceUserIds(deviceData = {}) {
   const userIds = Array.isArray(deviceData.userIds) ? deviceData.userIds.filter(Boolean) : [];
@@ -102,6 +103,13 @@ async function resolveDeviceUserIds(deviceId) {
 }
 
 function sortCommandCandidates(a, b) {
+  const aStatus = String(a.command?.status || '');
+  const bStatus = String(b.command?.status || '');
+  if (aStatus !== bStatus) {
+    if (aStatus === 'pending') return -1;
+    if (bStatus === 'pending') return 1;
+  }
+
   const aCreated = Number(a.command?.createdAt || a.command?.timestamp || 0);
   const bCreated = Number(b.command?.createdAt || b.command?.timestamp || 0);
   if (aCreated !== bCreated) {
@@ -208,26 +216,52 @@ exports.getCommand = onRequest(async (req, res) => {
     }
 
     const commandCandidates = [];
+    const now = Date.now();
 
     for (const userId of userIds) {
       const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
-      const snapshot = await commandsRef
+      const pendingSnapshot = await commandsRef
         .orderByChild('status')
         .equalTo('pending')
         .once('value');
 
-      if (!snapshot.exists()) {
-        continue;
+      if (pendingSnapshot.exists()) {
+        const pendingCommands = pendingSnapshot.val() || {};
+        Object.entries(pendingCommands).forEach(([commandId, command]) => {
+          commandCandidates.push({
+            userId,
+            commandId,
+            command: command || {}
+          });
+        });
       }
 
-      const pendingCommands = snapshot.val() || {};
-      Object.entries(pendingCommands).forEach(([commandId, command]) => {
-        commandCandidates.push({
-          userId,
-          commandId,
-          command: command || {}
+      // Recuperar comandos que quedaron trabados en "processing"
+      // (por reinicio de ESP32 o corte de red antes de confirmar).
+      const processingSnapshot = await commandsRef
+        .orderByChild('status')
+        .equalTo('processing')
+        .once('value');
+
+      if (processingSnapshot.exists()) {
+        const processingCommands = processingSnapshot.val() || {};
+        Object.entries(processingCommands).forEach(([commandId, command]) => {
+          const processedAt = Number(command?.processedAt || 0);
+          const stale = !processedAt || (now - processedAt) > COMMAND_PROCESSING_TIMEOUT_MS;
+          if (!stale) {
+            return;
+          }
+
+          commandCandidates.push({
+            userId,
+            commandId,
+            command: {
+              ...(command || {}),
+              staleProcessing: true
+            }
+          });
         });
-      });
+      }
     }
 
     if (commandCandidates.length === 0) {
@@ -257,10 +291,15 @@ exports.getCommand = onRequest(async (req, res) => {
     // Marcar como "processing"
     await selectedCommandRef.update({
       status: 'processing',
-      processedAt: Date.now()
+      processedAt: Date.now(),
+      dispatchCount: Number(command?.dispatchCount || 0) + 1,
+      lastDispatchAt: Date.now()
     });
 
     logger.info(`📤 Comando enviado a ${deviceId} (${userId}): ${command.product}, ${command.duration || 0}s`);
+    if (command?.staleProcessing) {
+      logger.warn(`♻️ Reintentando comando trabado en processing: ${commandId} (${userId})`);
+    }
 
     res.json({
       commandId: commandId,
