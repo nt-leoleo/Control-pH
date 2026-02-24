@@ -175,7 +175,7 @@ export default function App() {
 
     const storageKey = getTutorialStorageKey();
     const seenInBrowser = storageKey ? localStorage.getItem(storageKey) === '1' : false;
-    const seenInAccount = userConfig?.tutorialCompleted !== false;
+    const seenInAccount = userConfig?.tutorialCompleted === true;
 
     if (!seenInBrowser && !seenInAccount) {
       openTutorial();

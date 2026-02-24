@@ -17,6 +17,15 @@ import { useAuth } from './useAuth';
 import ConfirmDialog from './ConfirmDialog';
 import './DeviceRegistration.css';
 
+const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
+
+const normalizeDeviceId = (rawValue) => {
+  return String(rawValue || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+};
+
 const DeviceRegistration = () => {
   const { user } = useAuth();
   const [deviceId, setDeviceId] = useState('');
@@ -138,7 +147,16 @@ const DeviceRegistration = () => {
     setMessage(null);
 
     try {
-      const normalizedDeviceId = deviceId.trim().toUpperCase();
+      const normalizedDeviceId = normalizeDeviceId(deviceId);
+      if (!DEVICE_ID_REGEX.test(normalizedDeviceId)) {
+        setMessage({
+          type: 'error',
+          text: 'Device ID invalido. Usa solo letras, numeros, guion o guion bajo (6 a 64 caracteres).'
+        });
+        setIsRegistering(false);
+        return;
+      }
+
       const deviceRef = doc(db, 'devices', normalizedDeviceId);
       const deviceSnap = await getDoc(deviceRef);
 
@@ -215,7 +233,7 @@ const DeviceRegistration = () => {
             <input
               type="text"
               value={deviceId}
-              onChange={(e) => setDeviceId(e.target.value.toUpperCase())}
+              onChange={(e) => setDeviceId(e.target.value)}
               placeholder="Ej: A1B2C3D4E5F6"
               disabled={isRegistering}
               className="device-id-input"
