@@ -340,7 +340,12 @@ export const useESP32Connection = (userId, onDataReceived, onConnectionChange) =
     return { startConnection, stopConnection, getStatus };
 };
 
-export const sendDosingCommandToFirebase = async (userId, product, durationSeconds) => {
+export const sendDosingCommandToFirebase = async (
+    userId,
+    product,
+    durationSeconds,
+    maxDurationSeconds = 300
+) => {
     try {
         if (!userId) {
             throw new Error('userId es requerido');
@@ -352,8 +357,9 @@ export const sendDosingCommandToFirebase = async (userId, product, durationSecon
         }
 
         const normalizedDuration = Number(durationSeconds);
-        if (!Number.isFinite(normalizedDuration) || normalizedDuration < 1 || normalizedDuration > 300) {
-            throw new Error('Duracion debe estar entre 1 y 300 segundos');
+        const safeMaxDuration = Math.max(1, Math.min(3600, Number(maxDurationSeconds) || 300));
+        if (!Number.isFinite(normalizedDuration) || normalizedDuration < 1 || normalizedDuration > safeMaxDuration) {
+            throw new Error(`Duracion debe estar entre 1 y ${safeMaxDuration} segundos`);
         }
 
         const commandsRef = ref(database, `users/${userId}/commands`);

@@ -9,6 +9,7 @@ const DEFAULT_ADMIN_CONFIG = {
   maxDailyDoses: 10,
   minWaitTimeBetweenDoses: 2,
   checkInterval: 1,
+  maxManualDosingSeconds: 300,
   maxDoseVolume: 0.5,
   minDoseVolume: 0.01,
   correctionFactor: 0.8,
@@ -244,6 +245,19 @@ const AdminPanel = ({ onClose }) => {
                   max="60"
                 />
                 <span className="field-unit">minutos</span>
+              </div>
+
+              <div className="admin-field">
+                <label>Tiempo maximo dosificado manual</label>
+                <input
+                  type="number"
+                  value={adminConfig.maxManualDosingSeconds}
+                  onChange={(e) => handleConfigChange('maxManualDosingSeconds', e.target.value)}
+                  min="1"
+                  max="3600"
+                  step="1"
+                />
+                <span className="field-unit">segundos</span>
               </div>
 
               <div className="admin-field">

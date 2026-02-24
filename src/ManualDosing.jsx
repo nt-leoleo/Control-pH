@@ -10,7 +10,7 @@ import { CONFIG } from './config';
 import InfoHint from './InfoHint';
 import './ManualDosing.css';
 
-const MAX_DURATION_SECONDS = 300;
+const DEFAULT_MAX_MANUAL_DOSING_SECONDS = 300;
 
 const toNumberOr = (value, fallback) => {
     const parsed = Number(value);
@@ -138,6 +138,14 @@ const ManualDosing = () => {
         return configuredMaxChange > 0 ? configuredMaxChange : 1.0;
     }, [adminConfig.maxPHChange]);
 
+    const maxManualDosingSeconds = useMemo(() => {
+        const configured = toNumberOr(
+            adminConfig.maxManualDosingSeconds,
+            DEFAULT_MAX_MANUAL_DOSING_SECONDS
+        );
+        return Math.max(1, Math.min(3600, Math.round(configured)));
+    }, [adminConfig.maxManualDosingSeconds]);
+
     const phEstimate = useMemo(() => {
         if (!poolVolume || calculatedLiters <= 0) {
             return null;
@@ -215,8 +223,10 @@ const ManualDosing = () => {
                 throw new Error('La duracion debe ser mayor a 0 segundos');
             }
 
-            if (totalSeconds > MAX_DURATION_SECONDS) {
-                throw new Error('Duracion maxima: 5 minutos (300 segundos)');
+            if (totalSeconds > maxManualDosingSeconds) {
+                throw new Error(
+                    `Duracion maxima: ${maxManualDosingSeconds} segundos (configurado por administrador)`
+                );
             }
 
             if (!user?.uid) {
@@ -244,7 +254,12 @@ const ManualDosing = () => {
             setIsDosing(true);
             setError({ type: 'info', message: 'Enviando comando a Firebase...' });
 
-            const result = await sendDosingCommandToFirebase(user.uid, product, totalSeconds);
+            const result = await sendDosingCommandToFirebase(
+                user.uid,
+                product,
+                totalSeconds,
+                maxManualDosingSeconds
+            );
             if (!result.success) {
                 throw new Error(result.message || 'Error enviando comando de dosificacion');
             }
@@ -308,6 +323,7 @@ const ManualDosing = () => {
         manualDosingConfig,
         maxSafePH,
         maxSafePHChange,
+        maxManualDosingSeconds,
         minSafePH,
         ph,
         poolVolume,
