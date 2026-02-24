@@ -210,6 +210,9 @@ const STEP_LIST = [
   },
 ];
 
+const TUTORIAL_START_INDEX = 1;
+const TOTAL_SECTIONS = STEP_LIST.filter((entry) => entry.number >= 1).length;
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -390,7 +393,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const demoPhIntervalRef = useRef(null);
   const closeTimeoutRef = useRef(null);
 
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(TUTORIAL_START_INDEX);
   const [partIndex, setPartIndex] = useState(0);
   const [spotlightRect, setSpotlightRect] = useState(null);
   const [cardPosition, setCardPosition] = useState(null);
@@ -665,7 +668,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   useEffect(() => {
     if (!isOpen) return;
     setIsClosing(false);
-    setStepIndex(0);
+    setStepIndex(TUTORIAL_START_INDEX);
     setPartIndex(0);
     setCardPosition(null);
     setConnectorPoints(null);
@@ -880,7 +883,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
 
   const isLastStep = useMemo(() => stepIndex === STEP_LIST.length - 1, [stepIndex]);
   const hasNextPart = hasParts && partIndex < parts.length - 1;
-  const canGoBack = !(stepIndex === 0 && (!hasParts || partIndex === 0));
+  const canGoBack = !(stepIndex === TUTORIAL_START_INDEX && (!hasParts || partIndex === 0));
 
   if (!isOpen || !step) {
     return null;
@@ -971,7 +974,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
             : undefined
         }
       >
-        <p className="tutorial-step-counter">Paso {step.number} de 8</p>
+        <p className="tutorial-step-counter">Sección {step.number} de {TOTAL_SECTIONS}</p>
 
         <h3>{panelTitle}</h3>
         <p>{panelDescription}</p>
@@ -999,7 +1002,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
                   return;
                 }
 
-                const previousStepIndex = Math.max(0, stepIndex - 1);
+                const previousStepIndex = Math.max(TUTORIAL_START_INDEX, stepIndex - 1);
                 const previousParts = buildStepParts(STEP_LIST[previousStepIndex]);
                 setStepIndex(previousStepIndex);
                 setPartIndex(previousParts.length > 0 ? previousParts.length - 1 : 0);

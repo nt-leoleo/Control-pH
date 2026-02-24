@@ -20,10 +20,13 @@ import './DeviceRegistration.css';
 const DEVICE_ID_REGEX = /^[A-Z0-9_-]{6,64}$/;
 
 const normalizeDeviceId = (rawValue) => {
-  return String(rawValue || '')
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '');
+  const upper = String(rawValue || '').toUpperCase();
+  const candidates = upper.match(/[A-Z0-9_-]{6,64}/g) || [];
+  if (candidates.length === 0) {
+    return '';
+  }
+
+  return candidates.sort((a, b) => b.length - a.length)[0];
 };
 
 const DeviceRegistration = () => {
@@ -155,6 +158,10 @@ const DeviceRegistration = () => {
         });
         setIsRegistering(false);
         return;
+      }
+
+      if (normalizedDeviceId !== deviceId) {
+        setDeviceId(normalizedDeviceId);
       }
 
       const deviceRef = doc(db, 'devices', normalizedDeviceId);
