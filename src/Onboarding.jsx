@@ -31,6 +31,7 @@ const Onboarding = () => {
   const [alkLevel, setAlkLevel] = useState('100');
   const [chlorType, setChlorType] = useState('sodium-hypochlorite');
   const [acdType, setAcdType] = useState('muriatic');
+  const [pumpFlow, setPumpFlow] = useState('1.5');
   const [idealPH, setIdealPH] = useState('7.4');
   const [tolerance, setTolerance] = useState('0.3');
   const [deviceId, setDeviceId] = useState('');
@@ -52,6 +53,14 @@ const Onboarding = () => {
       const parsedVolume = parseFloat(poolVol);
       if (Number.isNaN(parsedVolume) || parsedVolume <= 0) {
         setError({ type: 'error', message: 'Ingresa los litros de la piscina.' });
+        return false;
+      }
+    }
+
+    if (step === 2) {
+      const parsedFlow = parseFloat(pumpFlow);
+      if (Number.isNaN(parsedFlow) || parsedFlow <= 0 || parsedFlow > 10) {
+        setError({ type: 'error', message: 'El caudal debe estar entre 0.5 y 10 L/h.' });
         return false;
       }
     }
@@ -154,7 +163,8 @@ const Onboarding = () => {
       // Guardar la piscina y marcarla como activa
       await saveConfigToFirebase({
         pools: [firstPool],
-        currentPoolId: '1'
+        currentPoolId: '1',
+        pumpFlowRate: parseFloat(pumpFlow)
       });
 
       await setIsConfigured(true);
@@ -275,6 +285,24 @@ const Onboarding = () => {
               <option value="muriatic">Acido muriatico</option>
               <option value="bisulfate">Bisulfato de sodio</option>
             </select>
+
+            <label className="onboarding-label" htmlFor="pumpFlowInput">
+              Caudal de la bomba dosificadora (L/h)
+            </label>
+            <input
+              id="pumpFlowInput"
+              className="onboarding-input"
+              type="number"
+              min="0.5"
+              max="10"
+              step="0.1"
+              value={pumpFlow}
+              onChange={(e) => setPumpFlow(e.target.value)}
+              placeholder="Ej: 1.5"
+            />
+            <p className="onboarding-help-small">
+              El caudal típico de bombas dosificadoras es entre 1.5 y 3 L/h. Este valor se usa para calcular tiempos de dosificación.
+            </p>
           </section>
         )}
 
