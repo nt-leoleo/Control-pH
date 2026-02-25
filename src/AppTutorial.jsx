@@ -246,6 +246,7 @@ const B_MAJOR_SCALE_FREQUENCIES = [
 
 const playCelestialChime = () => {
   try {
+    // Crear un nuevo contexto cada vez para permitir superposición
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const randomFrequency = B_MAJOR_SCALE_FREQUENCIES[Math.floor(Math.random() * B_MAJOR_SCALE_FREQUENCIES.length)];
     
@@ -291,9 +292,13 @@ const playCelestialChime = () => {
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 2.5);
     
-    // Limpiar después
+    // Limpiar después - no bloquea la creación de nuevos sonidos
     setTimeout(() => {
-      audioContext.close();
+      try {
+        audioContext.close();
+      } catch (e) {
+        // Ignorar errores al cerrar
+      }
     }, 3000);
   } catch (error) {
     console.warn('[Tutorial] No se pudo reproducir sonido:', error);
