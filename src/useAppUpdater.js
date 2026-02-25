@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const CURRENT_VERSION = '4.11.7';
+const CURRENT_VERSION = '4.11.8';
 
 export const useAppUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -13,9 +13,12 @@ export const useAppUpdater = () => {
     try {
       // Solo verificar en Capacitor (app móvil)
       if (!window.Capacitor) {
+        console.log('[Updater] No es app móvil, saltando verificación');
         return;
       }
 
+      console.log('[Updater] Iniciando verificación de actualizaciones...');
+      console.log('[Updater] Versión actual:', CURRENT_VERSION);
       setIsChecking(true);
 
       // Obtener info de actualización desde Firebase
@@ -33,8 +36,15 @@ export const useAppUpdater = () => {
       const forceUpdate = data.forceUpdate || false;
       const releaseNotes = data.releaseNotes || '';
 
+      console.log('[Updater] Versión en Firebase:', latestVersion);
+      console.log('[Updater] Comparando versiones...');
+
       // Comparar versiones
-      if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
+      const comparison = compareVersions(latestVersion, CURRENT_VERSION);
+      console.log('[Updater] Resultado comparación:', comparison);
+      
+      if (comparison > 0) {
+        console.log('[Updater] ¡Actualización disponible!');
         setUpdateAvailable(true);
         setUpdateInfo({
           version: latestVersion,
@@ -42,6 +52,8 @@ export const useAppUpdater = () => {
           forceUpdate,
           releaseNotes,
         });
+      } else {
+        console.log('[Updater] Ya estás en la última versión');
       }
 
       setIsChecking(false);
