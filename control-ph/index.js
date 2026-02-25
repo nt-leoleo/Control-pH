@@ -894,20 +894,6 @@ async function processUser(userId, userData) {
       dosingCountToday: dosingCountToday + 1,
       lastProduct: product,
       lastDuration: duration,
-      autoCommandStatus: 'pending',
-      autoCommandMessage: blockInfo 
-        ? `Dosificando bloque ${blockInfo.currentBlock}/${blockInfo.totalBlocks}`
-        : `Dosificando ${product}`,
-    };
-    
-    // Si hay bloques, actualizar el contador
-    if (blockInfo) {
-      stateUpdate.currentBlock = blockInfo.currentBlock;
-      stateUpdate.totalBlocks = blockInfo.totalBlocks;
-    }
-    
-    await realtimeDb.ref(`users/${userId}/dosingState`).update(stateUpdate);
-      lastDuration: duration,
       lastPH: currentPH,
       lastDeviation: deviation,
       lastCommandId: commandId,
@@ -917,9 +903,19 @@ async function processUser(userId, userData) {
       autoCommandDuration: duration,
       autoCommandCreatedAt: commandCreatedAt,
       autoCommandUpdatedAt: commandCreatedAt,
-      autoCommandMessage: `Comando automatico creado: ${product} por ${duration}s`,
+      autoCommandMessage: blockInfo 
+        ? `Dosificando bloque ${blockInfo.currentBlock}/${blockInfo.totalBlocks}`
+        : `Comando automatico creado: ${product} por ${duration}s`,
       autoDosingActive: true,
-    });
+    };
+    
+    // Si hay bloques, actualizar el contador
+    if (blockInfo) {
+      stateUpdate.currentBlock = blockInfo.currentBlock;
+      stateUpdate.totalBlocks = blockInfo.totalBlocks;
+    }
+    
+    await realtimeDb.ref(`users/${userId}/dosingState`).update(stateUpdate);
     
     // Actualizar estado del sistema
     await updateSystemStatus(userId, {
