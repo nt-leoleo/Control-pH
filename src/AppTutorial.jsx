@@ -220,7 +220,7 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 const YOUTUBE_VIDEO_ID = 'PQjgO6SIOas';
 const YOUTUBE_START_SECONDS = 9 * 60 + 30;
-const YOUTUBE_TARGET_VOLUME = 12;
+const YOUTUBE_TARGET_VOLUME = 3;
 const YOUTUBE_FADE_IN_MS = 2200;
 const YOUTUBE_FADE_OUT_MS = 7000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
