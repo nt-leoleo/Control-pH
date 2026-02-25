@@ -218,24 +218,34 @@ const TOTAL_SECTIONS = STEP_LIST.filter((entry) => entry.number >= 1).length;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-// Escala de SI MAYOR completa: B, C#, D#, E, F#, G#, A# (solo octava 6)
-// Todas las notas están dentro de la escala mayor de B
-const B_MAJOR_SCALE_FREQUENCIES = [
-  987.77,  // B5
-  1108.73, // C#6
-  1244.51, // D#6
-  1318.51, // E6
-  1479.98, // F#6
-  1661.22, // G#6
-  1864.66, // A#6
-  1975.53, // B6
+// Patrones armónicos en SI MAYOR (octava 6)
+// Cada patrón es una secuencia de notas que suenan bien juntas
+const B_MAJOR_HARMONIC_PATTERNS = [
+  // Patrón 1: Tríada de B mayor (B, D#, F#)
+  [987.77, 1244.51, 1479.98],  // B5, D#6, F#6
+  
+  // Patrón 2: Pentatónica ascendente (B, C#, D#, F#, G#)
+  [987.77, 1108.73, 1244.51, 1479.98, 1661.22],  // B5, C#6, D#6, F#6, G#6
+  
+  // Patrón 3: Quinta y octava (B, F#, B)
+  [987.77, 1479.98, 1975.53],  // B5, F#6, B6
+  
+  // Patrón 4: Acorde de B mayor con séptima mayor (B, D#, F#, A#)
+  [987.77, 1244.51, 1479.98, 1864.66],  // B5, D#6, F#6, A#6
+  
+  // Patrón 5: Secuencia melódica (F#, G#, B, D#)
+  [1479.98, 1661.22, 1975.53, 1244.51],  // F#6, G#6, B6, D#6
 ];
 
 const playCelestialChime = () => {
   try {
     // Crear un nuevo contexto cada vez para permitir superposición
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const randomFrequency = B_MAJOR_SCALE_FREQUENCIES[Math.floor(Math.random() * B_MAJOR_SCALE_FREQUENCIES.length)];
+    
+    // Seleccionar un patrón aleatorio
+    const pattern = B_MAJOR_HARMONIC_PATTERNS[Math.floor(Math.random() * B_MAJOR_HARMONIC_PATTERNS.length)];
+    // Seleccionar una nota aleatoria del patrón
+    const randomFrequency = pattern[Math.floor(Math.random() * pattern.length)];
     
     // Oscilador principal
     const oscillator = audioContext.createOscillator();
