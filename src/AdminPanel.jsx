@@ -214,7 +214,7 @@ const AdminPanel = ({ onClose }) => {
                   value={adminConfig.maxDailyDoses}
                   onChange={(e) => handleConfigChange('maxDailyDoses', e.target.value)}
                   min="1"
-                  max="50"
+                  max="999"
                 />
                 <span className="field-unit">dosis/dia</span>
               </div>
@@ -225,13 +225,13 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.minWaitTimeBetweenDoses}
                   onChange={(e) => handleConfigChange('minWaitTimeBetweenDoses', e.target.value)}
-                  min="0.01"
+                  min="0.0002778"
                   max="24"
-                  step="0.01"
+                  step="0.0002778"
                 />
                 <span className="field-unit">horas</span>
                 <span className="field-help">
-                  Tiempo que espera el sistema despues de dosificar para que el quimico se mezcle con el agua.
+                  Tiempo que espera el sistema despues de dosificar para que el quimico se mezcle con el agua. (1 segundo = 0.0002778 horas)
                 </span>
               </div>
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const CURRENT_VERSION = '4.10.5';
+const CURRENT_VERSION = '4.10.6';
 const UPDATE_CHECK_KEY = 'lastUpdateCheck';
 const CHECK_INTERVAL = 1000 * 60 * 60; // 1 hora
 
