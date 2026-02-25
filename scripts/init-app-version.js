@@ -21,8 +21,8 @@ const db = getFirestore(app);
 async function initAppVersion() {
   try {
     const versionData = {
-      version: '4.9.0',
-      updateUrl: 'https://control-ph-web.vercel.app', // URL de tu app en Vercel
+      version: '4.9.1',
+      updateUrl: 'https://controlpileta.vercel.app',
       forceUpdate: false,
       releaseNotes: 'Versión inicial del sistema de actualizaciones automáticas',
       updatedAt: new Date().toISOString(),

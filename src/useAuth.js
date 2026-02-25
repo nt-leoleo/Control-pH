@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   signInWithPopup,
+  signInWithCredential,
   signOut,
   onAuthStateChanged,
   deleteUser,
-  reauthenticateWithPopup
+  reauthenticateWithPopup,
+  GoogleAuthProvider
 } from 'firebase/auth';
 import {
   arrayRemove,
@@ -20,6 +22,8 @@ import {
 } from 'firebase/firestore';
 import { ref, remove } from 'firebase/database';
 import { auth, googleProvider, db, database } from './firebase';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { Capacitor } from '@capacitor/core';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -60,10 +64,22 @@ export const useAuth = () => {
 
   const loginWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await createUserDocument(result.user);
-
-      return result.user;
+      // Si es app móvil (Capacitor), usar el plugin nativo
+      if (Capacitor.isNativePlatform()) {
+        const googleUser = await GoogleAuth.signIn();
+        
+        // Crear credencial de Firebase con el token de Google
+        const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+        const result = await signInWithCredential(auth, credential);
+        
+        await createUserDocument(result.user);
+        return result.user;
+      } else {
+        // Si es web, usar el popup tradicional
+        const result = await signInWithPopup(auth, googleProvider);
+        await createUserDocument(result.user);
+        return result.user;
+      }
     } catch (error) {
       console.error('Error login completo:', error);
       console.error('Error code:', error.code);
