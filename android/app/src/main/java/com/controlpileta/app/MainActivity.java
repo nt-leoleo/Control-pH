@@ -1,4 +1,4 @@
-package com.controlpileta.ph;
+package com.controlpileta.app;
 
 import com.getcapacitor.BridgeActivity;
 
