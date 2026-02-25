@@ -218,29 +218,36 @@ const TOTAL_SECTIONS = STEP_LIST.filter((entry) => entry.number >= 1).length;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-// Escala de RE MAYOR: D, E, F#, G, A, B, C#, D (octavas 4, 5, 6)
-const D_MAJOR_SCALE_FREQUENCIES = [
-  293.66, // D4
-  329.63, // E4
-  369.99, // F#4
-  392.00, // G4
-  440.00, // A4
+// Escala de SI MAYOR: B, C#, D#, E, F#, G#, A#, B (octavas 5, 6, 7)
+const B_MAJOR_SCALE_FREQUENCIES = [
   493.88, // B4
   554.37, // C#5
-  587.33, // D5
+  622.25, // D#5
   659.25, // E5
   739.99, // F#5
-  783.99, // G5
-  880.00, // A5
+  830.61, // G#5
+  932.33, // A#5
   987.77, // B5
   1108.73, // C#6
-  1174.66, // D6
+  1244.51, // D#6
+  1318.51, // E6
+  1479.98, // F#6
+  1661.22, // G#6
+  1864.66, // A#6
+  1975.53, // B6
+  2217.46, // C#7
+  2489.02, // D#7
+  2637.02, // E7
+  2959.96, // F#7
+  3322.44, // G#7
+  3729.31, // A#7
+  3951.07, // B7
 ];
 
 const playCelestialChime = () => {
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const randomFrequency = D_MAJOR_SCALE_FREQUENCIES[Math.floor(Math.random() * D_MAJOR_SCALE_FREQUENCIES.length)];
+    const randomFrequency = B_MAJOR_SCALE_FREQUENCIES[Math.floor(Math.random() * B_MAJOR_SCALE_FREQUENCIES.length)];
     
     // Oscilador principal
     const oscillator = audioContext.createOscillator();
