@@ -336,11 +336,10 @@ const playCelestialChime = () => {
   }
 };
 
-const YOUTUBE_VIDEO_ID = 'PQjgO6SIOas';
-const YOUTUBE_START_SECONDS = 9 * 60 + 30;
-const YOUTUBE_TARGET_VOLUME = 3;
-const YOUTUBE_FADE_IN_MS = 2200;
-const YOUTUBE_FADE_OUT_MS = 7000;
+const AUDIO_FILE_PATH = '/tutorial-ambient.mp3';
+const AUDIO_TARGET_VOLUME = 0.03; // 3% del volumen máximo
+const AUDIO_FADE_IN_MS = 2200;
+const AUDIO_FADE_OUT_MS = 7000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
 const TUTORIAL_CLOSE_FADE_MS = 320;
 const SMALL_TARGET_MAX_HEIGHT = 190;
@@ -372,39 +371,6 @@ const buildStepParts = (step) => {
     },
     ...step.parts,
   ];
-};
-
-const loadYouTubeApi = () => {
-  if (window.YT && window.YT.Player) {
-    return Promise.resolve(window.YT);
-  }
-
-  if (window.__controlPiletaYouTubeApiPromise) {
-    return window.__controlPiletaYouTubeApiPromise;
-  }
-
-  window.__controlPiletaYouTubeApiPromise = new Promise((resolve, reject) => {
-    const existingScript = document.querySelector('script[data-youtube-api="true"]');
-
-    const previousReady = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      if (typeof previousReady === 'function') {
-        previousReady();
-      }
-      resolve(window.YT);
-    };
-
-    if (!existingScript) {
-      const script = document.createElement('script');
-      script.src = 'https://www.youtube.com/iframe_api';
-      script.async = true;
-      script.dataset.youtubeApi = 'true';
-      script.onerror = () => reject(new Error('No se pudo cargar la API de YouTube'));
-      document.head.appendChild(script);
-    }
-  });
-
-  return window.__controlPiletaYouTubeApiPromise;
 };
 
 const getSpotlightRect = (element) => {
@@ -634,77 +600,40 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
     }
   }, [onDemoPhChange]);
 
-  const clearYoutubeVolumeInterval = useCallback(() => {
+  const clearAudioFadeInterval = useCallback(() => {
     if (youtubeVolumeIntervalRef.current) {
       window.clearInterval(youtubeVolumeIntervalRef.current);
       youtubeVolumeIntervalRef.current = null;
     }
   }, []);
 
-  const ensureYouTubePlayer = useCallback(async () => {
+  const ensureAudioPlayer = useCallback(() => {
     if (youtubePlayerRef.current) {
       return youtubePlayerRef.current;
     }
 
-    await loadYouTubeApi();
-
-    const host = document.getElementById('tutorial-youtube-audio-host');
-    if (!host) {
-      throw new Error('No se encontro el contenedor del audio de YouTube');
-    }
-
-    const player = await new Promise((resolve, reject) => {
-      const fallbackTimeout = window.setTimeout(() => {
-        reject(new Error('Timeout inicializando YouTube Player'));
-      }, 9000);
-
-      const instance = new window.YT.Player(host, {
-        height: '0',
-        width: '0',
-        videoId: YOUTUBE_VIDEO_ID,
-        playerVars: {
-          autoplay: 0,
-          controls: 0,
-          disablekb: 1,
-          rel: 0,
-          fs: 0,
-          modestbranding: 1,
-          iv_load_policy: 3,
-          start: YOUTUBE_START_SECONDS,
-          playsinline: 1,
-        },
-        events: {
-          onReady: () => {
-            window.clearTimeout(fallbackTimeout);
-            resolve(instance);
-          },
-          onError: () => {
-            window.clearTimeout(fallbackTimeout);
-            reject(new Error('YouTube devolvio un error al crear el reproductor'));
-          },
-        },
-      });
-    });
-
-    youtubePlayerRef.current = player;
-    return player;
+    const audio = new Audio(AUDIO_FILE_PATH);
+    audio.loop = true;
+    audio.volume = 0;
+    youtubePlayerRef.current = audio;
+    return audio;
   }, []);
 
-  const fadeYoutubeTo = useCallback(
+  const fadeAudioTo = useCallback(
     (targetVolume, durationMs, onComplete) => {
-      const player = youtubePlayerRef.current;
-      if (!player || typeof player.getVolume !== 'function') {
+      const audio = youtubePlayerRef.current;
+      if (!audio) {
         if (onComplete) onComplete();
         return;
       }
 
-      clearYoutubeVolumeInterval();
+      clearAudioFadeInterval();
 
-      const startVolume = Number(player.getVolume()) || 0;
+      const startVolume = audio.volume;
       const delta = targetVolume - startVolume;
 
-      if (Math.abs(delta) < 1 || durationMs <= 0) {
-        player.setVolume(clamp(targetVolume, 0, 100));
+      if (Math.abs(delta) < 0.01 || durationMs <= 0) {
+        audio.volume = clamp(targetVolume, 0, 1);
         if (onComplete) onComplete();
         return;
       }
@@ -716,117 +645,97 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
       youtubeVolumeIntervalRef.current = window.setInterval(() => {
         currentStep += 1;
         const progress = currentStep / totalSteps;
-        const nextVolume = clamp(Math.round(startVolume + delta * progress), 0, 100);
-        player.setVolume(nextVolume);
+        const nextVolume = clamp(startVolume + delta * progress, 0, 1);
+        audio.volume = nextVolume;
 
         if (currentStep >= totalSteps) {
-          clearYoutubeVolumeInterval();
-          player.setVolume(clamp(targetVolume, 0, 100));
+          clearAudioFadeInterval();
+          audio.volume = clamp(targetVolume, 0, 1);
           if (onComplete) onComplete();
         }
       }, stepMs);
     },
-    [clearYoutubeVolumeInterval]
+    [clearAudioFadeInterval]
   );
 
-  const startYoutubeAmbient = useCallback(async () => {
+  const startAudioAmbient = useCallback(async () => {
     try {
-      const player = await ensureYouTubePlayer();
-      clearYoutubeVolumeInterval();
+      const audio = ensureAudioPlayer();
+      clearAudioFadeInterval();
 
-      player.seekTo(YOUTUBE_START_SECONDS, true);
-      player.setVolume(0);
-      if (!isAudioMutedRef.current && typeof player.unMute === 'function') {
-        player.unMute();
+      audio.volume = 0;
+      if (!isAudioMutedRef.current) {
+        audio.muted = false;
       }
-      player.playVideo();
 
-      await wait(600);
-      const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
-
-      if (state !== 1 && state !== 3) {
-        setNeedsAudioInteraction(true);
-        return false;
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        await playPromise;
       }
+
+      await wait(200);
 
       setNeedsAudioInteraction(false);
       if (isAudioMutedRef.current) {
-        if (typeof player.mute === 'function') {
-          player.mute();
-        }
-        player.setVolume(0);
+        audio.muted = true;
+        audio.volume = 0;
       } else {
-        if (typeof player.unMute === 'function') {
-          player.unMute();
-        }
-        fadeYoutubeTo(YOUTUBE_TARGET_VOLUME, YOUTUBE_FADE_IN_MS);
+        audio.muted = false;
+        fadeAudioTo(AUDIO_TARGET_VOLUME, AUDIO_FADE_IN_MS);
       }
       return true;
     } catch (error) {
-      console.warn('[Tutorial] No se pudo iniciar audio de YouTube:', error);
+      console.warn('[Tutorial] No se pudo iniciar audio:', error);
       setNeedsAudioInteraction(true);
       return false;
     }
-  }, [clearYoutubeVolumeInterval, ensureYouTubePlayer, fadeYoutubeTo]);
+  }, [clearAudioFadeInterval, ensureAudioPlayer, fadeAudioTo]);
 
-  const stopYoutubeAmbient = useCallback(
+  const stopAudioAmbient = useCallback(
     (withFade) => {
-      const player = youtubePlayerRef.current;
-      if (!player) return;
+      const audio = youtubePlayerRef.current;
+      if (!audio) return;
 
       setNeedsAudioInteraction(false);
 
       if (withFade) {
-        fadeYoutubeTo(0, YOUTUBE_FADE_OUT_MS, () => {
-          if (typeof player.pauseVideo === 'function') {
-            player.pauseVideo();
-          }
+        fadeAudioTo(0, AUDIO_FADE_OUT_MS, () => {
+          audio.pause();
         });
         return;
       }
 
-      clearYoutubeVolumeInterval();
-      if (typeof player.setVolume === 'function') {
-        player.setVolume(0);
-      }
-      if (typeof player.pauseVideo === 'function') {
-        player.pauseVideo();
-      }
+      clearAudioFadeInterval();
+      audio.volume = 0;
+      audio.pause();
     },
-    [clearYoutubeVolumeInterval, fadeYoutubeTo]
+    [clearAudioFadeInterval, fadeAudioTo]
   );
 
   const toggleAudioMute = useCallback(() => {
     setIsAudioMuted((previous) => {
       const next = !previous;
-      const player = youtubePlayerRef.current;
+      const audio = youtubePlayerRef.current;
 
-      if (!player) {
+      if (!audio) {
         return next;
       }
 
-      clearYoutubeVolumeInterval();
+      clearAudioFadeInterval();
 
       if (next) {
-        if (typeof player.mute === 'function') {
-          player.mute();
-        }
-        if (typeof player.setVolume === 'function') {
-          player.setVolume(0);
-        }
+        audio.muted = true;
+        audio.volume = 0;
       } else {
-        if (typeof player.unMute === 'function') {
-          player.unMute();
-        }
-        if (typeof player.playVideo === 'function') {
-          player.playVideo();
-        }
-        fadeYoutubeTo(YOUTUBE_TARGET_VOLUME, 380);
+        audio.muted = false;
+        audio.play().catch(() => {});
+        fadeAudioTo(AUDIO_TARGET_VOLUME, 380);
       }
 
       return next;
     });
-  }, [clearYoutubeVolumeInterval, fadeYoutubeTo]);
+  }, [clearAudioFadeInterval, fadeAudioTo]);
 
   const handleCloseWithFade = useCallback(
     (reason) => {
@@ -836,7 +745,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
 
       setIsClosing(true);
       setShowTrackBadge(false);
-      stopYoutubeAmbient(true);
+      stopAudioAmbient(true);
 
       if (closeTimeoutRef.current) {
         window.clearTimeout(closeTimeoutRef.current);
@@ -846,7 +755,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
         onClose(reason);
       }, TUTORIAL_CLOSE_FADE_MS);
     },
-    [isClosing, onClose, stopYoutubeAmbient]
+    [isClosing, onClose, stopAudioAmbient]
   );
 
   const findTargetElement = useCallback(() => {
@@ -1043,19 +952,19 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
 
   useEffect(() => {
     if (isOpen) {
-      startYoutubeAmbient();
+      startAudioAmbient();
       return undefined;
     }
 
-    stopYoutubeAmbient(true);
+    stopAudioAmbient(true);
     return undefined;
-  }, [isOpen, startYoutubeAmbient, stopYoutubeAmbient]);
+  }, [isOpen, startAudioAmbient, stopAudioAmbient]);
 
   useEffect(() => {
     if (!isOpen || !needsAudioInteraction) return undefined;
 
     const unlockAudio = () => {
-      startYoutubeAmbient();
+      startAudioAmbient();
     };
 
     window.addEventListener('pointerdown', unlockAudio);
@@ -1067,7 +976,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
       window.removeEventListener('keydown', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
     };
-  }, [isOpen, needsAudioInteraction, startYoutubeAmbient]);
+  }, [isOpen, needsAudioInteraction, startAudioAmbient]);
 
   useEffect(
     () => () => {
@@ -1075,17 +984,17 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
         window.clearTimeout(closeTimeoutRef.current);
       }
       clearDemoPhCycle();
-      stopYoutubeAmbient(false);
-      clearYoutubeVolumeInterval();
+      stopAudioAmbient(false);
+      clearAudioFadeInterval();
       if (trackBadgeTimeoutRef.current) {
         window.clearTimeout(trackBadgeTimeoutRef.current);
       }
-      if (youtubePlayerRef.current && typeof youtubePlayerRef.current.destroy === 'function') {
-        youtubePlayerRef.current.destroy();
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.pause();
+        youtubePlayerRef.current = null;
       }
-      youtubePlayerRef.current = null;
     },
-    [clearDemoPhCycle, clearYoutubeVolumeInterval, stopYoutubeAmbient]
+    [clearDemoPhCycle, clearAudioFadeInterval, stopAudioAmbient]
   );
 
   useEffect(() => {
