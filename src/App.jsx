@@ -16,8 +16,10 @@ import DeviceRegistration from './DeviceRegistration';
 import AppTutorial from './AppTutorial';
 import InfoHint from './InfoHint';
 import ConfirmDialog from './ConfirmDialog';
+import UpdateNotification from './UpdateNotification';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
+import { useAppUpdater } from './useAppUpdater';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
 import './App.css';
 
@@ -39,6 +41,7 @@ export default function App() {
     ensureDeviceConfigured
   } = useContext(PHContext);
   const { user, loading, userConfig, updateUserConfig } = useAuth();
+  const { updateAvailable, updateInfo, applyUpdate, dismissUpdate } = useAppUpdater();
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(true);
@@ -466,6 +469,14 @@ export default function App() {
 
   return (
     <>
+      {updateAvailable && (
+        <UpdateNotification
+          updateInfo={updateInfo}
+          onUpdate={applyUpdate}
+          onDismiss={dismissUpdate}
+        />
+      )}
+
       {!showTutorial && (
         <Header
           onConfigClick={() => {
