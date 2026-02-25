@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   signInWithPopup,
-  signInWithCredential,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   deleteUser,
-  reauthenticateWithPopup,
-  GoogleAuthProvider
+  reauthenticateWithPopup
 } from 'firebase/auth';
 import {
   arrayRemove,
@@ -22,7 +22,6 @@ import {
 } from 'firebase/firestore';
 import { ref, remove } from 'firebase/database';
 import { auth, googleProvider, db, database } from './firebase';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 
 export const useAuth = () => {
