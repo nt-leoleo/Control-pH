@@ -35,9 +35,10 @@ const Onboarding = () => {
   const [idealPH, setIdealPH] = useState('7.4');
   const [tolerance, setTolerance] = useState('0.3');
   const [deviceId, setDeviceId] = useState('');
-  const [deviceName, setDeviceName] = useState('Piscina principal');
+  const [deviceName, setDeviceName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showManualInput, setShowManualInput] = useState(false);
 
   const summaryRange = useMemo(() => {
     const center = parseFloat(idealPH) || 7.4;
@@ -205,6 +206,7 @@ const Onboarding = () => {
     if (normalized && DEVICE_ID_REGEX.test(normalized)) {
       setDeviceId(normalized);
       setShowQRScanner(false);
+      setShowManualInput(false);
       setError({ type: 'success', message: 'Device ID escaneado correctamente' });
     } else {
       setError({ type: 'error', message: 'El código QR no contiene un Device ID válido' });
@@ -344,6 +346,18 @@ const Onboarding = () => {
             <div className="onboarding-device-box">
               <h3 className="onboarding-device-title">Conecta tu dispositivo</h3>
               
+              <label className="onboarding-label" htmlFor="deviceNameInput">
+                Nombre del dispositivo
+              </label>
+              <input
+                id="deviceNameInput"
+                className="onboarding-input"
+                type="text"
+                value={deviceName}
+                onChange={(e) => setDeviceName(e.target.value)}
+                placeholder="Crea un nombre para tu piscina"
+              />
+
               <div className="onboarding-device-instructions">
                 <p className="onboarding-instruction-main">
                   Escanea el código QR
@@ -364,31 +378,31 @@ const Onboarding = () => {
                   <span>O</span>
                 </div>
 
-                <p className="onboarding-instruction-main">
-                  Pon el código ID manualmente
-                </p>
+                <button
+                  type="button"
+                  className="onboarding-manual-btn"
+                  onClick={() => setShowManualInput(!showManualInput)}
+                >
+                  {showManualInput ? '✕ Cancelar ingreso manual' : 'Pon el código ID manualmente'}
+                </button>
               </div>
 
-              <input
-                id="deviceIdInput"
-                className="onboarding-input"
-                type="text"
-                value={deviceId}
-                onChange={(e) => setDeviceId(e.target.value)}
-                placeholder="Ej: A1B2C3D4E5F6"
-              />
-
-              <label className="onboarding-label" htmlFor="deviceNameInput" style={{ marginTop: '1rem' }}>
-                Nombre del dispositivo
-              </label>
-              <input
-                id="deviceNameInput"
-                className="onboarding-input"
-                type="text"
-                value={deviceName}
-                onChange={(e) => setDeviceName(e.target.value)}
-                placeholder="Ej: Piscina principal"
-              />
+              {showManualInput && (
+                <div className="onboarding-manual-input-section">
+                  <label className="onboarding-label" htmlFor="deviceIdInput">
+                    Código ID del dispositivo
+                  </label>
+                  <input
+                    id="deviceIdInput"
+                    className="onboarding-input"
+                    type="text"
+                    value={deviceId}
+                    onChange={(e) => setDeviceId(e.target.value)}
+                    placeholder="Ej: A1B2C3D4E5F6"
+                    autoFocus
+                  />
+                </div>
+              )}
 
               <button type="button" className="onboarding-skip-link" onClick={handleConfigureLater} disabled={isSaving}>
                 Quiero configurar despues
