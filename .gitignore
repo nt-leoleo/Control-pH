@@ -31,3 +31,6 @@ dist-ssr
 # APK files (too large for git)
 *.apk
 public/*.apk
+
+# Firebase Admin SDK private key
+scripts/firebase-admin-key.json
