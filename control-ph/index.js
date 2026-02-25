@@ -609,7 +609,7 @@ async function processUser(userId, userData) {
     const MAX_DAILY_DOSES = toNumberOr(adminConfig.maxDailyDoses, 10);
     const MIN_PH = toNumberOr(adminConfig.minPH, 0.0);
     const MAX_PH = toNumberOr(adminConfig.maxPH, 14.0);
-    const MAX_PH_CHANGE = toNumberOr(adminConfig.maxPHChange, 1.0);
+    const MAX_PH_CHANGE = toNumberOr(adminConfig.maxPHChange, 2.0);
     const CORRECTION_FACTOR = toNumberOr(adminConfig.correctionFactor, 0.8);
     
     const targetPH = userData.phTolerance;

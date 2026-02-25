@@ -15,7 +15,7 @@ const DEFAULT_ADMIN_CONFIG = {
   correctionFactor: 0.8,
   minPH: 0.0,
   maxPH: 14.0,
-  maxPHChange: 1.0,
+  maxPHChange: 2.0,
   pumpFlowRate: 60,
 };
 
