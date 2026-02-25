@@ -20,7 +20,8 @@ const Onboarding = () => {
     setAcidType,
     setPhTolerance,
     setPhToleranceRange,
-    setError
+    setError,
+    saveConfigToFirebase
   } = useContext(PHContext);
   const { user } = useAuth();
 
@@ -127,12 +128,33 @@ const Onboarding = () => {
         await registerDevice();
       }
 
+      // Guardar configuración básica
       await setPoolVolume(parseFloat(poolVol));
       await setAlkalinity(parseFloat(alkLevel));
       await setChlorineType(chlorType);
       await setAcidType(acdType);
       await setPhTolerance(parseFloat(idealPH));
       await setPhToleranceRange(parseFloat(tolerance));
+
+      // Crear la primera piscina en el gestor de piscinas
+      const firstPool = {
+        id: '1',
+        name: deviceName || 'Piscina principal',
+        volume: parseFloat(poolVol),
+        alkalinity: parseFloat(alkLevel),
+        chlorineType: chlorType,
+        acidType: acdType,
+        location: '',
+        notes: 'Configurada durante el onboarding',
+        createdAt: new Date().toISOString()
+      };
+
+      // Guardar la piscina y marcarla como activa
+      await saveConfigToFirebase({
+        pools: [firstPool],
+        currentPoolId: '1'
+      });
+
       await setIsConfigured(true);
     } catch (error) {
       setError({ type: 'error', message: `No se pudo guardar la configuracion: ${error.message}` });
