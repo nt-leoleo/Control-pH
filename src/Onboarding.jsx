@@ -7,6 +7,7 @@ import {
   persistUserDeviceLink,
   syncSharedDeviceLink
 } from './deviceLinking';
+import QRScanner from './QRScanner';
 import './Onboarding.css';
 
 const TOTAL_STEPS = 3;
@@ -35,6 +36,7 @@ const Onboarding = () => {
   const [deviceId, setDeviceId] = useState('');
   const [deviceName, setDeviceName] = useState('Piscina principal');
   const [isSaving, setIsSaving] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   const summaryRange = useMemo(() => {
     const center = parseFloat(idealPH) || 7.4;
@@ -188,6 +190,18 @@ const Onboarding = () => {
     }
   };
 
+  const handleQRScan = (scannedText) => {
+    const normalized = normalizeDeviceId(scannedText);
+    if (normalized && DEVICE_ID_REGEX.test(normalized)) {
+      setDeviceId(normalized);
+      setShowQRScanner(false);
+      setError({ type: 'success', message: 'Device ID escaneado correctamente' });
+    } else {
+      setError({ type: 'error', message: 'El código QR no contiene un Device ID válido' });
+      setShowQRScanner(false);
+    }
+  };
+
   return (
     <div className="onboarding-container">
       <div className="onboarding-card">
@@ -303,14 +317,24 @@ const Onboarding = () => {
               <label className="onboarding-label" htmlFor="deviceIdInput">
                 Device ID (obligatorio)
               </label>
-              <input
-                id="deviceIdInput"
-                className="onboarding-input"
-                type="text"
-                value={deviceId}
-                onChange={(e) => setDeviceId(e.target.value)}
-                placeholder="Ej: A1B2C3D4E5F6"
-              />
+              <div className="onboarding-device-input-group">
+                <input
+                  id="deviceIdInput"
+                  className="onboarding-input"
+                  type="text"
+                  value={deviceId}
+                  onChange={(e) => setDeviceId(e.target.value)}
+                  placeholder="Ej: A1B2C3D4E5F6"
+                />
+                <button
+                  type="button"
+                  className="onboarding-qr-btn"
+                  onClick={() => setShowQRScanner(true)}
+                  title="Escanear código QR"
+                >
+                  📷 Escanear QR
+                </button>
+              </div>
 
               <label className="onboarding-label" htmlFor="deviceNameInput">
                 Nombre del dispositivo
@@ -348,6 +372,13 @@ const Onboarding = () => {
           </div>
         </footer>
       </div>
+
+      {showQRScanner && (
+        <QRScanner
+          onScan={handleQRScan}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </div>
   );
 };
