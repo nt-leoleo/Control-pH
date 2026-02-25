@@ -218,6 +218,81 @@ const TOTAL_SECTIONS = STEP_LIST.filter((entry) => entry.number >= 1).length;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+// Escala de RE MAYOR: D, E, F#, G, A, B, C#, D (octavas 4, 5, 6)
+const D_MAJOR_SCALE_FREQUENCIES = [
+  293.66, // D4
+  329.63, // E4
+  369.99, // F#4
+  392.00, // G4
+  440.00, // A4
+  493.88, // B4
+  554.37, // C#5
+  587.33, // D5
+  659.25, // E5
+  739.99, // F#5
+  783.99, // G5
+  880.00, // A5
+  987.77, // B5
+  1108.73, // C#6
+  1174.66, // D6
+];
+
+const playCelestialChime = () => {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const randomFrequency = D_MAJOR_SCALE_FREQUENCIES[Math.floor(Math.random() * D_MAJOR_SCALE_FREQUENCIES.length)];
+    
+    // Oscilador principal
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(randomFrequency, audioContext.currentTime);
+    
+    // Ganancia para envelope
+    const gainNode = audioContext.createGain();
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 2.5);
+    
+    // Convolver para reverb celestial (simulado con delay)
+    const delayNode = audioContext.createDelay();
+    delayNode.delayTime.setValueAtTime(0.08, audioContext.currentTime);
+    
+    const feedbackGain = audioContext.createGain();
+    feedbackGain.gain.setValueAtTime(0.4, audioContext.currentTime);
+    
+    const reverbGain = audioContext.createGain();
+    reverbGain.gain.setValueAtTime(0.6, audioContext.currentTime);
+    
+    // Filtro para suavizar
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(3000, audioContext.currentTime);
+    filter.Q.setValueAtTime(1, audioContext.currentTime);
+    
+    // Conexiones
+    oscillator.connect(gainNode);
+    gainNode.connect(filter);
+    filter.connect(audioContext.destination);
+    
+    // Cadena de reverb
+    filter.connect(delayNode);
+    delayNode.connect(feedbackGain);
+    feedbackGain.connect(delayNode);
+    delayNode.connect(reverbGain);
+    reverbGain.connect(audioContext.destination);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 2.5);
+    
+    // Limpiar después
+    setTimeout(() => {
+      audioContext.close();
+    }, 3000);
+  } catch (error) {
+    console.warn('[Tutorial] No se pudo reproducir sonido:', error);
+  }
+};
+
 const YOUTUBE_VIDEO_ID = 'PQjgO6SIOas';
 const YOUTUBE_START_SECONDS = 9 * 60 + 30;
 const YOUTUBE_TARGET_VOLUME = 3;
@@ -1297,7 +1372,10 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
           <button
             type="button"
             className="tutorial-btn tutorial-btn--ghost"
-            onClick={() => handleCloseWithFade('skipped')}
+            onClick={() => {
+              playCelestialChime();
+              handleCloseWithFade('skipped');
+            }}
           >
             Omitir
           </button>
@@ -1307,6 +1385,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
               type="button"
               className="tutorial-btn tutorial-btn--ghost"
               onClick={() => {
+                playCelestialChime();
                 if (!canGoBack || isPreparing) {
                   return;
                 }
@@ -1330,6 +1409,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
               type="button"
               className="tutorial-btn tutorial-btn--primary"
               onClick={() => {
+                playCelestialChime();
                 if (isPreparing) {
                   return;
                 }
