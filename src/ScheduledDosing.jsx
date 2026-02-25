@@ -121,7 +121,7 @@ const ScheduledDosing = () => {
         <InfoHint
           size="md"
           title="¿Cuándo puede trabajar el sistema automático?"
-          text="Elegí en qué horarios querés que el sistema corrija el pH solo. Por ejemplo: solo de día, o solo cuando estás en casa. Si no configurás nada, el sistema trabaja todo el día."
+          text="Elige en qué horarios quieres que el sistema corrija el pH solo. Por ejemplo: solo de día, o solo cuando estás en casa. Si no configuras nada, el sistema trabaja todo el día."
         />
       </div>
 
@@ -131,7 +131,7 @@ const ScheduledDosing = () => {
             <p>No hay horarios configurados</p>
             <p className="no-schedules-hint">
               El sistema automático puede trabajar todo el día.
-              Si querés que solo trabaje en ciertos horarios, agregá uno acá.
+              Si quieres que solo trabaje en ciertos horarios, agrega uno aquí.
             </p>
           </div>
         )}
@@ -261,8 +261,8 @@ const ScheduledDosing = () => {
 
       <div className="schedule-info-box">
         <p className="info-text">
-          <strong>Recordá:</strong> El sistema automático solo trabaja en estos horarios.
-          Vos podés corregir manualmente cuando quieras, en cualquier momento.
+          <strong>Recuerda:</strong> El sistema automático solo trabaja en estos horarios.
+          Tú puedes corregir manualmente cuando quieras, en cualquier momento.
         </p>
       </div>
     </div>
