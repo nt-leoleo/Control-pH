@@ -45,6 +45,7 @@ export default function App() {
   const [isSendingEmergencyStop, setIsSendingEmergencyStop] = useState(false);
   const [showDeviceRegistrationModal, setShowDeviceRegistrationModal] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showHeaderDuringTutorial, setShowHeaderDuringTutorial] = useState(false);
   const [tutorialCheckedForUser, setTutorialCheckedForUser] = useState(false);
   const [tutorialDemoPh, setTutorialDemoPh] = useState(null);
   const [showEmergencyStopConfirm, setShowEmergencyStopConfirm] = useState(false);
@@ -474,6 +475,15 @@ export default function App() {
         />
       )}
 
+      {showTutorial && showHeaderDuringTutorial && (
+        <Header
+          onConfigClick={() => {
+            setCurrentView('settings');
+            window.location.hash = 'settings';
+          }}
+        />
+      )}
+
       <main className="fade-in app-main" data-tutorial="dashboard-root">
         <div className="dashboard-stack">
           <ShowpH phValue={displayedPh} />
@@ -751,8 +761,10 @@ export default function App() {
       <AppTutorial
         isOpen={showTutorial}
         onDemoPhChange={setTutorialDemoPh}
+        onHeaderVisibilityChange={setShowHeaderDuringTutorial}
         onClose={(reason) => {
           setTutorialDemoPh(null);
+          setShowHeaderDuringTutorial(false);
           setShowTutorial(false);
           if (reason === 'completed' || reason === 'skipped') {
             markTutorialAsSeen();

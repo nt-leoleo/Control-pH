@@ -5,6 +5,7 @@ import AdminPanel from './AdminPanel';
 import DeviceRegistration from './DeviceRegistration';
 import ErrorNotification from './ErrorNotification';
 import ConfirmDialog from './ConfirmDialog';
+import ScheduledDosing from './ScheduledDosing';
 import { useAuth } from './useAuth';
 import './SettingsPage.css';
 
@@ -66,6 +67,13 @@ const UiIcon = ({ name, size = 18, className = '' }) => {
         <svg {...props}>
           <circle cx="12" cy="8" r="3" />
           <path d="M6.5 20a5.5 5.5 0 0 1 11 0" />
+        </svg>
+      );
+    case 'clock':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 6v6l4 2" />
         </svg>
       );
     case 'esp32':
@@ -352,6 +360,15 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     setShowTrackingModal(true);
   }, []);
 
+  const handleReplayTutorial = useCallback(() => {
+    if (typeof window.startControlPiletaTutorial === 'function') {
+      window.startControlPiletaTutorial();
+      return;
+    }
+
+    notify('warning', 'No se pudo iniciar el tutorial desde esta pantalla.');
+  }, [notify]);
+
   const handlePlaceholderAction = (actionName) => {
     notify('info', `${actionName} estara disponible en la siguiente version.`);
   };
@@ -547,6 +564,16 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </div>
         </div>
 
+        {/* Sección de Horarios Programados */}
+        <div className="settings-section scale-in">
+          <h3 className="settings-heading">
+            <UiIcon name="clock" className="heading-icon" />
+            <span>Ventanas de Dosificación Automática</span>
+          </h3>
+          
+          <ScheduledDosing />
+        </div>
+
                 <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="esp32" className="heading-icon" />
@@ -681,6 +708,15 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </h3>
           
           <div className="action-buttons">
+            <button
+              className="action-btn btn-secondary"
+              onClick={handleReplayTutorial}
+            >
+              <span className="action-icon">
+                <UiIcon name="info" size={16} />
+              </span>
+              Volver a ver el tutorial
+            </button>
             <button 
               className="action-btn btn-secondary"
               onClick={handleTestConnection}

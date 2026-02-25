@@ -618,6 +618,46 @@ async function processUser(userId, userData) {
     logger.info(`📊 Config: pH objetivo ${targetPH} ±${tolerance}`);
     logger.info(`⚙️ Admin Config: Min wait ${minWaitHours}h, Max doses ${MAX_DAILY_DOSES}/día`);
     
+    // Verificar ventanas horarias de dosificación automática
+    const autoDosingWindows = userData.autoDosingWindows || [];
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const currentDay = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][now.getDay()];
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    // Si hay ventanas configuradas, verificar que estemos dentro de una
+    if (Array.isArray(autoDosingWindows) && autoDosingWindows.length > 0) {
+      const activeWindows = autoDosingWindows.filter(w => w.enabled);
+      
+      if (activeWindows.length > 0) {
+        const isWithinWindow = activeWindows.some(window => {
+          // Verificar día
+          if (!Array.isArray(window.days) || !window.days.includes(currentDay)) {
+            return false;
+          }
+          
+          // Verificar hora
+          const [startH, startM] = (window.startTime || '00:00').split(':').map(Number);
+          const [endH, endM] = (window.endTime || '23:59').split(':').map(Number);
+          const startMinutes = startH * 60 + startM;
+          const endMinutes = endH * 60 + endM;
+          
+          return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+        });
+        
+        if (!isWithinWindow) {
+          logger.info(`⏰ Fuera de ventana horaria. Hora actual: ${currentTime}, Día: ${currentDay}`);
+          await setAutoState({
+            autoCommandStatus: 'outside_window',
+            autoCommandMessage: `Fuera de ventana horaria (${currentTime})`,
+          });
+          return;
+        }
+        
+        logger.info(`✅ Dentro de ventana horaria permitida`);
+      }
+    }
+    
     // 1. Leer datos del sensor desde Firebase (enviados por Arduino)
     const sensorDataRef = realtimeDb.ref(`users/${userId}/sensorData`);
     const sensorDataSnapshot = await sensorDataRef.once('value');
