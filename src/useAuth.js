@@ -168,7 +168,6 @@ export const useAuth = () => {
           autoDosingEnabled: true,
           notifications: true,
           esp32IP: '192.168.100.134',
-          thingSpeakChannel: '3249157',
           isConfigured: false,
           tutorialCompleted: false,
           createdAt: new Date(),
