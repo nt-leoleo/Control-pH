@@ -207,7 +207,7 @@ const STEP_LIST = [
     title: 'Configuracion de usuario',
     description:
       'Desde Ajustes podes configurar objetivo y tolerancia de pH, modos, ESP32, WiFi y gestion de piscinas.',
-    selector: '[data-tutorial="dashboard-root"]',
+    selector: '[data-tutorial="open-settings"]',
     scrollTop: true,
   },
 ];
@@ -307,7 +307,27 @@ const getSpotlightRect = (element) => {
   };
 };
 
-const getCardPlacement = (targetRect, cardWidth, cardHeight) => {
+const resolveCardAnchor = (targetRect, cardHeight, margin = 10) => {
+  if (!targetRect) {
+    return 'bottom';
+  }
+
+  const viewportHeight = window.innerHeight;
+  const availableTop = Math.max(0, targetRect.top - margin);
+  const availableBottom = Math.max(0, viewportHeight - (targetRect.top + targetRect.height) - margin);
+  const requiredSpace = cardHeight + 14;
+
+  if (availableBottom >= requiredSpace) {
+    return 'bottom';
+  }
+  if (availableTop >= requiredSpace) {
+    return 'top';
+  }
+
+  return availableBottom >= availableTop ? 'bottom' : 'top';
+};
+
+const getCardPlacement = (targetRect, cardWidth, cardHeight, anchorOverride = null) => {
   const margin = 10;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -315,15 +335,17 @@ const getCardPlacement = (targetRect, cardWidth, cardHeight) => {
 
   if (!targetRect) {
     return {
+      anchor: 'bottom',
       top: clamp(viewportHeight - cardHeight - margin, margin, viewportHeight - cardHeight - margin),
       left: centeredLeft,
     };
   }
 
-  const targetCenterY = targetRect.top + targetRect.height / 2;
-  const shouldPinToTop = targetCenterY > viewportHeight / 2;
+  const resolvedAnchor = anchorOverride || resolveCardAnchor(targetRect, cardHeight, margin);
+  const shouldPinToTop = resolvedAnchor === 'top';
 
   return {
+    anchor: resolvedAnchor,
     top: shouldPinToTop ? margin : clamp(viewportHeight - cardHeight - margin, margin, viewportHeight - cardHeight - margin),
     left: centeredLeft,
   };
@@ -407,7 +429,7 @@ const isSmallTutorialTarget = (element) => {
   return rect.height <= SMALL_TARGET_MAX_HEIGHT || ratio <= SMALL_TARGET_MAX_VIEWPORT_RATIO;
 };
 
-const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
+const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange }) => {
   const { dosingMode, setDosingMode, phTolerance, phToleranceRange } = useContext(PHContext);
   const cardRef = useRef(null);
   const youtubePlayerRef = useRef(null);
@@ -417,6 +439,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   const closeTimeoutRef = useRef(null);
   const isAudioMutedRef = useRef(false);
   const isProgrammaticScrollRef = useRef(false);
+  const cardAnchorRef = useRef(null);
   const lockedWindowScrollRef = useRef({ x: 0, y: 0 });
   const lockedElementScrollRef = useRef(new WeakMap());
   const scrollableElementsRef = useRef([]);
@@ -764,7 +787,16 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
     }
 
     const cardRect = cardRef.current.getBoundingClientRect();
-    const nextPosition = getCardPlacement(spotlightRect, cardRect.width, cardRect.height);
+    const nextPosition = getCardPlacement(
+      spotlightRect,
+      cardRect.width,
+      cardRect.height,
+      cardAnchorRef.current
+    );
+
+    if (!cardAnchorRef.current) {
+      cardAnchorRef.current = nextPosition.anchor;
+    }
 
     setCardPosition((previous) => {
       if (
@@ -781,14 +813,40 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange }) => {
   }, [isOpen, spotlightRect]);
 
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    cardAnchorRef.current = null;
+  }, [isOpen, stepIndex, partIndex]);
+
+  useEffect(() => {
     if (!isOpen) return;
     setIsClosing(false);
     setIsAudioMuted(false);
+    cardAnchorRef.current = null;
     setStepIndex(TUTORIAL_START_INDEX);
     setPartIndex(0);
     setCardPosition(null);
     setConnectorPoints(null);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!onHeaderVisibilityChange) {
+      return undefined;
+    }
+
+    if (!isOpen) {
+      onHeaderVisibilityChange(false);
+      return undefined;
+    }
+
+    onHeaderVisibilityChange(step?.number === 8);
+
+    return () => {
+      onHeaderVisibilityChange(false);
+    };
+  }, [isOpen, onHeaderVisibilityChange, step?.number]);
 
   useEffect(() => {
     const preventPointerScroll = (event) => {
