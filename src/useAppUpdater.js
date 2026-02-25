@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const CURRENT_VERSION = '4.11.5';
-const UPDATE_CHECK_KEY = 'lastUpdateCheck';
-const CHECK_INTERVAL = 1000 * 60 * 60; // 1 hora
+const CURRENT_VERSION = '4.11.6';
 
 export const useAppUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -20,15 +18,6 @@ export const useAppUpdater = () => {
 
       setIsChecking(true);
 
-      // Verificar si ya se chequeó recientemente
-      const lastCheck = localStorage.getItem(UPDATE_CHECK_KEY);
-      const now = Date.now();
-      
-      if (lastCheck && now - parseInt(lastCheck) < CHECK_INTERVAL) {
-        setIsChecking(false);
-        return;
-      }
-
       // Obtener info de actualización desde Firebase
       const updateDoc = await getDoc(doc(db, 'appConfig', 'version'));
       
@@ -43,9 +32,6 @@ export const useAppUpdater = () => {
       const updateUrl = data.updateUrl;
       const forceUpdate = data.forceUpdate || false;
       const releaseNotes = data.releaseNotes || '';
-
-      // Guardar timestamp del último chequeo
-      localStorage.setItem(UPDATE_CHECK_KEY, now.toString());
 
       // Comparar versiones
       if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
