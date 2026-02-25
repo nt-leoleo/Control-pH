@@ -199,6 +199,7 @@ const ScheduledDosing = () => {
                 type="time"
                 value={formData.startTime}
                 onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                step="3600"
               />
             </div>
 
@@ -208,6 +209,7 @@ const ScheduledDosing = () => {
                 type="time"
                 value={formData.endTime}
                 onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                step="3600"
               />
             </div>
           </div>
