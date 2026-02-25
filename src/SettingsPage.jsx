@@ -509,6 +509,16 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               </span>
             </div>
           </div>
+
+          <button
+            className="action-btn btn-secondary tutorial-btn"
+            onClick={handleReplayTutorial}
+          >
+            <span className="action-icon">
+              <UiIcon name="info" size={16} />
+            </span>
+            Volver a ver el tutorial
+          </button>
         </div>
 
                 <div className="settings-section scale-in">
