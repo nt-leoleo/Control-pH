@@ -218,16 +218,9 @@ const TOTAL_SECTIONS = STEP_LIST.filter((entry) => entry.number >= 1).length;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-// Escala de SI MAYOR completa: B, C#, D#, E, F#, G#, A# (octavas 5 y 6)
+// Escala de SI MAYOR completa: B, C#, D#, E, F#, G#, A# (solo octava 6)
 // Todas las notas están dentro de la escala mayor de B
 const B_MAJOR_SCALE_FREQUENCIES = [
-  493.88,  // B4
-  554.37,  // C#5
-  622.25,  // D#5
-  659.25,  // E5
-  739.99,  // F#5
-  830.61,  // G#5
-  932.33,  // A#5
   987.77,  // B5
   1108.73, // C#6
   1244.51, // D#6
@@ -252,7 +245,7 @@ const playCelestialChime = () => {
     // Ganancia para envelope
     const gainNode = audioContext.createGain();
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.18, audioContext.currentTime + 0.02);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.02);
     gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 2.5);
     
     // Eco con más repeticiones (mayor feedback)
@@ -265,11 +258,11 @@ const playCelestialChime = () => {
     const echoFeedback = audioContext.createGain();
     echoFeedback.gain.setValueAtTime(0.55, audioContext.currentTime);
     
-    // Filtro para suavizar
+    // Filtro pasa-bajos más agresivo para sonido opaco
     const filter = audioContext.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(2800, audioContext.currentTime);
-    filter.Q.setValueAtTime(0.7, audioContext.currentTime);
+    filter.frequency.setValueAtTime(1200, audioContext.currentTime);
+    filter.Q.setValueAtTime(0.5, audioContext.currentTime);
     
     // Conexiones
     oscillator.connect(gainNode);
