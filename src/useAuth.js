@@ -47,6 +47,15 @@ export const useAuth = () => {
   }
 
   useEffect(() => {
+    // Inicializar GoogleAuth para plataformas nativas
+    if (Capacitor.isNativePlatform()) {
+      GoogleAuth.initialize({
+        clientId: '102545501878-28h1bok5jkkpbo4309f8spn7svukoo28.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+      });
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setLoading(true);
       setUser(currentUser);
