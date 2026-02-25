@@ -8,7 +8,7 @@ import "./index.css";
 
 // Inicializar Google Auth para web
 GoogleAuth.initialize({
-  clientId: '102545501878-YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+  clientId: '102545501878-28h1bok5jkkpbo4309f8spn7svukoo28.apps.googleusercontent.com',
   scopes: ['profile', 'email'],
   grantOfflineAccess: true,
 });
