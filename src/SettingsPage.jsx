@@ -664,19 +664,6 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               <span className="info-value">{user?.email || 'Sin email'}</span>
             </div>
           </div>
-
-          <p className="account-warning-text">
-            Si eliminas tu cuenta, se borran configuracion, historial y dispositivos vinculados.
-          </p>
-
-          <button
-            className="action-btn btn-danger delete-account-btn"
-            onClick={requestDeleteAccount}
-            disabled={isDeletingAccount}
-          >
-            <span>{isDeletingAccount ? '...' : '!'}</span>
-            {isDeletingAccount ? 'Eliminando cuenta...' : 'Eliminar cuenta'}
-          </button>
         </div>
 
 
@@ -767,30 +754,49 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </div>
         </div>
 
-                <div className="settings-section scale-in">
-          <h3 className="settings-heading">
-            <UiIcon name="admin" className="heading-icon" />
-            <span>Modo Administrador</span>
-          </h3>
-          
-          <button 
-            className="esp32-config-btn admin-access-btn"
-            onClick={handleAdminAccess}
-          >
-            <div className="config-icon">
-              <UiIcon name="admin" />
-            </div>
-            <div className="config-info">
-              <div className="config-title">Acceso Administrador</div>
-              <div className="config-desc">
-                {canAccessAdmin ? 'Configuracion avanzada del sistema' : 'Solo usuarios autorizados'}
+        {canAccessAdmin && (
+          <div className="settings-section scale-in">
+            <h3 className="settings-heading">
+              <UiIcon name="admin" className="heading-icon" />
+              <span>Modo Administrador</span>
+            </h3>
+            
+            <button 
+              className="esp32-config-btn admin-access-btn"
+              onClick={handleAdminAccess}
+            >
+              <div className="config-icon">
+                <UiIcon name="admin" />
               </div>
-            </div>
-            <div className="config-arrow">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m9 18 6-6-6-6"/>
-              </svg>
-            </div>
+              <div className="config-info">
+                <div className="config-title">Acceso Administrador</div>
+                <div className="config-desc">
+                  Configuracion avanzada del sistema
+                </div>
+              </div>
+              <div className="config-arrow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m9 18 6-6-6-6"/>
+                </svg>
+              </div>
+            </button>
+          </div>
+        )}
+
+        <div className="settings-section scale-in account-settings-section">
+          <h3>Eliminar Cuenta</h3>
+
+          <p className="account-warning-text">
+            Si eliminas tu cuenta, se borran configuracion, historial y dispositivos vinculados.
+          </p>
+
+          <button
+            className="action-btn btn-danger delete-account-btn"
+            onClick={requestDeleteAccount}
+            disabled={isDeletingAccount}
+          >
+            <span>{isDeletingAccount ? '...' : '!'}</span>
+            {isDeletingAccount ? 'Eliminando cuenta...' : 'Eliminar cuenta'}
           </button>
         </div>
 
