@@ -89,8 +89,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         <input 
                             id="phTolerance"
                             type="range" 
-                            min="6"
-                            max="8"
                             step="0.1" 
                             value={tempTolerance}
                             onChange={(e) => setTempTolerance(parseFloat(e.target.value))}
@@ -104,8 +102,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         <input 
                             id="phToleranceRange"
                             type="range" 
-                            min="0.1" 
-                            max="1" 
                             step="0.1" 
                             value={tempToleranceRange}
                             onChange={(e) => setTempToleranceRange(parseFloat(e.target.value))}
@@ -119,8 +115,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         <input 
                             id="alkalinity"
                             type="number" 
-                            min="50"
-                            max="200"
                             step="10"
                             value={tempAlkalinity}
                             onChange={(e) => setTempAlkalinity(parseFloat(e.target.value))}
