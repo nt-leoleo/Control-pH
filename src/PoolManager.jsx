@@ -219,13 +219,24 @@ const PoolManager = ({ onBack }) => {
                         <path d="m15 18-6-6 6-6"/>
                     </svg>
                 </button>
-                <h1 className="pool-manager-title">🏊 Administrar Piscinas</h1>
+                <h1 className="pool-manager-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2c3.5 4.5 6 7.4 6 10a6 6 0 1 1-12 0c0-2.6 2.5-5.5 6-10Z" />
+                    </svg>
+                    Administrar Piscinas
+                </h1>
             </div>
 
             {/* Piscina Actual */}
             {currentPool && (
                 <div className="current-pool-banner scale-in">
-                    <div className="banner-icon">🎯</div>
+                    <div className="banner-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <circle cx="12" cy="12" r="6" />
+                            <circle cx="12" cy="12" r="2" />
+                        </svg>
+                    </div>
                     <div className="banner-content">
                         <div className="banner-label">Piscina Activa</div>
                         <div className="banner-name">{currentPool.name}</div>
@@ -240,7 +251,11 @@ const PoolManager = ({ onBack }) => {
             <div className="pools-list">
                 {pools.length === 0 ? (
                     <div className="empty-state">
-                        <div className="empty-icon">🏊</div>
+                        <div className="empty-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2c3.5 4.5 6 7.4 6 10a6 6 0 1 1-12 0c0-2.6 2.5-5.5 6-10Z" />
+                            </svg>
+                        </div>
                         <h3>No hay piscinas configuradas</h3>
                         <p>Agrega tu primera piscina para comenzar</p>
                     </div>
@@ -263,30 +278,54 @@ const PoolManager = ({ onBack }) => {
                                         onClick={() => openEditModal(pool)}
                                         title="Editar"
                                     >
-                                        ✏️
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
                                     </button>
                                     <button 
                                         className="pool-action-btn delete"
                                         onClick={() => requestDeletePool(pool.id)}
                                         title="Eliminar"
                                     >
-                                        🗑️
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6" />
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                            <line x1="10" y1="11" x2="10" y2="17" />
+                                            <line x1="14" y1="11" x2="14" y2="17" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
 
                             <div className="pool-card-details">
                                 <div className="detail-item">
-                                    <span className="detail-icon">💧</span>
+                                    <span className="detail-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M12 2c3.5 4.5 6 7.4 6 10a6 6 0 1 1-12 0c0-2.6 2.5-5.5 6-10Z" />
+                                        </svg>
+                                    </span>
                                     <span className="detail-text">{pool.volume} Litros</span>
                                 </div>
                                 <div className="detail-item">
-                                    <span className="detail-icon">⚗️</span>
+                                    <span className="detail-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M10 2h4" />
+                                            <path d="M12 2v7" />
+                                            <path d="M8 9h8" />
+                                            <path d="M9 9v8a3 3 0 0 0 6 0V9" />
+                                        </svg>
+                                    </span>
                                     <span className="detail-text">Alcalinidad: {pool.alkalinity} ppm</span>
                                 </div>
                                 {pool.location && (
                                     <div className="detail-item">
-                                        <span className="detail-icon">📍</span>
+                                        <span className="detail-icon">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                                <circle cx="12" cy="10" r="3" />
+                                            </svg>
+                                        </span>
                                         <span className="detail-text">{pool.location}</span>
                                     </div>
                                 )}
@@ -294,7 +333,15 @@ const PoolManager = ({ onBack }) => {
 
                             {pool.notes && (
                                 <div className="pool-card-notes">
-                                    <span className="notes-icon">📝</span>
+                                    <span className="notes-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                            <polyline points="14 2 14 8 20 8" />
+                                            <line x1="16" y1="13" x2="8" y2="13" />
+                                            <line x1="16" y1="17" x2="8" y2="17" />
+                                            <polyline points="10 9 9 9 8 9" />
+                                        </svg>
+                                    </span>
                                     <span className="notes-text">{pool.notes}</span>
                                 </div>
                             )}
@@ -326,8 +373,31 @@ const PoolManager = ({ onBack }) => {
                 <div className="pool-modal-overlay" onClick={closeModal}>
                     <div className="pool-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="pool-modal-header">
-                            <h2>{editingPool ? '✏️ Editar Piscina' : '➕ Nueva Piscina'}</h2>
-                            <button className="modal-close-btn" onClick={closeModal}>✕</button>
+                            <h2>
+                                {editingPool ? (
+                                    <>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                        Editar Piscina
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19" />
+                                            <line x1="5" y1="12" x2="19" y2="12" />
+                                        </svg>
+                                        Nueva Piscina
+                                    </>
+                                )}
+                            </h2>
+                            <button className="modal-close-btn" onClick={closeModal}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                            </button>
                         </div>
 
                         <div className="pool-modal-body">
