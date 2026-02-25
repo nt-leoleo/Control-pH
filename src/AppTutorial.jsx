@@ -240,11 +240,12 @@ const B_MAJOR_HARMONIC_PATTERNS = [
 // Índices para seguir la secuencia de notas
 let currentPatternIndex = 0;
 let currentNoteIndex = 0;
+let isChimesMuted = false;
 
 const playCelestialChime = () => {
   try {
     // No reproducir si el audio está muteado
-    if (isAudioMutedRef.current) {
+    if (isChimesMuted) {
       return;
     }
     
@@ -570,6 +571,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
 
   useEffect(() => {
     isAudioMutedRef.current = isAudioMuted;
+    isChimesMuted = isAudioMuted;
   }, [isAudioMuted]);
 
   const syncScrollLockSnapshot = useCallback(() => {
