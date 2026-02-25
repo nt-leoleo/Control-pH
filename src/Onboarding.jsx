@@ -314,29 +314,43 @@ const Onboarding = () => {
             </div>
 
             <div className="onboarding-device-box">
-              <label className="onboarding-label" htmlFor="deviceIdInput">
-                Device ID (obligatorio)
-              </label>
-              <div className="onboarding-device-input-group">
-                <input
-                  id="deviceIdInput"
-                  className="onboarding-input"
-                  type="text"
-                  value={deviceId}
-                  onChange={(e) => setDeviceId(e.target.value)}
-                  placeholder="Ej: A1B2C3D4E5F6"
-                />
+              <h3 className="onboarding-device-title">Conecta tu dispositivo</h3>
+              
+              <div className="onboarding-device-instructions">
+                <p className="onboarding-instruction-main">
+                  Escanea el código QR
+                </p>
+                <p className="onboarding-instruction-detail">
+                  (El código QR está en la parte de abajo de la caja del dispositivo)
+                </p>
+                
                 <button
                   type="button"
-                  className="onboarding-qr-btn"
+                  className="onboarding-qr-btn-large"
                   onClick={() => setShowQRScanner(true)}
-                  title="Escanear código QR"
                 >
-                  📷 Escanear QR
+                  📷 Escanear código QR
                 </button>
+
+                <div className="onboarding-divider">
+                  <span>O</span>
+                </div>
+
+                <p className="onboarding-instruction-main">
+                  Pon el código ID manualmente
+                </p>
               </div>
 
-              <label className="onboarding-label" htmlFor="deviceNameInput">
+              <input
+                id="deviceIdInput"
+                className="onboarding-input"
+                type="text"
+                value={deviceId}
+                onChange={(e) => setDeviceId(e.target.value)}
+                placeholder="Ej: A1B2C3D4E5F6"
+              />
+
+              <label className="onboarding-label" htmlFor="deviceNameInput" style={{ marginTop: '1rem' }}>
                 Nombre del dispositivo
               </label>
               <input
