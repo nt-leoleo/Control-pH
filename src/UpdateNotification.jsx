@@ -10,7 +10,7 @@ const UpdateNotification = ({ updateInfo, onUpdate, onDismiss }) => {
           <svg className="update-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
-          <h2>Actualización disponible</h2>
+          <h2>Nueva actualización disponible</h2>
         </div>
 
         <div className="update-body">
@@ -22,6 +22,8 @@ const UpdateNotification = ({ updateInfo, onUpdate, onDismiss }) => {
               <p>{updateInfo.releaseNotes}</p>
             </div>
           )}
+
+          <p className="update-question">¿Desea actualizar ahora?</p>
 
           {updateInfo.forceUpdate && (
             <p className="update-required">Esta actualización es obligatoria</p>
