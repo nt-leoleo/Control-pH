@@ -420,6 +420,16 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           </div>
         </div>
         
+        {/* Sección de Horarios Permitidos */}
+        <div className="settings-section scale-in">
+          <h3 className="settings-heading">
+            <UiIcon name="clock" className="heading-icon" />
+            <span>Horarios Permitidos</span>
+          </h3>
+          
+          <ScheduledDosing />
+        </div>
+
                 <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="ph" className="heading-icon" />
@@ -572,16 +582,6 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               </div>
             </button>
           </div>
-        </div>
-
-        {/* Sección de Horarios Programados */}
-        <div className="settings-section scale-in">
-          <h3 className="settings-heading">
-            <UiIcon name="clock" className="heading-icon" />
-            <span>Horarios Permitidos</span>
-          </h3>
-          
-          <ScheduledDosing />
         </div>
 
                 <div className="settings-section scale-in">
