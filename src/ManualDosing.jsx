@@ -386,8 +386,6 @@ const ManualDosing = () => {
                     <div className="timeGroup">
                         <input
                             type="number"
-                            min="0"
-                            max="59"
                             value={manualDosingConfig.minutes}
                             onChange={(event) => handleTimeChange('minutes', event.target.value)}
                             disabled={isDosing}
@@ -397,8 +395,6 @@ const ManualDosing = () => {
                     <div className="timeGroup">
                         <input
                             type="number"
-                            min="0"
-                            max="59"
                             value={manualDosingConfig.seconds}
                             onChange={(event) => handleTimeChange('seconds', event.target.value)}
                             disabled={isDosing}

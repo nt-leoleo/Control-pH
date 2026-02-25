@@ -213,8 +213,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.maxDailyDoses}
                   onChange={(e) => handleConfigChange('maxDailyDoses', e.target.value)}
-                  min="1"
-                  max="999"
                 />
                 <span className="field-unit">dosis/dia</span>
               </div>
@@ -225,8 +223,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.minWaitTimeBetweenDoses}
                   onChange={(e) => handleConfigChange('minWaitTimeBetweenDoses', e.target.value)}
-                  min="0.0002778"
-                  max="24"
                   step="0.0002778"
                 />
                 <span className="field-unit">horas</span>
@@ -241,8 +237,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.checkInterval}
                   onChange={(e) => handleConfigChange('checkInterval', e.target.value)}
-                  min="0"
-                  max="60"
                 />
                 <span className="field-unit">minutos</span>
               </div>
@@ -253,8 +247,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.maxManualDosingSeconds}
                   onChange={(e) => handleConfigChange('maxManualDosingSeconds', e.target.value)}
-                  min="1"
-                  max="3600"
                   step="1"
                 />
                 <span className="field-unit">segundos</span>
@@ -266,8 +258,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.maxDoseVolume}
                   onChange={(e) => handleConfigChange('maxDoseVolume', e.target.value)}
-                  min="0.01"
-                  max="5"
                   step="0.01"
                 />
                 <span className="field-unit">litros</span>
@@ -279,8 +269,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.minDoseVolume}
                   onChange={(e) => handleConfigChange('minDoseVolume', e.target.value)}
-                  min="0.001"
-                  max="0.1"
                   step="0.001"
                 />
                 <span className="field-unit">litros</span>
@@ -292,8 +280,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.correctionFactor}
                   onChange={(e) => handleConfigChange('correctionFactor', e.target.value)}
-                  min="0.1"
-                  max="1"
                   step="0.05"
                 />
                 <span className="field-unit">%</span>
@@ -315,8 +301,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.minPH}
                   onChange={(e) => handleConfigChange('minPH', e.target.value)}
-                  min="0"
-                  max="14"
                   step="0.1"
                 />
                 <span className="field-unit">pH</span>
@@ -328,8 +312,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.maxPH}
                   onChange={(e) => handleConfigChange('maxPH', e.target.value)}
-                  min="0"
-                  max="14"
                   step="0.1"
                 />
                 <span className="field-unit">pH</span>
@@ -341,8 +323,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.maxPHChange}
                   onChange={(e) => handleConfigChange('maxPHChange', e.target.value)}
-                  min="0.1"
-                  max="5"
                   step="0.1"
                 />
                 <span className="field-unit">pH</span>
@@ -360,8 +340,6 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.pumpFlowRate}
                   onChange={(e) => handleConfigChange('pumpFlowRate', e.target.value)}
-                  min="1"
-                  max="300"
                 />
                 <span className="field-unit">L/h</span>
               </div>

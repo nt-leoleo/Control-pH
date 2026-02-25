@@ -233,7 +233,6 @@ const Onboarding = () => {
               id="poolVolume"
               className="onboarding-input"
               type="number"
-              min="100"
               step="100"
               value={poolVol}
               onChange={(e) => setPoolVol(e.target.value)}
@@ -295,7 +294,6 @@ const Onboarding = () => {
               id="pumpFlowInput"
               className="onboarding-input"
               type="number"
-              min="0.1"
               step="0.1"
               value={pumpFlow}
               onChange={(e) => setPumpFlow(e.target.value)}
@@ -317,8 +315,6 @@ const Onboarding = () => {
               id="idealPhInput"
               className="onboarding-input"
               type="number"
-              min="0"
-              max="14"
               step="0.1"
               value={idealPH}
               onChange={(e) => setIdealPH(e.target.value)}
@@ -331,8 +327,6 @@ const Onboarding = () => {
               id="toleranceInput"
               className="onboarding-input"
               type="number"
-              min="0.1"
-              max="5"
               step="0.1"
               value={tolerance}
               onChange={(e) => setTolerance(e.target.value)}
