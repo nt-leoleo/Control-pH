@@ -578,7 +578,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
         <div className="settings-section scale-in">
           <h3 className="settings-heading">
             <UiIcon name="clock" className="heading-icon" />
-            <span>Ventanas de Dosificación Automática</span>
+            <span>Horarios Permitidos</span>
           </h3>
           
           <ScheduledDosing />

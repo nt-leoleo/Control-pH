@@ -27,7 +27,7 @@ const ScheduledDosing = () => {
     startTime: '08:00',
     endTime: '20:00',
     days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-    name: 'Ventana de dosificación automática'
+    name: 'Horario permitido'
   });
 
   useEffect(() => {
@@ -90,7 +90,7 @@ const ScheduledDosing = () => {
       startTime: '08:00',
       endTime: '20:00',
       days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-      name: 'Ventana de dosificación automática'
+      name: 'Horario permitido'
     });
   };
 
@@ -120,18 +120,18 @@ const ScheduledDosing = () => {
       <div className="scheduled-header-with-info">
         <InfoHint
           size="md"
-          title="Ventanas de dosificación automática"
-          text="Define los horarios en los que el sistema puede dosificar automáticamente según el pH. Fuera de estas ventanas, solo se permiten dosificaciones manuales."
+          title="¿Cuándo puede trabajar el sistema automático?"
+          text="Elegí en qué horarios querés que el sistema corrija el pH solo. Por ejemplo: solo de día, o solo cuando estás en casa. Si no configurás nada, el sistema trabaja todo el día."
         />
       </div>
 
       <div className="scheduled-list">
         {schedules.length === 0 && !showAddForm && (
           <div className="no-schedules">
-            <p>No hay ventanas horarias configuradas.</p>
+            <p>No hay horarios configurados</p>
             <p className="no-schedules-hint">
-              Sin ventanas configuradas, el sistema automático puede dosificar en cualquier momento.
-              Agrega ventanas para restringir las dosificaciones automáticas a horarios específicos.
+              El sistema automático puede trabajar todo el día.
+              Si querés que solo trabaje en ciertos horarios, agregá uno acá.
             </p>
           </div>
         )}
@@ -180,21 +180,21 @@ const ScheduledDosing = () => {
 
       {showAddForm && (
         <div className="schedule-form">
-          <h4>{editingId ? 'Editar ventana horaria' : 'Nueva ventana horaria'}</h4>
+          <h4>{editingId ? 'Cambiar horario' : 'Nuevo horario'}</h4>
           
           <div className="form-group">
-            <label>Nombre</label>
+            <label>Nombre (para recordar)</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ej: Horario diurno"
+              placeholder="Ej: Solo de día"
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Hora inicio</label>
+              <label>Desde las</label>
               <input
                 type="time"
                 value={formData.startTime}
@@ -203,7 +203,7 @@ const ScheduledDosing = () => {
             </div>
 
             <div className="form-group">
-              <label>Hora fin</label>
+              <label>Hasta las</label>
               <input
                 type="time"
                 value={formData.endTime}
@@ -214,12 +214,12 @@ const ScheduledDosing = () => {
 
           {!isTimeValid() && formData.startTime && formData.endTime && (
             <div className="form-error">
-              La hora de fin debe ser posterior a la hora de inicio
+              La hora de fin tiene que ser después de la hora de inicio
             </div>
           )}
 
           <div className="form-group">
-            <label>Días de la semana</label>
+            <label>¿Qué días?</label>
             <div className="days-selector">
               {DAYS_OF_WEEK.map(day => (
                 <button
@@ -247,7 +247,7 @@ const ScheduledDosing = () => {
               onClick={handleSaveSchedule}
               disabled={formData.days.length === 0 || !isTimeValid()}
             >
-              {editingId ? 'Guardar cambios' : 'Agregar ventana'}
+              {editingId ? 'Guardar' : 'Agregar'}
             </button>
           </div>
         </div>
@@ -255,14 +255,14 @@ const ScheduledDosing = () => {
 
       {!showAddForm && (
         <button className="btn-add-schedule" onClick={() => setShowAddForm(true)}>
-          + Agregar ventana horaria
+          + Agregar horario
         </button>
       )}
 
       <div className="schedule-info-box">
         <p className="info-text">
-          <strong>Importante:</strong> Las dosificaciones automáticas (basadas en pH) solo se ejecutarán 
-          dentro de las ventanas horarias activas. Las dosificaciones manuales pueden ejecutarse en cualquier momento.
+          <strong>Recordá:</strong> El sistema automático solo trabaja en estos horarios.
+          Vos podés corregir manualmente cuando quieras, en cualquier momento.
         </p>
       </div>
     </div>
