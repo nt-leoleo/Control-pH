@@ -60,8 +60,8 @@ const Onboarding = () => {
 
     if (step === 2) {
       const parsedFlow = parseFloat(pumpFlow);
-      if (Number.isNaN(parsedFlow) || parsedFlow <= 0 || parsedFlow > 10) {
-        setError({ type: 'error', message: 'El caudal debe estar entre 0.5 y 10 L/h.' });
+      if (Number.isNaN(parsedFlow) || parsedFlow <= 0) {
+        setError({ type: 'error', message: 'El caudal debe ser mayor a 0.' });
         return false;
       }
     }
@@ -295,8 +295,7 @@ const Onboarding = () => {
               id="pumpFlowInput"
               className="onboarding-input"
               type="number"
-              min="0.5"
-              max="10"
+              min="0.1"
               step="0.1"
               value={pumpFlow}
               onChange={(e) => setPumpFlow(e.target.value)}
