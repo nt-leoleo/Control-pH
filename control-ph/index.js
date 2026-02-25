@@ -742,19 +742,49 @@ async function processUser(userId, userData) {
       return;
     }
     
-    // 4. Verificar cambio máximo de pH
+    // 4. Verificar si necesita dosificación en bloques
+    let targetDeviation = deviation;
+    let blockInfo = null;
+    
     if (Math.abs(deviation) > MAX_PH_CHANGE) {
-      const errorMsg = `Cambio de pH demasiado grande: ${Math.abs(deviation).toFixed(2)} > ${MAX_PH_CHANGE}. Ajusta el pH objetivo o aumenta el limite en configuracion de administrador.`;
-      logger.error(`❌ ${errorMsg}`);
-      await addLog(userId, 'error', errorMsg, { deviation, MAX_PH_CHANGE, currentPH, targetPH });
-      await updateSystemStatus(userId, {
-        error: errorMsg
-      });
-      await setAutoState({
-        autoCommandStatus: 'blocked_step_limit',
-        autoCommandMessage: errorMsg,
-      });
-      return;
+      // Calcular cuántos bloques se necesitan
+      const totalBlocks = Math.ceil(Math.abs(deviation) / MAX_PH_CHANGE);
+      const currentBlock = (dosingState.currentBlock || 0) + 1;
+      
+      if (currentBlock <= totalBlocks) {
+        // Dosificar solo MAX_PH_CHANGE en este bloque
+        targetDeviation = deviation > 0 ? MAX_PH_CHANGE : -MAX_PH_CHANGE;
+        blockInfo = {
+          currentBlock,
+          totalBlocks,
+          originalDeviation: deviation
+        };
+        
+        logger.info(`📦 Dosificación en bloques: ${currentBlock}/${totalBlocks}`);
+        logger.info(`   Desviación original: ${deviation.toFixed(2)}`);
+        logger.info(`   Desviación este bloque: ${targetDeviation.toFixed(2)}`);
+        
+        await addLog(userId, 'info', `Dosificación en bloques ${currentBlock}/${totalBlocks}`, {
+          originalDeviation: deviation,
+          blockDeviation: targetDeviation,
+          currentBlock,
+          totalBlocks
+        });
+      } else {
+        // Ya se completaron todos los bloques, resetear
+        await realtimeDb.ref(`users/${userId}/dosingState`).update({
+          currentBlock: 0
+        });
+        logger.info('✅ Todos los bloques de dosificación completados');
+        return;
+      }
+    } else {
+      // Resetear contador de bloques si la desviación es pequeña
+      if (dosingState.currentBlock) {
+        await realtimeDb.ref(`users/${userId}/dosingState`).update({
+          currentBlock: 0
+        });
+      }
     }
     
     // 5. Verificar tiempo de espera (solo si es mayor a 0)
@@ -787,13 +817,22 @@ async function processUser(userId, userData) {
     const pumpFlowRate = toNumberOr(adminConfig.pumpFlowRate, 60); // L/h
     const maxDoseVolume = toNumberOr(adminConfig.maxDoseVolume, 500); // ml
     
+    // Calcular pH objetivo para este bloque
+    const blockTargetPH = currentPH - targetDeviation;
+    
     logger.info(`📐 Calculando dosificación para piscina de ${poolVolume}L`);
     logger.info(`🧪 Químicos: Cloro=${chlorineType}, Ácido=${acidType}`);
+    if (blockInfo) {
+      logger.info(`📦 Bloque ${blockInfo.currentBlock}/${blockInfo.totalBlocks}`);
+      logger.info(`   pH actual: ${currentPH.toFixed(2)}`);
+      logger.info(`   pH objetivo final: ${targetPH.toFixed(2)}`);
+      logger.info(`   pH objetivo este bloque: ${blockTargetPH.toFixed(2)}`);
+    }
     
     const dosingCalc = calculateAutomaticDosing({
       poolVolumeLiters: poolVolume,
       currentPH: currentPH,
-      targetPH: targetPH,
+      targetPH: blockTargetPH,
       alkalinity: alkalinity,
       chlorineType: chlorineType,
       acidType: acidType,
@@ -834,20 +873,40 @@ async function processUser(userId, userData) {
       createdAt: commandCreatedAt,
       source: 'automatic',
       phBefore: currentPH,
-      phTarget: targetPH,
-      deviation: deviation
+      phTarget: blockTargetPH,
+      phTargetFinal: targetPH,
+      deviation: targetDeviation,
+      deviationOriginal: deviation,
+      blockInfo: blockInfo || null
     });
     
     const commandId = newCommandRef.key;
     
     logger.info(`✅ Comando automático creado en Firebase: ${commandId}`);
+    if (blockInfo) {
+      logger.info(`   📦 Bloque ${blockInfo.currentBlock}/${blockInfo.totalBlocks}`);
+    }
     
     // Actualizar estado en Realtime Database
-    await realtimeDb.ref(`users/${userId}/dosingState`).update({
+    const stateUpdate = {
       lastDosingTime: commandCreatedAt,
       lastDosingDate: today,
       dosingCountToday: dosingCountToday + 1,
       lastProduct: product,
+      lastDuration: duration,
+      autoCommandStatus: 'pending',
+      autoCommandMessage: blockInfo 
+        ? `Dosificando bloque ${blockInfo.currentBlock}/${blockInfo.totalBlocks}`
+        : `Dosificando ${product}`,
+    };
+    
+    // Si hay bloques, actualizar el contador
+    if (blockInfo) {
+      stateUpdate.currentBlock = blockInfo.currentBlock;
+      stateUpdate.totalBlocks = blockInfo.totalBlocks;
+    }
+    
+    await realtimeDb.ref(`users/${userId}/dosingState`).update(stateUpdate);
       lastDuration: duration,
       lastPH: currentPH,
       lastDeviation: deviation,
