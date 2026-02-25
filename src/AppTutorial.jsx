@@ -237,15 +237,26 @@ const B_MAJOR_HARMONIC_PATTERNS = [
   [1479.98, 1661.22, 1975.53, 1244.51],  // F#6, G#6, B6, D#6
 ];
 
+// Índices para seguir la secuencia de notas
+let currentPatternIndex = 0;
+let currentNoteIndex = 0;
+
 const playCelestialChime = () => {
   try {
     // Crear un nuevo contexto cada vez para permitir superposición
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     
-    // Seleccionar un patrón aleatorio
-    const pattern = B_MAJOR_HARMONIC_PATTERNS[Math.floor(Math.random() * B_MAJOR_HARMONIC_PATTERNS.length)];
-    // Seleccionar una nota aleatoria del patrón
-    const randomFrequency = pattern[Math.floor(Math.random() * pattern.length)];
+    // Obtener el patrón actual
+    const pattern = B_MAJOR_HARMONIC_PATTERNS[currentPatternIndex];
+    // Obtener la nota actual del patrón
+    const randomFrequency = pattern[currentNoteIndex];
+    
+    // Avanzar al siguiente índice
+    currentNoteIndex++;
+    if (currentNoteIndex >= pattern.length) {
+      currentNoteIndex = 0;
+      currentPatternIndex = (currentPatternIndex + 1) % B_MAJOR_HARMONIC_PATTERNS.length;
+    }
     
     // Oscilador principal
     const oscillator = audioContext.createOscillator();
