@@ -1,13 +1,14 @@
 {
   "name": "control-pileta",
   "private": true,
-  "version": "4.8.7",
+  "version": "4.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "init-version": "node scripts/init-app-version.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
