@@ -243,6 +243,11 @@ let currentNoteIndex = 0;
 
 const playCelestialChime = () => {
   try {
+    // No reproducir si el audio está muteado
+    if (isAudioMutedRef.current) {
+      return;
+    }
+    
     // Crear un nuevo contexto cada vez para permitir superposición
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     
@@ -263,10 +268,10 @@ const playCelestialChime = () => {
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(randomFrequency, audioContext.currentTime);
     
-    // Ganancia para envelope - volumen reducido
+    // Ganancia para envelope - volumen reducido de 0.08 a 0.06
     const gainNode = audioContext.createGain();
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + 0.02);
+    gainNode.gain.linearRampToValueAtTime(0.06, audioContext.currentTime + 0.02);
     gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 3.5);
     
     // Reverb profundo con múltiples delays
@@ -348,7 +353,7 @@ const playCelestialChime = () => {
 };
 
 const AUDIO_FILE_PATH = '/tutorial-ambient.mp3';
-const AUDIO_TARGET_VOLUME = 0.03; // 3% del volumen máximo
+const AUDIO_TARGET_VOLUME = 0.02; // 2% del volumen máximo (reducido de 3%)
 const AUDIO_FADE_IN_MS = 2200;
 const AUDIO_FADE_OUT_MS = 7000;
 const YOUTUBE_VIDEO_LINK = 'https://youtu.be/PQjgO6SIOas?si=3HKK1hR8LkM6cYEl';
