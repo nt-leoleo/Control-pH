@@ -253,17 +253,17 @@ const playCelestialChime = () => {
     const gainNode = audioContext.createGain();
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.18, audioContext.currentTime + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1.8);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 2.5);
     
-    // Eco simple con delay
+    // Eco con más repeticiones (mayor feedback)
     const delayNode = audioContext.createDelay();
     delayNode.delayTime.setValueAtTime(0.25, audioContext.currentTime);
     
     const echoGain = audioContext.createGain();
-    echoGain.gain.setValueAtTime(0.4, audioContext.currentTime);
+    echoGain.gain.setValueAtTime(0.5, audioContext.currentTime);
     
     const echoFeedback = audioContext.createGain();
-    echoFeedback.gain.setValueAtTime(0.35, audioContext.currentTime);
+    echoFeedback.gain.setValueAtTime(0.55, audioContext.currentTime);
     
     // Filtro para suavizar
     const filter = audioContext.createBiquadFilter();
@@ -276,7 +276,7 @@ const playCelestialChime = () => {
     gainNode.connect(filter);
     filter.connect(audioContext.destination);
     
-    // Cadena de eco
+    // Cadena de eco con más feedback para más repeticiones
     filter.connect(delayNode);
     delayNode.connect(echoGain);
     echoGain.connect(audioContext.destination);
@@ -284,7 +284,7 @@ const playCelestialChime = () => {
     echoFeedback.connect(delayNode);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 1.8);
+    oscillator.stop(audioContext.currentTime + 2.5);
     
     // Limpiar después - no bloquea la creación de nuevos sonidos
     setTimeout(() => {
@@ -293,7 +293,7 @@ const playCelestialChime = () => {
       } catch (e) {
         // Ignorar errores al cerrar
       }
-    }, 2500);
+    }, 3500);
   } catch (error) {
     console.warn('[Tutorial] No se pudo reproducir sonido:', error);
   }
