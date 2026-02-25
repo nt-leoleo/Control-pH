@@ -370,8 +370,21 @@ const Onboarding = () => {
                   className="onboarding-qr-btn-large"
                   onClick={() => setShowQRScanner(true)}
                 >
-                  📷 Escanear código QR
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                  Escanear código QR
                 </button>
+
+                {deviceId && (
+                  <div className="onboarding-scanned-id">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>ID: {deviceId}</span>
+                  </div>
+                )}
 
                 <div className="onboarding-divider">
                   <span>O</span>
@@ -382,7 +395,17 @@ const Onboarding = () => {
                   className="onboarding-manual-btn"
                   onClick={() => setShowManualInput(!showManualInput)}
                 >
-                  {showManualInput ? '✕ Cancelar ingreso manual' : 'Pon el código ID manualmente'}
+                  {showManualInput ? (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                      Cancelar ingreso manual
+                    </>
+                  ) : (
+                    'Pon el código ID manualmente'
+                  )}
                 </button>
               </div>
 
