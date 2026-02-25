@@ -245,8 +245,7 @@ const playCelestialChime = () => {
     // Seleccionar un patrón aleatorio
     const pattern = B_MAJOR_HARMONIC_PATTERNS[Math.floor(Math.random() * B_MAJOR_HARMONIC_PATTERNS.length)];
     // Seleccionar una nota aleatoria del patrón
-    const randomFrequency = pattern;
-    // [Math.floor(Math.random() * pattern.length)]
+    const randomFrequency = pattern[Math.floor(Math.random() * pattern.length)];
     
     // Oscilador principal
     const oscillator = audioContext.createOscillator();
