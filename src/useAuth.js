@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithCredential,
+  GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
   deleteUser,
@@ -23,6 +23,7 @@ import {
 import { ref, remove } from 'firebase/database';
 import { auth, googleProvider, db, database } from './firebase';
 import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
