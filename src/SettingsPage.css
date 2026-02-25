@@ -385,6 +385,19 @@
   box-shadow: none;
 }
 
+.tutorial-btn {
+  margin-top: 1rem;
+  width: 100%;
+  justify-content: center;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.tutorial-btn:hover {
+  background: rgba(var(--primary-rgb), 0.1);
+  border-color: var(--primary-color);
+}
+
 .account-settings-section {
   border-color: rgba(244, 63, 94, 0.35);
 }
