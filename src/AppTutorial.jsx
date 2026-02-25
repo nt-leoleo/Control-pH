@@ -218,7 +218,7 @@ const TOTAL_SECTIONS = STEP_LIST.filter((entry) => entry.number >= 1).length;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-// Escala de SI MAYOR: B, C#, D#, E, F#, G#, A#, B (octavas 5, 6, 7)
+// Escala de SI MAYOR: B, C#, D#, E, F#, G#, A#, B (octavas 5 y 6)
 const B_MAJOR_SCALE_FREQUENCIES = [
   493.88, // B4
   554.37, // C#5
@@ -235,13 +235,6 @@ const B_MAJOR_SCALE_FREQUENCIES = [
   1661.22, // G#6
   1864.66, // A#6
   1975.53, // B6
-  2217.46, // C#7
-  2489.02, // D#7
-  2637.02, // E7
-  2959.96, // F#7
-  3322.44, // G#7
-  3729.31, // A#7
-  3951.07, // B7
 ];
 
 const playCelestialChime = () => {
@@ -258,39 +251,62 @@ const playCelestialChime = () => {
     // Ganancia para envelope
     const gainNode = audioContext.createGain();
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 2.5);
+    gainNode.gain.linearRampToValueAtTime(0.12, audioContext.currentTime + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 3.5);
     
-    // Convolver para reverb celestial (simulado con delay)
-    const delayNode = audioContext.createDelay();
-    delayNode.delayTime.setValueAtTime(0.08, audioContext.currentTime);
+    // Reverb más profundo con múltiples delays
+    const delayNode1 = audioContext.createDelay();
+    delayNode1.delayTime.setValueAtTime(0.12, audioContext.currentTime);
     
-    const feedbackGain = audioContext.createGain();
-    feedbackGain.gain.setValueAtTime(0.4, audioContext.currentTime);
+    const delayNode2 = audioContext.createDelay();
+    delayNode2.delayTime.setValueAtTime(0.23, audioContext.currentTime);
+    
+    const delayNode3 = audioContext.createDelay();
+    delayNode3.delayTime.setValueAtTime(0.37, audioContext.currentTime);
+    
+    const feedbackGain1 = audioContext.createGain();
+    feedbackGain1.gain.setValueAtTime(0.5, audioContext.currentTime);
+    
+    const feedbackGain2 = audioContext.createGain();
+    feedbackGain2.gain.setValueAtTime(0.4, audioContext.currentTime);
+    
+    const feedbackGain3 = audioContext.createGain();
+    feedbackGain3.gain.setValueAtTime(0.3, audioContext.currentTime);
     
     const reverbGain = audioContext.createGain();
-    reverbGain.gain.setValueAtTime(0.6, audioContext.currentTime);
+    reverbGain.gain.setValueAtTime(0.75, audioContext.currentTime);
     
     // Filtro para suavizar
     const filter = audioContext.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(3000, audioContext.currentTime);
-    filter.Q.setValueAtTime(1, audioContext.currentTime);
+    filter.frequency.setValueAtTime(2500, audioContext.currentTime);
+    filter.Q.setValueAtTime(0.8, audioContext.currentTime);
     
     // Conexiones
     oscillator.connect(gainNode);
     gainNode.connect(filter);
     filter.connect(audioContext.destination);
     
-    // Cadena de reverb
-    filter.connect(delayNode);
-    delayNode.connect(feedbackGain);
-    feedbackGain.connect(delayNode);
-    delayNode.connect(reverbGain);
+    // Cadena de reverb múltiple
+    filter.connect(delayNode1);
+    delayNode1.connect(feedbackGain1);
+    feedbackGain1.connect(delayNode1);
+    
+    delayNode1.connect(delayNode2);
+    delayNode2.connect(feedbackGain2);
+    feedbackGain2.connect(delayNode2);
+    
+    delayNode2.connect(delayNode3);
+    delayNode3.connect(feedbackGain3);
+    feedbackGain3.connect(delayNode3);
+    
+    delayNode1.connect(reverbGain);
+    delayNode2.connect(reverbGain);
+    delayNode3.connect(reverbGain);
     reverbGain.connect(audioContext.destination);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 2.5);
+    oscillator.stop(audioContext.currentTime + 3.5);
     
     // Limpiar después - no bloquea la creación de nuevos sonidos
     setTimeout(() => {
@@ -299,7 +315,7 @@ const playCelestialChime = () => {
       } catch (e) {
         // Ignorar errores al cerrar
       }
-    }, 3000);
+    }, 4000);
   } catch (error) {
     console.warn('[Tutorial] No se pudo reproducir sonido:', error);
   }
