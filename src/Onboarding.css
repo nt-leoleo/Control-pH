@@ -186,3 +186,46 @@
     flex: 1;
   }
 }
+
+.onboarding-device-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.onboarding-device-input-group .onboarding-input {
+  flex: 1;
+}
+
+.onboarding-qr-btn {
+  flex-shrink: 0;
+  padding: 0.72rem 1rem;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.onboarding-qr-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+}
+
+.onboarding-qr-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .onboarding-device-input-group {
+    flex-direction: column;
+  }
+
+  .onboarding-qr-btn {
+    width: 100%;
+  }
+}
