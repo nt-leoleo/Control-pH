@@ -218,22 +218,12 @@ const TOTAL_SECTIONS = STEP_LIST.filter((entry) => entry.number >= 1).length;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-// Escala de SI MAYOR: B, C#, D#, E, F#, G#, A#, B (octavas 5 y 6)
-const B_MAJOR_SCALE_FREQUENCIES = [
+// Escala neutra de SI: B, F# (fundamental, quinta y octavas) - funciona en mayor y menor
+const B_NEUTRAL_SCALE_FREQUENCIES = [
   493.88, // B4
-  554.37, // C#5
-  622.25, // D#5
-  659.25, // E5
   739.99, // F#5
-  830.61, // G#5
-  932.33, // A#5
   987.77, // B5
-  1108.73, // C#6
-  1244.51, // D#6
-  1318.51, // E6
   1479.98, // F#6
-  1661.22, // G#6
-  1864.66, // A#6
   1975.53, // B6
 ];
 
@@ -241,7 +231,7 @@ const playCelestialChime = () => {
   try {
     // Crear un nuevo contexto cada vez para permitir superposición
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const randomFrequency = B_MAJOR_SCALE_FREQUENCIES[Math.floor(Math.random() * B_MAJOR_SCALE_FREQUENCIES.length)];
+    const randomFrequency = B_NEUTRAL_SCALE_FREQUENCIES[Math.floor(Math.random() * B_NEUTRAL_SCALE_FREQUENCIES.length)];
     
     // Oscilador principal
     const oscillator = audioContext.createOscillator();
