@@ -6,7 +6,6 @@ import { db } from './firebase';
 import { useAuth } from './useAuth';
 
 export const PHContext = createContext(null);
-const THINGSPEAK_WRITE_API_KEY = import.meta.env.VITE_THINGSPEAK_WRITE_API_KEY || '';
 
 const DEFAULT_PH_HISTORY = [
     { hour: '00:00', value: 7.0 },
@@ -250,21 +249,6 @@ export const PHProvider = ({ children }) => {
         [updatePhHistory]
     );
 
-    const sendConfigToThingSpeak = useCallback(async (targetPh, toleranceRange, mode) => {
-        if (!THINGSPEAK_WRITE_API_KEY) {
-            return;
-        }
-
-        try {
-            const autoMode = mode === 'automatic' ? '1' : '0';
-            const configStr = `phTarget:${targetPh},tolerance:${toleranceRange},autoMode:${autoMode}`;
-            const url = `https://api.thingspeak.com/update?api_key=${THINGSPEAK_WRITE_API_KEY}&field8=${encodeURIComponent(configStr)}`;
-            await fetch(url, { method: 'GET' });
-        } catch {
-            // Keep local state; remote sync can recover on next change.
-        }
-    }, []);
-
     const safePoolVolumeSet = useCallback(
         async (value) => {
             setPoolVolume(value);
@@ -292,14 +276,13 @@ export const PHProvider = ({ children }) => {
                 validateToleranceRange(validatedValue, phToleranceRange);
                 setPhTolerance(validatedValue);
                 await saveConfigToFirebase({ phTolerance: validatedValue });
-                await sendConfigToThingSpeak(validatedValue, phToleranceRange, dosingMode);
                 setError(null);
             } catch (err) {
                 logError('TOLERANCE_VALIDATION_ERROR', err.message, { value });
                 setError({ type: 'error', message: err.message });
             }
         },
-        [dosingMode, phToleranceRange, saveConfigToFirebase, sendConfigToThingSpeak]
+        [phToleranceRange, saveConfigToFirebase]
     );
 
     const safeToleranceRangeSet = useCallback(
@@ -309,23 +292,21 @@ export const PHProvider = ({ children }) => {
                 validateToleranceRange(phTolerance, validatedValue);
                 setPhToleranceRange(validatedValue);
                 await saveConfigToFirebase({ phToleranceRange: validatedValue });
-                await sendConfigToThingSpeak(phTolerance, validatedValue, dosingMode);
                 setError(null);
             } catch (err) {
                 logError('TOLERANCE_RANGE_VALIDATION_ERROR', err.message, { value });
                 setError({ type: 'error', message: err.message });
             }
         },
-        [dosingMode, phTolerance, saveConfigToFirebase, sendConfigToThingSpeak]
+        [phTolerance, saveConfigToFirebase]
     );
 
     const safeDosingModeSet = useCallback(
         async (value) => {
             setDosingMode(value);
             await saveConfigToFirebase({ dosingMode: value });
-            await sendConfigToThingSpeak(phTolerance, phToleranceRange, value);
         },
-        [phTolerance, phToleranceRange, saveConfigToFirebase, sendConfigToThingSpeak]
+        [saveConfigToFirebase]
     );
 
     const checkConnection = useCallback(async () => {
