@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "init-version": "node scripts/init-app-version.js"
+    "init-version": "node scripts/init-app-version.js",
+    "update-version": "node scripts/update-firebase-version.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
