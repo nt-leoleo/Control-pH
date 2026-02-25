@@ -4,6 +4,7 @@
   z-index: 100;
   width: 100%;
   padding: 0.95rem 0.9rem 0.75rem;
+  padding-top: calc(0.95rem + env(safe-area-inset-top));
   border-bottom: 1px solid var(--border-color);
   background: rgba(9, 20, 29, 0.86);
   backdrop-filter: blur(10px);
@@ -26,6 +27,7 @@
 
 .app-header.is-compact {
   padding: 0.56rem 0.75rem 0.5rem;
+  padding-top: calc(0.56rem + env(safe-area-inset-top));
   background: rgba(9, 20, 29, 0.95);
   box-shadow: 0 8px 20px rgba(2, 8, 23, 0.38);
 }
