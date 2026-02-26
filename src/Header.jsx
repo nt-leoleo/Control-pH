@@ -73,8 +73,8 @@ const Header = ({ onConfigClick }) => {
   const isWeb = !Capacitor.isNativePlatform();
 
   const handleDownloadApp = () => {
-    // Descargar desde Firebase Hosting
-    window.location.href = 'https://control-ph-82951.web.app/control-pileta-v4.11.20.apk';
+    // Descargar desde carpeta public del frontend
+    window.location.href = '/control-pileta-v4.11.20.apk';
   };
 
   return (
