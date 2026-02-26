@@ -282,9 +282,32 @@
   gap: 1rem;
 }
 
-.time-format-hint {
-  margin-top: 0.5rem;
+.time-format-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(var(--primary-rgb), 0.1);
+  border: 1px solid rgba(var(--primary-rgb), 0.3);
+  border-radius: 6px;
+  margin-top: 0.75rem;
   margin-bottom: 0.5rem;
+}
+
+.time-format-info .info-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.time-format-info .info-text {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+[data-theme='light'] .time-format-info {
+  background: rgba(8, 145, 178, 0.08);
+  border-color: rgba(8, 145, 178, 0.3);
 }
 
 .form-error {
