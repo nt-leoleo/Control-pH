@@ -191,6 +191,7 @@ const STEP_LIST = [
         description: 'Presiona este boton para enviar la dosificacion manual.',
         selector: '[data-tutorial="manual-submit"]',
         scrollBlock: 'end',
+        anchorOverride: 'top',
       },
     ],
   },
@@ -209,6 +210,7 @@ const STEP_LIST = [
       'Desde Ajustes podes configurar objetivo y tolerancia de pH, modos, ESP32, WiFi y gestion de piscinas.',
     selector: '[data-tutorial="open-settings"]',
     scrollTop: true,
+    anchorOverride: 'top',
   },
 ];
 
@@ -565,6 +567,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
   const activeDemoPhCycle = Boolean(activePart?.demoPhCycle || (!hasParts && step?.demoPhCycle));
   const activeScrollPreference = activePart?.scrollBlock ?? step?.scrollBlock ?? null;
   const activeScrollBlock = activeScrollPreference || 'start';
+  const activeAnchorOverride = activePart?.anchorOverride ?? step?.anchorOverride ?? null;
 
   const panelTitle = activePart?.title || step?.title;
   const panelDescription = activePart?.description || step?.description;
@@ -832,14 +835,15 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
     }
 
     const cardRect = cardRef.current.getBoundingClientRect();
+    const anchorToUse = activeAnchorOverride || cardAnchorRef.current;
     const nextPosition = getCardPlacement(
       spotlightRect,
       cardRect.width,
       cardRect.height,
-      cardAnchorRef.current
+      anchorToUse
     );
 
-    if (!cardAnchorRef.current) {
+    if (!cardAnchorRef.current && !activeAnchorOverride) {
       cardAnchorRef.current = nextPosition.anchor;
     }
 
@@ -855,7 +859,7 @@ const AppTutorial = ({ isOpen, onClose, onDemoPhChange, onHeaderVisibilityChange
     });
 
     setConnectorPoints(getConnectorPoints(nextPosition, cardRect.width, cardRect.height, spotlightRect));
-  }, [isOpen, spotlightRect]);
+  }, [isOpen, spotlightRect, activeAnchorOverride]);
 
   useEffect(() => {
     if (!isOpen) {
