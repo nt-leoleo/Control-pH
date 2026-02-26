@@ -445,6 +445,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               <div className="slider-container">
                 <input
                   type="range"
+                  min="0"
+                  max="14"
                   step="0.1"
                   value={localPhTolerance}
                   onChange={handleToleranceChange}
@@ -461,6 +463,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               <div className="slider-value">
                 <input
                   type="number"
+                  min="0"
+                  max="14"
                   step="0.1"
                   value={localPhTolerance}
                   onChange={handleToleranceChange}
@@ -480,6 +484,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               <div className="slider-container">
                 <input
                   type="range"
+                  min="0.1"
+                  max="5"
                   step="0.1"
                   value={localPhToleranceRange}
                   onChange={handleRangeChange}
@@ -493,6 +499,8 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
               <div className="slider-value">
                 <input
                   type="number"
+                  min="0.1"
+                  max="5"
                   step="0.1"
                   value={localPhToleranceRange}
                   onChange={handleRangeChange}
