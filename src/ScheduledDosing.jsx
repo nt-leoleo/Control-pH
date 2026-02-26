@@ -259,7 +259,7 @@ const ScheduledDosing = () => {
           </div>
 
           <div className="time-format-info">
-            <span className="info-icon">ℹ️</span>
+            <span className="info-icon-circle">i</span>
             <span className="info-text">Formato 24 horas - Ejemplos: 08:00 (mañana), 14:00 (tarde), 20:00 (noche)</span>
           </div>
           {!isTimeValid() && formData.startTime && formData.endTime && (
