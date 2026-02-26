@@ -196,20 +196,64 @@ const ScheduledDosing = () => {
             <div className="form-group">
               <label>Desde las</label>
               <input
-                type="time"
+                type="text"
                 value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                step="3600"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Permitir solo números y :
+                  if (/^[0-9:]*$/.test(value)) {
+                    setFormData({ ...formData, startTime: value });
+                  }
+                }}
+                onBlur={(e) => {
+                  // Formatear al perder foco
+                  const value = e.target.value;
+                  if (value && !value.includes(':')) {
+                    // Si solo escribió números, formatear como HH:MM
+                    if (value.length <= 2) {
+                      setFormData({ ...formData, startTime: value.padStart(2, '0') + ':00' });
+                    } else if (value.length === 3) {
+                      setFormData({ ...formData, startTime: value[0] + ':' + value.slice(1) });
+                    } else if (value.length === 4) {
+                      setFormData({ ...formData, startTime: value.slice(0, 2) + ':' + value.slice(2) });
+                    }
+                  }
+                }}
+                placeholder="08:00"
+                pattern="[0-2][0-9]:[0-5][0-9]"
+                maxLength="5"
               />
             </div>
 
             <div className="form-group">
               <label>Hasta las</label>
               <input
-                type="time"
+                type="text"
                 value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                step="3600"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Permitir solo números y :
+                  if (/^[0-9:]*$/.test(value)) {
+                    setFormData({ ...formData, endTime: value });
+                  }
+                }}
+                onBlur={(e) => {
+                  // Formatear al perder foco
+                  const value = e.target.value;
+                  if (value && !value.includes(':')) {
+                    // Si solo escribió números, formatear como HH:MM
+                    if (value.length <= 2) {
+                      setFormData({ ...formData, endTime: value.padStart(2, '0') + ':00' });
+                    } else if (value.length === 3) {
+                      setFormData({ ...formData, endTime: value[0] + ':' + value.slice(1) });
+                    } else if (value.length === 4) {
+                      setFormData({ ...formData, endTime: value.slice(0, 2) + ':' + value.slice(2) });
+                    }
+                  }
+                }}
+                placeholder="20:00"
+                pattern="[0-2][0-9]:[0-5][0-9]"
+                maxLength="5"
               />
             </div>
           </div>
