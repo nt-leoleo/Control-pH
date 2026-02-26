@@ -163,6 +163,25 @@
   font-size: 1rem;
 }
 
+/* Forzar formato 24 horas en inputs de tiempo */
+.form-group input[type="time"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.form-group input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none;
+}
+
+.form-group input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(var(--icon-invert, 0));
+}
+
+[data-theme='light'] .form-group input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+}
+
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
