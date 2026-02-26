@@ -1,0 +1,27 @@
+# Firebase ignore file
+# This file specifies files that are *not* uploaded to Firebase hosting
+
+# Git files
+.git
+.gitignore
+
+# CI files
+.travis.yml
+.gitlab-ci.yml
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Don't ignore APK files (we want them in Firebase hosting)
+# *.apk is in .gitignore but we want it in Firebase

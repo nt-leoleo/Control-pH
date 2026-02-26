@@ -74,7 +74,7 @@ const Header = ({ onConfigClick }) => {
 
   const handleDownloadApp = () => {
     // Descargar desde Firebase Hosting
-    window.location.href = 'https://control-ph-82951.web.app/control-pileta-v4.11.18.apk';
+    window.location.href = 'https://control-ph-82951.web.app/control-pileta-v4.11.20.apk';
   };
 
   return (

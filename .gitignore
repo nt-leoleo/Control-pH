@@ -29,8 +29,9 @@ dist-ssr
 !.env.example
 
 # APK files (too large for git)
-*.apk
-public/*.apk
+/*.apk
+android/**/*.apk
+!dist/*.apk
 
 # Firebase Admin SDK private key
 scripts/firebase-admin-key.json
