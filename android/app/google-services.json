@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "102545501878-ui3904uu27q1v640puk1bkenpsj2or8i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.controlpileta.app",
+            "certificate_hash": "26eb1861da257db3296f75d7a83a035dd43bb719"
+          }
+        },
+        {
           "client_id": "102545501878-28h1bok5jkkpbo4309f8spn7svukoo28.apps.googleusercontent.com",
           "client_type": 3
         }
