@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const CURRENT_VERSION = '4.11.13';
+const CURRENT_VERSION = '4.11.14';
 
 export const useAppUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);

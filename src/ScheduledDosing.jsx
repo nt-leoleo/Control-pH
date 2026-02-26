@@ -258,6 +258,13 @@ const ScheduledDosing = () => {
             </div>
           </div>
 
+          <div className="time-format-hint">
+            <InfoHint
+              size="sm"
+              title="Formato 24 horas"
+              text="Usa formato de 24 horas para las horas. Ejemplos: 00:00 (medianoche), 08:00 (8 de la mañana), 14:00 (2 de la tarde), 20:00 (8 de la noche), 23:59 (casi medianoche)."
+            />
+          </div>
           {!isTimeValid() && formData.startTime && formData.endTime && (
             <div className="form-error">
               La hora de fin tiene que ser después de la hora de inicio
