@@ -255,7 +255,16 @@ const ScheduledDosing = () => {
                   onClick={() => handleDeleteSchedule(schedule.id)}
                   title="Eliminar"
                 >
-                  🗑️
+                  <svg
+                    className="action-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v9h-2V9Zm4 0h2v9h-2V9ZM7 9h2v9H7V9Zm-1 12h12a2 2 0 0 0 2-2V7H4v12a2 2 0 0 0 2 2Z"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
