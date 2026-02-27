@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from 'react';
+﻿import { useContext, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import InfoHint from './InfoHint';
@@ -7,10 +7,10 @@ import './ScheduledDosing.css';
 const DAYS_OF_WEEK = [
   { id: 'monday', label: 'Lun' },
   { id: 'tuesday', label: 'Mar' },
-  { id: 'wednesday', label: 'Mié' },
+  { id: 'wednesday', label: 'MiÃ©' },
   { id: 'thursday', label: 'Jue' },
   { id: 'friday', label: 'Vie' },
-  { id: 'saturday', label: 'Sáb' },
+  { id: 'saturday', label: 'SÃ¡b' },
   { id: 'sunday', label: 'Dom' },
 ];
 
@@ -101,8 +101,8 @@ const ScheduledDosing = () => {
   };
 
   const getDaysLabel = (days) => {
-    if (days.length === 7) return 'Todos los días';
-    if (days.length === 0) return 'Ningún día';
+    if (days.length === 7) return 'Todos los dÃ­as';
+    if (days.length === 0) return 'NingÃºn dÃ­a';
     return days.map(d => DAYS_OF_WEEK.find(day => day.id === d)?.label).join(', ');
   };
 
@@ -120,8 +120,8 @@ const ScheduledDosing = () => {
       <div className="scheduled-header-with-info">
         <InfoHint
           size="md"
-          title="¿Cuándo puede trabajar el sistema automático?"
-          text="Elige en qué horarios quieres que el sistema corrija el pH solo. Por ejemplo: solo de día, o solo cuando estás en casa. Si no configuras nada, el sistema trabaja todo el día."
+          title="Â¿CuÃ¡ndo puede trabajar el sistema automÃ¡tico?"
+          text="Elige en quÃ© horarios quieres que el sistema corrija el pH solo. Por ejemplo: solo de dÃ­a, o solo cuando estÃ¡s en casa. Si no configuras nada, el sistema trabaja todo el dÃ­a."
         />
       </div>
 
@@ -130,8 +130,8 @@ const ScheduledDosing = () => {
           <div className="no-schedules">
             <p>No hay horarios configurados</p>
             <p className="no-schedules-hint">
-              El sistema automático puede trabajar todo el día.
-              Si quieres que solo trabaje en ciertos horarios, agrega uno aquí.
+              El sistema automÃ¡tico puede trabajar todo el dÃ­a.
+              Si quieres que solo trabaje en ciertos horarios, agrega uno aquÃ­.
             </p>
           </div>
         )}
@@ -147,31 +147,32 @@ const ScheduledDosing = () => {
               </div>
               <div className="schedule-actions">
                 <button
-                  className="toggle-btn"
-                  onClick={() => handleToggleSchedule(schedule.id)}
-                  title={schedule.enabled ? 'Desactivar' : 'Activar'}
-                >
-                  {schedule.enabled ? '✓' : '○'}
-                </button>
-                <button
                   className="edit-btn"
                   onClick={() => handleEditSchedule(schedule)}
                   title="Editar"
                 >
-                  ✎
+                  Editar
+                </button>
+                <button
+                  className="toggle-btn"
+                  onClick={() => handleToggleSchedule(schedule.id)}
+                  title={schedule.enabled ? 'Desactivar' : 'Activar'}
+                >
+                  {schedule.enabled ? 'âœ“' : 'â—‹'}
                 </button>
                 <button
                   className="delete-btn"
                   onClick={() => handleDeleteSchedule(schedule.id)}
                   title="Eliminar"
                 >
-                  ✕
+                  âœ•
                 </button>
+              </div>
               </div>
             </div>
             <div className="schedule-details">
               <span className="detail-item">
-                <strong>Días:</strong> {getDaysLabel(schedule.days)}
+                <strong>DÃ­as:</strong> {getDaysLabel(schedule.days)}
               </span>
             </div>
           </div>
@@ -188,7 +189,7 @@ const ScheduledDosing = () => {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ej: Solo de día"
+              placeholder="Ej: Solo de dÃ­a"
             />
           </div>
 
@@ -200,7 +201,7 @@ const ScheduledDosing = () => {
                 value={formData.startTime}
                 onChange={(e) => {
                   const value = e.target.value;
-                  // Permitir solo números y :
+                  // Permitir solo nÃºmeros y :
                   if (/^[0-9:]*$/.test(value)) {
                     setFormData({ ...formData, startTime: value });
                   }
@@ -209,7 +210,7 @@ const ScheduledDosing = () => {
                   // Formatear al perder foco
                   const value = e.target.value;
                   if (value && !value.includes(':')) {
-                    // Si solo escribió números, formatear como HH:MM
+                    // Si solo escribiÃ³ nÃºmeros, formatear como HH:MM
                     if (value.length <= 2) {
                       setFormData({ ...formData, startTime: value.padStart(2, '0') + ':00' });
                     } else if (value.length === 3) {
@@ -232,7 +233,7 @@ const ScheduledDosing = () => {
                 value={formData.endTime}
                 onChange={(e) => {
                   const value = e.target.value;
-                  // Permitir solo números y :
+                  // Permitir solo nÃºmeros y :
                   if (/^[0-9:]*$/.test(value)) {
                     setFormData({ ...formData, endTime: value });
                   }
@@ -241,7 +242,7 @@ const ScheduledDosing = () => {
                   // Formatear al perder foco
                   const value = e.target.value;
                   if (value && !value.includes(':')) {
-                    // Si solo escribió números, formatear como HH:MM
+                    // Si solo escribiÃ³ nÃºmeros, formatear como HH:MM
                     if (value.length <= 2) {
                       setFormData({ ...formData, endTime: value.padStart(2, '0') + ':00' });
                     } else if (value.length === 3) {
@@ -260,16 +261,16 @@ const ScheduledDosing = () => {
 
           <div className="time-format-info">
             <span className="info-icon-circle">i</span>
-            <span className="info-text">Formato 24 horas - Ejemplos: 08:00 (mañana), 14:00 (tarde), 20:00 (noche)</span>
+            <span className="info-text">Formato 24 horas - Ejemplos: 08:00 (maÃ±ana), 14:00 (tarde), 20:00 (noche)</span>
           </div>
           {!isTimeValid() && formData.startTime && formData.endTime && (
             <div className="form-error">
-              La hora de fin tiene que ser después de la hora de inicio
+              La hora de fin tiene que ser despuÃ©s de la hora de inicio
             </div>
           )}
 
           <div className="form-group">
-            <label>¿Qué días?</label>
+            <label>Â¿QuÃ© dÃ­as?</label>
             <div className="days-selector">
               {DAYS_OF_WEEK.map(day => (
                 <button
@@ -311,8 +312,8 @@ const ScheduledDosing = () => {
 
       <div className="schedule-info-box">
         <p className="info-text">
-          <strong>Recuerda:</strong> El sistema automático solo trabaja en estos horarios.
-          Tú puedes corregir manualmente cuando quieras, en cualquier momento.
+          <strong>Recuerda:</strong> El sistema automÃ¡tico solo trabaja en estos horarios.
+          TÃº puedes corregir manualmente cuando quieras, en cualquier momento.
         </p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-.scheduled-dosing-container {
+﻿.scheduled-dosing-container {
   padding: 1rem;
   background: var(--card-bg);
   border-radius: 12px;
@@ -98,6 +98,10 @@
 .edit-btn {
   background: var(--info-color);
   color: white;
+  width: auto;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .delete-btn {
@@ -352,3 +356,4 @@
 .info-text strong {
   color: var(--primary-color);
 }
+
