@@ -124,6 +124,12 @@
   flex-shrink: 0;
 }
 
+.schedule-actions .action-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .toggle-btn {
   background: var(--success-color);
   color: white;
