@@ -255,7 +255,7 @@ const ScheduledDosing = () => {
                   onClick={() => handleDeleteSchedule(schedule.id)}
                   title="Eliminar"
                 >
-                  âœ•
+                  🗑️
                 </button>
               </div>
             </div>
