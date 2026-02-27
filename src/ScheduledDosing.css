@@ -105,6 +105,9 @@
 .schedule-actions {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .schedule-actions button {
@@ -118,6 +121,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .toggle-btn {
@@ -133,9 +137,10 @@
   background: var(--info-color);
   color: white;
   width: auto;
-  padding: 0 10px;
-  font-size: 0.85rem;
+  padding: 0 12px;
+  font-size: 0.8rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .delete-btn {
