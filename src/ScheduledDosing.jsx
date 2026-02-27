@@ -21,6 +21,7 @@ const ScheduledDosing = () => {
   const [schedules, setSchedules] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [activeScheduleId, setActiveScheduleId] = useState(null);
   
   const [formData, setFormData] = useState({
     enabled: true,
@@ -33,8 +34,27 @@ const ScheduledDosing = () => {
   useEffect(() => {
     if (userConfig?.autoDosingWindows) {
       setSchedules(userConfig.autoDosingWindows);
+      setActiveScheduleId(userConfig.autoDosingActiveWindowId || null);
     }
   }, [userConfig]);
+
+  useEffect(() => {
+    if (schedules.length === 0) {
+      setActiveScheduleId(null);
+      return;
+    }
+    if (schedules.length === 1) {
+      if (activeScheduleId !== schedules[0].id) {
+        setActiveScheduleId(schedules[0].id);
+      }
+      return;
+    }
+    const hasActive = schedules.some(s => s.id === activeScheduleId);
+    if (!hasActive) {
+      const firstEnabled = schedules.find(s => s.enabled);
+      setActiveScheduleId(firstEnabled ? firstEnabled.id : schedules[0].id);
+    }
+  }, [schedules, activeScheduleId]);
 
   const handleSaveSchedule = async () => {
     const newSchedule = {
@@ -50,8 +70,27 @@ const ScheduledDosing = () => {
       updatedSchedules = [...schedules, newSchedule];
     }
 
+    let updatedActiveId = activeScheduleId;
+    if (updatedSchedules.length === 1) {
+      updatedActiveId = updatedSchedules[0].id;
+    }
+    if (updatedSchedules.length > 1) {
+      const hasActive = updatedSchedules.some(s => s.id === updatedActiveId);
+      if (!hasActive) {
+        updatedActiveId = updatedSchedules[0].id;
+      }
+      updatedSchedules = updatedSchedules.map(s => ({
+        ...s,
+        enabled: s.id === updatedActiveId
+      }));
+    }
+
     setSchedules(updatedSchedules);
-    await saveConfigToFirebase({ autoDosingWindows: updatedSchedules });
+    setActiveScheduleId(updatedActiveId);
+    await saveConfigToFirebase({
+      autoDosingWindows: updatedSchedules,
+      autoDosingActiveWindowId: updatedActiveId
+    });
     
     setShowAddForm(false);
     setEditingId(null);
@@ -59,9 +98,28 @@ const ScheduledDosing = () => {
   };
 
   const handleDeleteSchedule = async (id) => {
-    const updatedSchedules = schedules.filter(s => s.id !== id);
+    let updatedSchedules = schedules.filter(s => s.id !== id);
+    let updatedActiveId = activeScheduleId === id ? null : activeScheduleId;
+
+    if (updatedSchedules.length === 1) {
+      updatedActiveId = updatedSchedules[0].id;
+    } else if (updatedSchedules.length > 1) {
+      const hasActive = updatedSchedules.some(s => s.id === updatedActiveId);
+      if (!hasActive) {
+        updatedActiveId = updatedSchedules[0].id;
+      }
+      updatedSchedules = updatedSchedules.map(s => ({
+        ...s,
+        enabled: s.id === updatedActiveId
+      }));
+    }
+
     setSchedules(updatedSchedules);
-    await saveConfigToFirebase({ autoDosingWindows: updatedSchedules });
+    setActiveScheduleId(updatedActiveId);
+    await saveConfigToFirebase({
+      autoDosingWindows: updatedSchedules,
+      autoDosingActiveWindowId: updatedActiveId
+    });
   };
 
   const handleToggleSchedule = async (id) => {
@@ -70,6 +128,22 @@ const ScheduledDosing = () => {
     );
     setSchedules(updatedSchedules);
     await saveConfigToFirebase({ autoDosingWindows: updatedSchedules });
+  };
+
+  const handleSelectSchedule = async (id) => {
+    if (schedules.length <= 1) {
+      return;
+    }
+    const updatedSchedules = schedules.map(s => ({
+      ...s,
+      enabled: s.id === id
+    }));
+    setSchedules(updatedSchedules);
+    setActiveScheduleId(id);
+    await saveConfigToFirebase({
+      autoDosingWindows: updatedSchedules,
+      autoDosingActiveWindowId: id
+    });
   };
 
   const handleEditSchedule = (schedule) => {
@@ -137,8 +211,22 @@ const ScheduledDosing = () => {
         )}
 
         {schedules.map(schedule => (
-          <div key={schedule.id} className={`schedule-item ${!schedule.enabled ? 'disabled' : ''}`}>
+          <div
+            key={schedule.id}
+            className={`schedule-item ${!schedule.enabled ? 'disabled' : ''} ${schedules.length > 1 && schedule.id !== activeScheduleId ? 'inactive' : ''}`}
+          >
             <div className="schedule-header">
+              {schedules.length > 1 && (
+                <label className="schedule-radio">
+                  <input
+                    type="radio"
+                    name="activeSchedule"
+                    checked={schedule.id === activeScheduleId}
+                    onChange={() => handleSelectSchedule(schedule.id)}
+                  />
+                  <span className="radio-bullet" aria-hidden="true" />
+                </label>
+              )}
               <div className="schedule-info">
                 <h4>{schedule.name}</h4>
                 <p className="schedule-time-range">
@@ -153,13 +241,15 @@ const ScheduledDosing = () => {
                 >
                   Editar
                 </button>
-                <button
-                  className="toggle-btn"
-                  onClick={() => handleToggleSchedule(schedule.id)}
-                  title={schedule.enabled ? 'Desactivar' : 'Activar'}
-                >
-                  {schedule.enabled ? 'âœ“' : 'â—‹'}
-                </button>
+                {schedules.length <= 1 && (
+                  <button
+                    className="toggle-btn"
+                    onClick={() => handleToggleSchedule(schedule.id)}
+                    title={schedule.enabled ? 'Desactivar' : 'Activar'}
+                  >
+                    {schedule.enabled ? 'âœ“' : 'â—‹'}
+                  </button>
+                )}
                 <button
                   className="delete-btn"
                   onClick={() => handleDeleteSchedule(schedule.id)}
@@ -167,7 +257,6 @@ const ScheduledDosing = () => {
                 >
                   âœ•
                 </button>
-              </div>
               </div>
             </div>
             <div className="schedule-details">
