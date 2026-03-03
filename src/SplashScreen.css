@@ -12,6 +12,8 @@
     opacity: 1;
     transition: opacity 0.3s ease-out;
     overflow: hidden;
+    will-change: opacity;
+    contain: layout paint;
 }
 
 .splash-screen.fade-out {
@@ -30,6 +32,8 @@
     height: 100%;
     pointer-events: none;
     z-index: 10;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .raindrop {
@@ -39,6 +43,8 @@
     height: 0;
     background: transparent;
     animation: raindrop-fall 1s ease-in infinite;
+    will-change: transform, opacity, height, top;
+    transform: translateZ(0);
 }
 
 /* Animación de caída de la gota */
@@ -84,6 +90,7 @@
         0 0 2px rgba(255, 255, 255, 0.5),
         0 0 4px rgba(255, 255, 255, 0.3);
     filter: blur(0.5px);
+    will-change: opacity;
 }
 
 /* Efecto de impacto al llegar abajo (splash) */
@@ -155,6 +162,7 @@
     border-radius: 45%;
     transform: translateX(-50%);
     animation: wave-animation 3s ease-in-out infinite;
+    will-change: transform;
 }
 
 .wave1 {
@@ -187,6 +195,7 @@
     z-index: 2;
     text-align: center;
     animation: fade-in-up 0.8s ease-out;
+    will-change: transform, opacity;
 }
 
 @keyframes fade-in-up {
@@ -213,6 +222,8 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     animation: pulse-scale 2s ease-in-out infinite;
     position: relative;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .logo-circle::before {
@@ -225,6 +236,7 @@
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.3);
     animation: ripple 2s ease-out infinite;
+    will-change: transform, opacity;
 }
 
 @keyframes pulse-scale {
@@ -251,6 +263,8 @@
     font-size: 4rem;
     animation: float 3s ease-in-out infinite;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 @keyframes float {
@@ -270,6 +284,7 @@
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     letter-spacing: -0.5px;
     animation: fade-in-up 0.8s ease-out 0.2s both;
+    will-change: transform, opacity;
 }
 
 .app-subtitle {
@@ -279,6 +294,7 @@
     font-weight: 300;
     text-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
     animation: fade-in-up 0.8s ease-out 0.4s both;
+    will-change: transform, opacity;
 }
 
 /* Indicador de carga */
@@ -290,6 +306,7 @@
     width: 200px;
     margin: 0 auto;
     animation: fade-in-up 0.8s ease-out 0.6s both;
+    will-change: transform, opacity;
 }
 
 .loading-bar {
@@ -310,6 +327,7 @@
     border-radius: 2px;
     animation: loading-animation 2s ease-in-out infinite;
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    will-change: width, transform;
 }
 
 @keyframes loading-animation {
@@ -333,6 +351,7 @@
     font-weight: 300;
     margin: 0;
     animation: pulse-opacity 1.5s ease-in-out infinite;
+    will-change: opacity;
 }
 
 @keyframes pulse-opacity {
@@ -380,6 +399,8 @@
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
     animation: float-particles 4s ease-in-out infinite;
+    will-change: transform, opacity;
+    transform: translateZ(0);
 }
 
 .splash-content::before {

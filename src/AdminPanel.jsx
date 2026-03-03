@@ -1,13 +1,13 @@
 ﻿import { useState, useEffect, useContext, useCallback } from 'react';
 import { PHContext } from './PHContext';
 import { ref, onValue, off, set } from 'firebase/database';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { database, db, auth } from './firebase';
 import './AdminPanel.css';
 
 const DEFAULT_ADMIN_CONFIG = {
   maxDailyDoses: 10,
-  minWaitTimeBetweenDoses: 2,
+  minWaitTimeBetweenDoses: 0, // Sin espera por defecto, dosificar inmediatamente cuando sea necesario
   checkInterval: 1,
   maxManualDosingSeconds: 300,
   maxDoseVolume: 0.5,
@@ -89,24 +89,39 @@ const AdminPanel = ({ onClose }) => {
   }, [user?.uid]);
 
   const loadUsers = useCallback(async () => {
+    if (!user?.uid) {
+      setUsers([]);
+      return;
+    }
+    
     setIsLoadingUsers(true);
     try {
-      const usersSnapshot = await getDocs(collection(db, 'users'));
-      const loadedUsers = usersSnapshot.docs
-        .map((item) => ({ id: item.id, ...item.data() }))
-        .sort((a, b) => {
-          const aName = (a.displayName || a.email || a.id).toLowerCase();
-          const bName = (b.displayName || b.email || b.id).toLowerCase();
-          return aName.localeCompare(bName);
-        });
-      setUsers(loadedUsers);
+      // Llamar a Cloud Function para obtener todos los usuarios
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch(`${CLOUD_FUNCTIONS_BASE}/listAllUsers`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      setUsers(data.users || []);
+      console.log(`✅ Cargados ${data.users.length} usuarios`);
     } catch (error) {
       console.error('Error cargando usuarios:', error);
-      alert('No se pudieron cargar los usuarios.');
+      alert(`Error cargando usuarios: ${error.message}`);
+      setUsers([]);
     } finally {
       setIsLoadingUsers(false);
     }
-  }, []);
+  }, [user?.uid]);
 
   useEffect(() => {
     loadUsers();
@@ -223,11 +238,14 @@ const AdminPanel = ({ onClose }) => {
                   type="number"
                   value={adminConfig.minWaitTimeBetweenDoses}
                   onChange={(e) => handleConfigChange('minWaitTimeBetweenDoses', e.target.value)}
-                  step="0.0002778"
+                  step="0.01"
+                  min="0"
                 />
                 <span className="field-unit">horas</span>
                 <span className="field-help">
-                  Tiempo que espera el sistema despues de dosificar para que el quimico se mezcle con el agua. (1 segundo = 0.0002778 horas)
+                  Tiempo de espera después de dosificar para que el químico se mezcle. 
+                  Ejemplos: 0 = sin espera (inmediato), 0.05 = 3 minutos, 0.5 = 30 minutos, 1 = 1 hora.
+                  Recomendado: 0.05 a 0.5 horas para piscinas residenciales.
                 </span>
               </div>
 
@@ -382,7 +400,7 @@ const AdminPanel = ({ onClose }) => {
           </div>
 
           <div className="admin-section">
-            <h3>Usuarios registrados</h3>
+            <h3>Usuarios registrados ({users.length})</h3>
 
             {isLoadingUsers ? (
               <div className="no-logs">Cargando usuarios...</div>
@@ -396,11 +414,23 @@ const AdminPanel = ({ onClose }) => {
                       <strong>{registeredUser.displayName || 'Sin nombre'}</strong>
                       <span>{registeredUser.email || 'Sin email'}</span>
                       <small>ID: {registeredUser.id}</small>
+                      {registeredUser.role === 'admin' && <span className="admin-badge">ADMIN</span>}
+                      {registeredUser.disabled && <span className="disabled-badge">DESHABILITADO</span>}
+                      {registeredUser.linkedDeviceIds && registeredUser.linkedDeviceIds.length > 0 && (
+                        <small>Dispositivos: {registeredUser.linkedDeviceIds.length}</small>
+                      )}
+                      {registeredUser.createdAt && (
+                        <small>Registrado: {new Date(registeredUser.createdAt).toLocaleDateString()}</small>
+                      )}
+                      {registeredUser.lastSignIn && (
+                        <small>Último acceso: {new Date(registeredUser.lastSignIn).toLocaleDateString()}</small>
+                      )}
                     </div>
                     <button
                       className="admin-user-delete"
                       onClick={() => handleDeleteUser(registeredUser)}
-                      disabled={deletingUserId === registeredUser.id}
+                      disabled={deletingUserId === registeredUser.id || registeredUser.id === user?.uid}
+                      title={registeredUser.id === user?.uid ? 'No puedes eliminar tu propia cuenta' : 'Eliminar usuario'}
                     >
                       {deletingUserId === registeredUser.id ? 'Eliminando...' : 'Eliminar'}
                     </button>

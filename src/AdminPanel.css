@@ -320,6 +320,29 @@
   color: var(--text-muted);
 }
 
+.admin-badge,
+.disabled-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-badge {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.disabled-badge {
+  background: rgba(244, 63, 94, 0.2);
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+}
+
 .admin-user-delete {
   background: var(--danger-color);
   color: #fff;
