@@ -44,7 +44,7 @@ const AutomaticDosing = () => {
   const lastForceCheckRef = useRef(0);
 
   const adminConfig = userConfig?.adminConfig || {
-    minWaitTimeBetweenDoses: 0.5,
+    minWaitTimeBetweenDoses: 0, // Sin espera por defecto
     maxDailyDoses: 10,
     checkInterval: 1,
     minPH: 0.0,
@@ -140,7 +140,7 @@ const AutomaticDosing = () => {
     if (!user || dosingMode !== 'automatic') return;
     if (!dosingState?.initialized) return;
 
-    const minWaitHours = toNumberOr(adminConfig.minWaitTimeBetweenDoses, 0.5);
+    const minWaitHours = toNumberOr(adminConfig.minWaitTimeBetweenDoses, 0); // Sin espera por defecto
     if (minWaitHours !== 0) return;
 
     const deviation = ph - phTolerance;
@@ -178,7 +178,7 @@ const AutomaticDosing = () => {
 
   const deviation = ph - phTolerance;
   const isOutOfRange = Math.abs(deviation) > phToleranceRange;
-  const minWaitHours = toNumberOr(adminConfig.minWaitTimeBetweenDoses, 0.5);
+  const minWaitHours = toNumberOr(adminConfig.minWaitTimeBetweenDoses, 0); // Sin espera por defecto
   const waitTimeMs = Math.max(0, minWaitHours) * 60 * 60 * 1000;
   const timeSinceLastDosing = dosingState?.lastDosingTime
     ? Math.max(0, nowTs - toNumberOr(dosingState.lastDosingTime, nowTs))

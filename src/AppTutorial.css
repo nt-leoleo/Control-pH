@@ -6,12 +6,15 @@
   opacity: 1;
   touch-action: none;
   transition: opacity 0.32s ease;
+  will-change: opacity;
+  contain: layout paint;
 }
 
 .tutorial-full-shade {
   position: fixed;
   inset: 0;
   background: rgba(2, 6, 23, 0.8);
+  will-change: opacity;
 }
 
 .tutorial-youtube-host {
@@ -41,6 +44,8 @@
   box-shadow: 0 12px 26px rgba(2, 8, 23, 0.52);
   animation: tutorialTrackBadgeIn 0.26s ease-out;
   transition: opacity 0.32s ease, transform 0.32s ease;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .tutorial-track-badge svg {
@@ -65,6 +70,7 @@
   box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.8), 0 0 24px rgba(34, 211, 238, 0.52);
   pointer-events: none;
   transition: opacity 0.32s ease, transform 0.32s ease;
+  will-change: transform, opacity;
 }
 
 .tutorial-connector {
@@ -75,6 +81,7 @@
   pointer-events: none;
   z-index: 1;
   transition: opacity 0.32s ease;
+  will-change: opacity;
 }
 
 .tutorial-connector line {
@@ -82,6 +89,7 @@
   stroke-width: 2.5;
   stroke-dasharray: 6 6;
   animation: tutorialLinePulse 1.4s linear infinite;
+  will-change: stroke-dashoffset;
 }
 
 .tutorial-swipe-demo {
@@ -89,6 +97,7 @@
   pointer-events: none;
   z-index: 1;
   transition: opacity 0.32s ease, transform 0.32s ease;
+  will-change: transform, opacity;
 }
 
 .tutorial-swipe-track {
@@ -113,6 +122,8 @@
   box-shadow: 0 0 16px rgba(103, 232, 249, 0.6);
   transform: translate(-2px, -50%);
   animation: tutorialSwipe 1.6s ease-in-out infinite alternate;
+  will-change: transform, left;
+  transform: translate3d(-2px, -50%, 0);
 }
 
 .tutorial-card {
@@ -129,6 +140,7 @@
   padding: 0.95rem;
   z-index: 2;
   transition: top 0.24s ease, left 0.24s ease, transform 0.32s ease, opacity 0.32s ease;
+  will-change: transform, opacity, top, left;
 }
 
 .tutorial-audio-toggle {

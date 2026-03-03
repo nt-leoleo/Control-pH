@@ -128,7 +128,7 @@ function sortCommandCandidates(a, b) {
 /**
  * Recibe datos del sensor desde Arduino (HTTP POST cada 10s)
  */
-exports.receiveSensorData = onRequest(async (req, res) => {
+exports.receiveSensorData = onRequest({ invoker: 'public' }, async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   
   if (req.method === 'OPTIONS') {
@@ -139,9 +139,9 @@ exports.receiveSensorData = onRequest(async (req, res) => {
   }
   
   try {
-    const { deviceId, ph, voltage, wifiRSSI, uptime } = req.body;
+    const { deviceId, ph, voltage, wifiRSSI, uptime, offline } = req.body;
     
-    logger.info('📥 Datos recibidos:', { deviceId, ph, voltage, wifiRSSI, uptime });
+    logger.info('📥 Datos recibidos:', { deviceId, ph, voltage, wifiRSSI, uptime, offline });
     
     // Validar datos
     if (!deviceId || ph === undefined) {
@@ -173,8 +173,14 @@ exports.receiveSensorData = onRequest(async (req, res) => {
       uptime: parseInt(uptime) || 0,
       timestamp: Date.now(),
       deviceId: deviceId,
-      isRecent: true
+      isRecent: offline !== true  // Si offline=true, marcar como NO reciente
     };
+    
+    // Si el dispositivo está notificando que va offline, registrarlo
+    if (offline === true) {
+      logger.info(`📴 Dispositivo ${deviceId} notificó que está cambiando a modo offline`);
+      sensorPayload.offlineMode = true;
+    }
 
     await Promise.all(userIds.map(async (userId) => {
       const dataPath = `users/${userId}/sensorData`;
@@ -195,7 +201,7 @@ exports.receiveSensorData = onRequest(async (req, res) => {
 /**
  * Arduino solicita comandos pendientes (HTTP GET cada 5s)
  */
-exports.getCommand = onRequest(async (req, res) => {
+exports.getCommand = onRequest({ invoker: 'public' }, async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   
   try {
@@ -330,7 +336,7 @@ exports.getCommand = onRequest(async (req, res) => {
 /**
  * Arduino confirma comando completado (HTTP POST)
  */
-exports.confirmCommand = onRequest(async (req, res) => {
+exports.confirmCommand = onRequest({ invoker: 'public' }, async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   
   if (req.method === 'OPTIONS') {
@@ -604,7 +610,7 @@ async function processUser(userId, userData) {
     };
     const minWaitHours = adminConfig.minWaitTimeBetweenDoses !== undefined 
       ? adminConfig.minWaitTimeBetweenDoses 
-      : 0.5;
+      : 0; // Sin espera por defecto, usar configuración de admin
     const MIN_WAIT_TIME = minWaitHours * 60 * 60 * 1000; // Convertir horas a ms
     const MAX_DAILY_DOSES = toNumberOr(adminConfig.maxDailyDoses, 10);
     const MIN_PH = toNumberOr(adminConfig.minPH, 0.0);
@@ -787,17 +793,32 @@ async function processUser(userId, userData) {
       }
     }
     
-    // 5. Verificar tiempo de espera (solo si es mayor a 0)
-    const lastDosingTime = dosingState.lastDosingTime || 0;
-    const timeSinceLastDosing = Date.now() - lastDosingTime;
+    // 5. Verificar si ya hay un comando pendiente o en progreso
+    const autoCommandStatus = dosingState.autoCommandStatus || '';
+    if (autoCommandStatus === 'pending' || autoCommandStatus === 'processing') {
+      const commandAge = Date.now() - (dosingState.autoCommandCreatedAt || 0);
+      // Si el comando tiene menos de 5 minutos, esperar
+      if (commandAge < 5 * 60 * 1000) {
+        logger.info(`⏳ Comando en progreso (${autoCommandStatus}), esperando...`);
+        return;
+      } else {
+        // Si el comando tiene más de 5 minutos, considerarlo trabado y continuar
+        logger.warn(`⚠️ Comando trabado (${autoCommandStatus}), creando nuevo comando`);
+      }
+    }
+    
+    // 6. Verificar tiempo de espera (solo si es mayor a 0)
+    // Usar el tiempo de finalización del último comando, no el de creación
+    const lastDosingCompletedTime = dosingState.autoCommandCompletedAt || dosingState.lastDosingTime || 0;
+    const timeSinceLastDosing = Date.now() - lastDosingCompletedTime;
     
     if (minWaitHours > 0 && timeSinceLastDosing < MIN_WAIT_TIME) {
       const remainingMinutes = Math.ceil((MIN_WAIT_TIME - timeSinceLastDosing) / 60000);
-      logger.info(`⏱️ Esperando ${remainingMinutes} minutos antes de dosificar`);
+      logger.info(`⏱️ Esperando ${remainingMinutes} minutos desde última dosificación completada`);
       return;
     }
     
-    // 6. Verificar límite diario
+    // 7. Verificar límite diario
     const today = new Date().toDateString();
     const dosingCountToday = (dosingState.lastDosingDate === today) 
       ? (dosingState.dosingCountToday || 0) 
@@ -809,7 +830,7 @@ async function processUser(userId, userData) {
       return;
     }
     
-    // 7. Calcular dosificación usando fórmulas correctas
+    // 8. Calcular dosificación usando fórmulas correctas
     const poolVolume = userData.poolVolume || 50000; // Litros
     const alkalinity = userData.alkalinity || 100; // ppm
     const chlorineType = userData.chlorineType || 'sodium-hypochlorite';
@@ -860,7 +881,7 @@ async function processUser(userId, userData) {
     logger.info(`   Duración: ${duration}s`);
     logger.info(`   Detalles:`, dosingCalc.details);
     
-    // 8. Crear comando en Firebase (Arduino lo leerá con getCommand)
+    // 9. Crear comando en Firebase (Arduino lo leerá con getCommand)
     const commandsRef = realtimeDb.ref(`users/${userId}/commands`);
     const newCommandRef = commandsRef.push();
     
@@ -978,7 +999,7 @@ async function addLog(userId, type, message, data = null) {
 /**
  * Función HTTP para verificar estado del sistema
  */
-exports.getSystemStatus = onRequest(async (req, res) => {
+exports.getSystemStatus = onRequest({ invoker: 'public' }, async (req, res) => {
   // CORS
   res.set('Access-Control-Allow-Origin', '*');
   
@@ -1025,7 +1046,7 @@ exports.getSystemStatus = onRequest(async (req, res) => {
 /**
  * Función HTTP para forzar verificación manual
  */
-exports.forceCheck = onRequest(async (req, res) => {
+exports.forceCheck = onRequest({ invoker: 'public' }, async (req, res) => {
   // CORS
   res.set('Access-Control-Allow-Origin', '*');
   
@@ -1068,7 +1089,7 @@ exports.forceCheck = onRequest(async (req, res) => {
  * Función HTTP para enviar comandos manuales de dosificación
  * NUEVO: Crea comando en Firebase, Arduino lo lee con getCommand
  */
-exports.sendManualDosingCommand = onRequest(async (req, res) => {
+exports.sendManualDosingCommand = onRequest({ invoker: 'public' }, async (req, res) => {
   // CORS
   res.set('Access-Control-Allow-Origin', '*');
   
@@ -1147,5 +1168,245 @@ exports.sendManualDosingCommand = onRequest(async (req, res) => {
   } catch (error) {
     logger.error('❌ Error en sendManualDosingCommand:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+
+// =====================================================
+// FUNCIONES DE ADMINISTRACIÓN DE USUARIOS
+// =====================================================
+
+/**
+ * Lista todos los usuarios registrados (solo para administradores)
+ * Requiere autenticación con token de Firebase Auth
+ */
+exports.listAllUsers = onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    // Verificar autenticación
+    const decoded = await verifyAuthenticatedRequest(req);
+    const requestingUserId = decoded.uid;
+
+    logger.info(`📋 Usuario ${requestingUserId} solicitando lista de usuarios`);
+
+    // Verificar si el usuario es administrador
+    const requestingUserDoc = await firestore.collection('users').doc(requestingUserId).get();
+    const requestingUserData = requestingUserDoc.data() || {};
+    
+    // Verificar rol de administrador
+    if (requestingUserData.role !== 'admin') {
+      logger.warn(`⚠️ Usuario ${requestingUserId} no tiene permisos de administrador`);
+      res.status(403).json({ error: 'Insufficient permissions. Admin role required.' });
+      return;
+    }
+
+    logger.info(`✅ Usuario ${requestingUserId} verificado como administrador`);
+
+    // Listar todos los usuarios de Firebase Auth
+    const listUsersResult = await admin.auth().listUsers(1000); // Máximo 1000 usuarios
+    
+    // Obtener datos adicionales de Firestore para cada usuario
+    const usersWithData = await Promise.all(
+      listUsersResult.users.map(async (userRecord) => {
+        try {
+          const userDoc = await firestore.collection('users').doc(userRecord.uid).get();
+          const userData = userDoc.exists ? userDoc.data() : {};
+          
+          return {
+            id: userRecord.uid,
+            email: userRecord.email || null,
+            displayName: userRecord.displayName || userData.displayName || null,
+            emailVerified: userRecord.emailVerified || false,
+            disabled: userRecord.disabled || false,
+            createdAt: userRecord.metadata.creationTime || null,
+            lastSignIn: userRecord.metadata.lastSignInTime || null,
+            role: userData.role || 'user',
+            linkedDeviceIds: userData.linkedDeviceIds || [],
+            linkedDeviceNames: userData.linkedDeviceNames || {},
+          };
+        } catch (error) {
+          logger.error(`Error obteniendo datos de usuario ${userRecord.uid}:`, error);
+          return {
+            id: userRecord.uid,
+            email: userRecord.email || null,
+            displayName: userRecord.displayName || null,
+            emailVerified: userRecord.emailVerified || false,
+            disabled: userRecord.disabled || false,
+            createdAt: userRecord.metadata.creationTime || null,
+            lastSignIn: userRecord.metadata.lastSignInTime || null,
+            role: 'user',
+            linkedDeviceIds: [],
+            linkedDeviceNames: {},
+          };
+        }
+      })
+    );
+
+    logger.info(`✅ Listados ${usersWithData.length} usuarios`);
+
+    res.json({
+      success: true,
+      users: usersWithData,
+      count: usersWithData.length,
+      timestamp: Date.now()
+    });
+
+  } catch (error) {
+    if (error.message === 'AUTH_MISSING') {
+      res.status(401).json({ error: 'Authorization header missing' });
+      return;
+    }
+
+    logger.error('❌ Error en listAllUsers:', error);
+    res.status(500).json({ error: error.message || 'Unexpected error' });
+  }
+});
+
+/**
+ * Elimina completamente un usuario (solo para administradores)
+ * Elimina: Firebase Auth, Firestore, Realtime Database, y vínculos de dispositivos
+ */
+exports.deleteUserCompletely = onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    // Verificar autenticación
+    const decoded = await verifyAuthenticatedRequest(req);
+    const requestingUserId = decoded.uid;
+    const targetUserId = req.body.targetUserId;
+
+    if (!targetUserId) {
+      res.status(400).json({ error: 'targetUserId is required' });
+      return;
+    }
+
+    logger.info(`🗑️ Usuario ${requestingUserId} solicitando eliminar usuario ${targetUserId}`);
+
+    // Verificar si el usuario solicitante es administrador
+    const requestingUserDoc = await firestore.collection('users').doc(requestingUserId).get();
+    const requestingUserData = requestingUserDoc.data() || {};
+    
+    if (requestingUserData.role !== 'admin') {
+      logger.warn(`⚠️ Usuario ${requestingUserId} no tiene permisos de administrador`);
+      res.status(403).json({ error: 'Insufficient permissions. Admin role required.' });
+      return;
+    }
+
+    // Prevenir auto-eliminación
+    if (requestingUserId === targetUserId) {
+      logger.warn(`⚠️ Usuario ${requestingUserId} intentó eliminarse a sí mismo`);
+      res.status(400).json({ error: 'Cannot delete your own account' });
+      return;
+    }
+
+    logger.info(`✅ Usuario ${requestingUserId} verificado como administrador`);
+
+    // 1. Obtener datos del usuario antes de eliminar
+    const targetUserDoc = await firestore.collection('users').doc(targetUserId).get();
+    const targetUserData = targetUserDoc.exists ? targetUserDoc.data() : {};
+    const linkedDeviceIds = targetUserData.linkedDeviceIds || [];
+
+    logger.info(`📋 Usuario a eliminar: ${targetUserId}`);
+    logger.info(`   Dispositivos vinculados: ${linkedDeviceIds.length}`);
+
+    // 2. Eliminar vínculos de dispositivos
+    for (const deviceId of linkedDeviceIds) {
+      try {
+        const deviceRef = firestore.collection('devices').doc(deviceId);
+        const deviceDoc = await deviceRef.get();
+        
+        if (deviceDoc.exists) {
+          const deviceData = deviceDoc.data() || {};
+          const deviceUserIds = deviceData.userIds || [];
+          
+          // Remover el usuario de la lista de userIds
+          const updatedUserIds = deviceUserIds.filter(uid => uid !== targetUserId);
+          
+          if (updatedUserIds.length > 0) {
+            // Si quedan otros usuarios vinculados, actualizar
+            await deviceRef.update({
+              userIds: updatedUserIds,
+              userId: updatedUserIds[0], // Actualizar userId principal
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            logger.info(`   ✅ Dispositivo ${deviceId} actualizado (quedan ${updatedUserIds.length} usuarios)`);
+          } else {
+            // Si no quedan usuarios, eliminar el dispositivo
+            await deviceRef.delete();
+            logger.info(`   ✅ Dispositivo ${deviceId} eliminado (sin usuarios restantes)`);
+          }
+        }
+      } catch (error) {
+        logger.error(`   ❌ Error procesando dispositivo ${deviceId}:`, error);
+      }
+    }
+
+    // 3. Eliminar datos de Realtime Database
+    try {
+      await realtimeDb.ref(`users/${targetUserId}`).remove();
+      logger.info(`   ✅ Datos de Realtime Database eliminados`);
+    } catch (error) {
+      logger.error(`   ❌ Error eliminando Realtime Database:`, error);
+    }
+
+    // 4. Eliminar documento de Firestore
+    try {
+      await firestore.collection('users').doc(targetUserId).delete();
+      logger.info(`   ✅ Documento de Firestore eliminado`);
+    } catch (error) {
+      logger.error(`   ❌ Error eliminando Firestore:`, error);
+    }
+
+    // 5. Eliminar usuario de Firebase Auth
+    try {
+      await admin.auth().deleteUser(targetUserId);
+      logger.info(`   ✅ Usuario de Firebase Auth eliminado`);
+    } catch (error) {
+      logger.error(`   ❌ Error eliminando Firebase Auth:`, error);
+    }
+
+    logger.info(`✅ Usuario ${targetUserId} eliminado completamente`);
+
+    res.json({
+      success: true,
+      message: 'User deleted completely',
+      deletedUserId: targetUserId,
+      devicesProcessed: linkedDeviceIds.length,
+      timestamp: Date.now()
+    });
+
+  } catch (error) {
+    if (error.message === 'AUTH_MISSING') {
+      res.status(401).json({ error: 'Authorization header missing' });
+      return;
+    }
+
+    logger.error('❌ Error en deleteUserCompletely:', error);
+    res.status(500).json({ error: error.message || 'Unexpected error' });
   }
 });

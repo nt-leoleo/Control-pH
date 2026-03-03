@@ -14,5 +14,12 @@ service cloud.firestore {
     match /adminConfig/{document=**} {
       allow read, write: if request.auth != null;
     }
+
+    // Permitir lectura pública de configuración de versión de la app
+    match /appConfig/version {
+      allow read: if true;
+      allow write: if request.auth != null && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
   }
 }
