@@ -247,10 +247,10 @@ function calculateChlorineForPHIncrease(poolVolumeLiters, currentPH, targetPH, c
  * Calcula la duración de dosificación según el caudal de la bomba
  * 
  * @param {number} volumeML - Volumen a dosificar en ml
- * @param {number} pumpFlowRate - Caudal de la bomba en L/h
+ * @param {number} pumpFlowRate - Caudal de la bomba en L/h (típicamente 1.5-5 L/h)
  * @returns {number} - Duración en segundos
  */
-function calculateDosingDuration(volumeML, pumpFlowRate = 60) {
+function calculateDosingDuration(volumeML, pumpFlowRate = 3.0) {
   // Convertir caudal de L/h a ml/s
   const flowRateMLPerSecond = (pumpFlowRate * 1000) / 3600;
   
@@ -275,7 +275,7 @@ function calculateAutomaticDosing(params) {
     alkalinity = 100,
     chlorineType = 'sodium-hypochlorite',
     acidType = 'muriatic',
-    pumpFlowRate = 60, // L/h
+    pumpFlowRate = 3.0, // L/h - Ajustar según tu bomba dosificadora
     maxDoseVolume = 500 // ml
   } = params;
   

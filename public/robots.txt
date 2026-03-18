@@ -1,0 +1,29 @@
+# robots.txt para Control Pileta pH
+# Optimizado para SEO 2026
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /*?*utm_*
+
+# Googlebot específico
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+# Googlebot para imágenes
+User-agent: Googlebot-Image
+Allow: /
+
+# Bingbot
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://controlpileta.vercel.app/sitemap.xml
+
+# Hosts
+Host: https://controlpileta.vercel.app

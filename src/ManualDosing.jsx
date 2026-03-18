@@ -96,18 +96,29 @@ const ManualDosing = () => {
     }, [manualDosingConfig, user?.uid]);
 
     const pumpFlowRateLh = useMemo(() => {
-        const defaultFlowRate = toNumberOr(CONFIG?.HARDWARE?.PUMP_FLOW_RATE, 60);
+        const defaultFlowRate = toNumberOr(CONFIG?.HARDWARE?.PUMP_FLOW_RATE, 3.0); // L/h - Ajustar según tu bomba
         const directUserFlow = toNumberOr(userConfig?.pumpFlowRate, NaN);
         const adminFlow = toNumberOr(userConfig?.adminConfig?.pumpFlowRate, NaN);
 
+        console.log('[ManualDosing] Pump Flow Rate Debug:', {
+            defaultFlowRate,
+            directUserFlow,
+            adminFlow,
+            'userConfig.adminConfig': userConfig?.adminConfig,
+            'userConfig.pumpFlowRate': userConfig?.pumpFlowRate
+        });
+
         if (Number.isFinite(directUserFlow) && directUserFlow > 0) {
+            console.log('[ManualDosing] Using directUserFlow:', directUserFlow);
             return directUserFlow;
         }
 
         if (Number.isFinite(adminFlow) && adminFlow > 0) {
+            console.log('[ManualDosing] Using adminFlow:', adminFlow);
             return adminFlow;
         }
 
+        console.log('[ManualDosing] Using defaultFlowRate:', defaultFlowRate);
         return defaultFlowRate;
     }, [userConfig?.adminConfig?.pumpFlowRate, userConfig?.pumpFlowRate]);
 

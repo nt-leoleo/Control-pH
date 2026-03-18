@@ -11,6 +11,7 @@ import {
   syncSharedDeviceUnlink
 } from './deviceLinking';
 import ConfirmDialog from './ConfirmDialog';
+import WiFiQRGenerator from './WiFiQRGenerator';
 import { sendWifiResetCommand, waitForCommandConfirmation } from './esp32Communication-firebase';
 import './DeviceRegistration.css';
 
@@ -24,6 +25,7 @@ const DeviceRegistration = () => {
   const [deviceIdToDelete, setDeviceIdToDelete] = useState(null);
   const [showWifiResetConfirm, setShowWifiResetConfirm] = useState(false);
   const [isResettingWifi, setIsResettingWifi] = useState(false);
+  const [showQRGenerator, setShowQRGenerator] = useState(false);
 
   const notifyDeviceState = (hasDevice) => {
     window.dispatchEvent(
@@ -280,6 +282,15 @@ const DeviceRegistration = () => {
               Borra la red guardada en el ESP32 y lo deja en modo configuracion (AP: SensorPH_Config).
             </small>
           </div>
+
+          <div className="qr-config-section">
+            <button className="qr-config-btn" onClick={() => setShowQRGenerator(true)}>
+              📱 Configurar WiFi por código QR
+            </button>
+            <small>
+              Genera un código QR para configurar el WiFi del ESP32 de forma rápida y sencilla.
+            </small>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleRegister} className="registration-form">
@@ -346,6 +357,11 @@ const DeviceRegistration = () => {
         isLoading={isResettingWifi}
         onCancel={() => setShowWifiResetConfirm(false)}
         onConfirm={confirmWifiReset}
+      />
+
+      <WiFiQRGenerator 
+        isOpen={showQRGenerator} 
+        onClose={() => setShowQRGenerator(false)} 
       />
     </div>
   );

@@ -16,7 +16,7 @@ const DEFAULT_ADMIN_CONFIG = {
   minPH: 0.0,
   maxPH: 14.0,
   maxPHChange: 2.0,
-  pumpFlowRate: 60,
+  pumpFlowRate: 3.0, // L/h - Caudal de tu bomba dosificadora (ajustar según tu modelo)
 };
 
 const CLOUD_FUNCTIONS_BASE =

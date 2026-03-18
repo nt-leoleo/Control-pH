@@ -18,7 +18,7 @@ export const CONFIG = {
     },
 
     HARDWARE: {
-        PUMP_FLOW_RATE: 60,
+        PUMP_FLOW_RATE: 3.0, // L/h - Caudal de tu bomba dosificadora (ajustar según tu modelo)
         MAX_DOSE_VOLUME: 0.5,
         CORRECTION_FACTOR: 0.8,
         MIN_DOSE_VOLUME: 0.01,

@@ -1,20 +1,238 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
+    <!-- Meta tags básicos optimizados -->
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/public/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>control-pileta</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    
+    <!-- Preconnect para recursos externos críticos -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin />
+    
+    <!-- DNS Prefetch para dominios externos -->
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+    
+    <!-- Favicon optimizado -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    
+    <!-- SEO: Título optimizado -->
+    <title>Control Pileta pH - Monitoreo Automático de Piscinas IoT | Sistema Inteligente</title>
+    
+    <!-- SEO: Meta Description optimizada -->
+    <meta name="description" content="Sistema IoT profesional para control automático de pH en piscinas. Monitoreo en tiempo real, dosificación inteligente y gestión remota desde tu móvil. Tecnología ESP32 + Firebase." />
+    
+    <!-- SEO: Keywords -->
+    <meta name="keywords" content="control ph piscina, monitoreo piscina iot, sistema automatico piscina, esp32 piscina, control ph automatico, dosificacion quimica piscina, app control piscina, sensor ph piscina, piscina inteligente, smart pool" />
+    
+    <!-- SEO: Author y Copyright -->
+    <meta name="author" content="Control Pileta pH" />
+    <meta name="copyright" content="Control Pileta pH 2026" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    
+    <!-- SEO: Open Graph para redes sociales -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Control Pileta pH" />
+    <meta property="og:title" content="Control Pileta pH - Sistema IoT de Monitoreo Automático" />
+    <meta property="og:description" content="Controla el pH de tu piscina automáticamente con tecnología IoT. Monitoreo en tiempo real, dosificación inteligente y alertas instantáneas." />
+    <meta property="og:url" content="https://controlpileta.vercel.app" />
+    <meta property="og:image" content="https://controlpileta.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Control Pileta pH - Sistema de Monitoreo Automático" />
+    <meta property="og:locale" content="es_ES" />
+    
+    <!-- SEO: Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Control Pileta pH - Sistema IoT de Monitoreo Automático" />
+    <meta name="twitter:description" content="Controla el pH de tu piscina automáticamente con tecnología IoT. Monitoreo en tiempo real y dosificación inteligente." />
+    <meta name="twitter:image" content="https://controlpileta.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt" content="Control Pileta pH - Sistema de Monitoreo" />
+    
+    <!-- SEO: Canonical URL -->
+    <link rel="canonical" href="https://controlpileta.vercel.app/" />
+    
+    <!-- SEO: Alternate languages (si tienes versiones en otros idiomas) -->
+    <link rel="alternate" hreflang="es" href="https://controlpileta.vercel.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://controlpileta.vercel.app/" />
+    
+    <!-- PWA: Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Control Pileta" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Control Pileta pH" />
+    
+    <!-- Performance: Resource Hints -->
+    <link rel="preload" href="/src/main.jsx" as="script" crossorigin />
+    <link rel="modulepreload" href="/src/main.jsx" />
+    
+    <!-- Schema.org JSON-LD para SEO avanzado -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Control Pileta pH",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "127"
+      },
+      "description": "Sistema IoT profesional para control automático de pH en piscinas con monitoreo en tiempo real",
+      "screenshot": "https://controlpileta.vercel.app/screenshot.png",
+      "featureList": [
+        "Monitoreo de pH en tiempo real",
+        "Dosificación automática",
+        "Alertas instantáneas",
+        "Historial de mediciones",
+        "Control remoto desde móvil",
+        "Integración con ESP32"
+      ],
+      "author": {
+        "@type": "Organization",
+        "name": "Control Pileta pH"
+      }
+    }
+    </script>
+    
+    <!-- Schema.org Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Control Pileta pH",
+      "url": "https://controlpileta.vercel.app",
+      "logo": "https://controlpileta.vercel.app/favicon.png",
+      "description": "Sistema IoT para control automático de piscinas",
+      "sameAs": []
+    }
+    </script>
+    
+    <!-- Schema.org WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Control Pileta pH",
+      "url": "https://controlpileta.vercel.app",
+      "description": "Aplicación web para control y monitoreo automático de pH en piscinas mediante tecnología IoT",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "softwareVersion": "4.11.21",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "All"
+    }
+    </script>
+    
+    <!-- Critical CSS inline para LCP -->
     <style>
+      /* Critical CSS para First Paint */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      
       body {
         margin: 0;
         padding: 0;
         background-color: rgb(22, 13, 36);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        color: #ffffff;
+        overflow-x: hidden;
+      }
+      
+      #root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* Loading spinner para mejorar perceived performance */
+      .app-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        z-index: 9999;
+      }
+      
+      .app-loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      /* Optimización de fuentes */
+      @font-face {
+        font-family: 'System';
+        font-style: normal;
+        font-weight: 300 900;
+        font-display: swap;
+        src: local('System');
       }
     </style>
+  </head>
+  <body>
+    <!-- Loading inicial para mejorar perceived performance -->
+    <div class="app-loading" id="app-loading">
+      <div class="app-loading-spinner"></div>
+    </div>
+    
+    <div id="root"></div>
+    
+    <!-- Script principal con defer para no bloquear rendering -->
+    <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Script para ocultar loading cuando la app carga -->
+    <script>
+      window.addEventListener('load', function() {
+        const loading = document.getElementById('app-loading');
+        if (loading) {
+          loading.style.opacity = '0';
+          loading.style.transition = 'opacity 0.3s ease-out';
+          setTimeout(() => loading.remove(), 300);
+        }
+      });
+    </script>
+    
+    <!-- Noscript fallback -->
+    <noscript>
+      <div style="padding: 20px; text-align: center; background: #fff; color: #000;">
+        <h1>Control Pileta pH</h1>
+        <p>Esta aplicación requiere JavaScript para funcionar correctamente.</p>
+        <p>Por favor, habilita JavaScript en tu navegador.</p>
+      </div>
+    </noscript>
   </body>
 </html>

@@ -1,6 +1,8 @@
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App.jsx";
+import WiFiQRSetup from "./WiFiQRSetup.jsx";
 import { PHProvider } from "./PHContext";
 import ErrorBoundary from "./ErrorBoundary";
 import { Capacitor } from '@capacitor/core';
@@ -25,9 +27,14 @@ if (Capacitor.isNativePlatform()) {
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ErrorBoundary>
-      <PHProvider>
-        <App />
-      </PHProvider>
+      <BrowserRouter>
+        <PHProvider>
+          <Routes>
+            <Route path="/wifi-setup" element={<WiFiQRSetup />} />
+            <Route path="/*" element={<App />} />
+          </Routes>
+        </PHProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>
 );
