@@ -105,8 +105,18 @@ const ManualDosing = () => {
             directUserFlow,
             adminFlow,
             'userConfig.adminConfig': userConfig?.adminConfig,
-            'userConfig.pumpFlowRate': userConfig?.pumpFlowRate
+            'userConfig.pumpFlowRate': userConfig?.pumpFlowRate,
+            'userConfig completo': userConfig
         });
+
+        // Exponer en window para debug manual
+        window.__debugPumpFlowRate = {
+            defaultFlowRate,
+            directUserFlow,
+            adminFlow,
+            userConfig,
+            adminConfig: userConfig?.adminConfig
+        };
 
         if (Number.isFinite(directUserFlow) && directUserFlow > 0) {
             console.log('[ManualDosing] Using directUserFlow:', directUserFlow);
@@ -120,7 +130,7 @@ const ManualDosing = () => {
 
         console.log('[ManualDosing] Using defaultFlowRate:', defaultFlowRate);
         return defaultFlowRate;
-    }, [userConfig?.adminConfig?.pumpFlowRate, userConfig?.pumpFlowRate]);
+    }, [userConfig?.adminConfig?.pumpFlowRate, userConfig?.pumpFlowRate, userConfig]);
 
     const totalSeconds = useMemo(() => {
         const minutes = toNumberOr(manualDosingConfig.minutes, 0);
