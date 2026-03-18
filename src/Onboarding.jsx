@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import {
@@ -7,6 +7,7 @@ import {
   persistUserDeviceLink,
   syncSharedDeviceLink
 } from './deviceLinking';
+import ConfirmDialog from './ConfirmDialog';
 import QRScanner from './QRScanner';
 import './Onboarding.css';
 
@@ -39,6 +40,48 @@ const Onboarding = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
+  const [pendingDeviceId, setPendingDeviceId] = useState('');
+  const [showDetectedDeviceModal, setShowDetectedDeviceModal] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rawParamDeviceId = params.get('deviceId') || params.get('device') || params.get('id');
+    const normalizedFromUrl = normalizeDeviceId(rawParamDeviceId || '');
+    let candidate = '';
+
+    if (normalizedFromUrl && DEVICE_ID_REGEX.test(normalizedFromUrl)) {
+      localStorage.setItem('pending_device_id', normalizedFromUrl);
+      candidate = normalizedFromUrl;
+
+      const cleanUrl = `${window.location.pathname}${window.location.hash}`;
+      window.history.replaceState({}, document.title, cleanUrl);
+    } else {
+      const stored = localStorage.getItem('pending_device_id') || '';
+      const normalizedStored = normalizeDeviceId(stored);
+      if (normalizedStored && DEVICE_ID_REGEX.test(normalizedStored)) {
+        candidate = normalizedStored;
+      }
+    }
+
+    if (candidate) {
+      setPendingDeviceId(candidate);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (step !== 3 || !pendingDeviceId) {
+      return;
+    }
+
+    const currentDeviceId = normalizeDeviceId(deviceId);
+    if (currentDeviceId && currentDeviceId === pendingDeviceId) {
+      localStorage.removeItem('pending_device_id');
+      setPendingDeviceId('');
+      return;
+    }
+
+    setShowDetectedDeviceModal(true);
+  }, [deviceId, pendingDeviceId, step]);
 
   const summaryRange = useMemo(() => {
     const center = parseFloat(idealPH) || 7.4;
@@ -212,6 +255,22 @@ const Onboarding = () => {
       setError({ type: 'error', message: 'El código QR no contiene un Device ID válido' });
       setShowQRScanner(false);
     }
+  };
+
+  const acceptDetectedDevice = () => {
+    setDeviceId(pendingDeviceId);
+    setShowQRScanner(false);
+    setShowManualInput(false);
+    setShowDetectedDeviceModal(false);
+    localStorage.removeItem('pending_device_id');
+    setPendingDeviceId('');
+    setError({ type: 'success', message: 'Device ID detectado y seleccionado.' });
+  };
+
+  const dismissDetectedDevice = () => {
+    setShowDetectedDeviceModal(false);
+    localStorage.removeItem('pending_device_id');
+    setPendingDeviceId('');
   };
 
   return (
@@ -451,6 +510,16 @@ const Onboarding = () => {
           onClose={() => setShowQRScanner(false)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={showDetectedDeviceModal}
+        title="Dispositivo encontrado"
+        message={`Se encontró un dispositivo con la ID ${pendingDeviceId}. ¿Usar este dispositivo?`}
+        confirmLabel="Usar dispositivo"
+        cancelLabel="No, otro"
+        onConfirm={acceptDetectedDevice}
+        onCancel={dismissDetectedDevice}
+      />
     </div>
   );
 };

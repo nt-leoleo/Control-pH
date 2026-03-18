@@ -835,7 +835,7 @@ async function processUser(userId, userData) {
     const alkalinity = userData.alkalinity || 100; // ppm
     const chlorineType = userData.chlorineType || 'sodium-hypochlorite';
     const acidType = userData.acidType || 'muriatic';
-    const pumpFlowRate = toNumberOr(adminConfig.pumpFlowRate, 60); // L/h
+    const pumpFlowRate = toNumberOr(adminConfig.pumpFlowRate, 3.0); // L/h - Ajustar según tu bomba
     const maxDoseVolume = toNumberOr(adminConfig.maxDoseVolume, 500); // ml
     
     // Calcular pH objetivo para este bloque
