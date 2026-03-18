@@ -118,14 +118,15 @@ const ManualDosing = () => {
             adminConfig: userConfig?.adminConfig
         };
 
-        if (Number.isFinite(directUserFlow) && directUserFlow > 0) {
-            console.log('[ManualDosing] Using directUserFlow:', directUserFlow);
-            return directUserFlow;
-        }
-
+        // Prioridad: adminConfig > userConfig directo > default
         if (Number.isFinite(adminFlow) && adminFlow > 0) {
             console.log('[ManualDosing] Using adminFlow:', adminFlow);
             return adminFlow;
+        }
+
+        if (Number.isFinite(directUserFlow) && directUserFlow > 0) {
+            console.log('[ManualDosing] Using directUserFlow:', directUserFlow);
+            return directUserFlow;
         }
 
         console.log('[ManualDosing] Using defaultFlowRate:', defaultFlowRate);
