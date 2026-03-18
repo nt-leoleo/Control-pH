@@ -97,14 +97,11 @@ const ManualDosing = () => {
 
     const pumpFlowRateLh = useMemo(() => {
         const defaultFlowRate = toNumberOr(CONFIG?.HARDWARE?.PUMP_FLOW_RATE, 3.0); // L/h - Ajustar según tu bomba
-        const directUserFlow = toNumberOr(userConfig?.pumpFlowRate, NaN);
-        const adminFlow = toNumberOr(userConfig?.adminConfig?.pumpFlowRate, NaN);
+        const userFlow = toNumberOr(userConfig?.pumpFlowRate, NaN);
 
         console.log('[ManualDosing] Pump Flow Rate Debug:', {
             defaultFlowRate,
-            directUserFlow,
-            adminFlow,
-            'userConfig.adminConfig': userConfig?.adminConfig,
+            userFlow,
             'userConfig.pumpFlowRate': userConfig?.pumpFlowRate,
             'userConfig completo': userConfig
         });
@@ -112,26 +109,19 @@ const ManualDosing = () => {
         // Exponer en window para debug manual
         window.__debugPumpFlowRate = {
             defaultFlowRate,
-            directUserFlow,
-            adminFlow,
-            userConfig,
-            adminConfig: userConfig?.adminConfig
+            userFlow,
+            userConfig
         };
 
-        // Prioridad: adminConfig > userConfig directo > default
-        if (Number.isFinite(adminFlow) && adminFlow > 0) {
-            console.log('[ManualDosing] Using adminFlow:', adminFlow);
-            return adminFlow;
-        }
-
-        if (Number.isFinite(directUserFlow) && directUserFlow > 0) {
-            console.log('[ManualDosing] Using directUserFlow:', directUserFlow);
-            return directUserFlow;
+        // Prioridad: userConfig > default
+        if (Number.isFinite(userFlow) && userFlow > 0) {
+            console.log('[ManualDosing] Using userFlow:', userFlow);
+            return userFlow;
         }
 
         console.log('[ManualDosing] Using defaultFlowRate:', defaultFlowRate);
         return defaultFlowRate;
-    }, [userConfig?.adminConfig?.pumpFlowRate, userConfig?.pumpFlowRate, userConfig]);
+    }, [userConfig?.pumpFlowRate, userConfig]);
 
     const totalSeconds = useMemo(() => {
         const minutes = toNumberOr(manualDosingConfig.minutes, 0);

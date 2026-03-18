@@ -214,7 +214,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
     esp32Connected,
     lastDataReceived,
     checkConnection,
-    ensureDeviceConfigured
+    ensureDeviceConfigured,
+    userConfig,
+    saveConfigToFirebase
   } = useContext(PHContext);
   const { user, deleteAccount } = useAuth();
   
@@ -229,6 +231,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
   const [localPhTolerance, setLocalPhTolerance] = useState(phTolerance);
   const [localPhToleranceRange, setLocalPhToleranceRange] = useState(phToleranceRange);
+  const [localPumpFlowRate, setLocalPumpFlowRate] = useState(userConfig?.pumpFlowRate || 3.0);
   const adminEmailAllowlist = useMemo(
     () =>
       (import.meta.env.VITE_ADMIN_ACCESS_EMAILS || '')
@@ -246,6 +249,12 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
   useEffect(() => {
     setLocalPhToleranceRange(phToleranceRange);
   }, [phToleranceRange]);
+
+  useEffect(() => {
+    if (userConfig?.pumpFlowRate !== undefined) {
+      setLocalPumpFlowRate(userConfig.pumpFlowRate);
+    }
+  }, [userConfig?.pumpFlowRate]);
 
   useEffect(() => {
     const openDeviceModal = () => setShowDeviceRegistration(true);
@@ -280,6 +289,23 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
     return () => clearTimeout(timeoutId);
   }, [localPhToleranceRange, phToleranceRange, setPhToleranceRange]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      const currentValue = userConfig?.pumpFlowRate || 3.0;
+      if (localPumpFlowRate !== currentValue && localPumpFlowRate > 0 && localPumpFlowRate <= 1000) {
+        try {
+          await saveConfigToFirebase({ pumpFlowRate: localPumpFlowRate });
+          notify('success', `Caudal de bomba actualizado: ${localPumpFlowRate} L/h`);
+        } catch (error) {
+          console.error('[Settings] Error guardando pump flow rate:', error);
+          notify('error', 'Error guardando el caudal de bomba');
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [localPumpFlowRate, userConfig?.pumpFlowRate, saveConfigToFirebase]);
   const handleToleranceChange = useCallback((e) => {
     const value = parseFloat(e.target.value);
     if (!isNaN(value) && value >= 0 && value <= 14) {
@@ -651,6 +677,67 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
             </div>
           </button>
         </div>
+
+        {/* Sección de Configuración de Hardware */}
+        <div className="settings-section scale-in">
+          <h3 className="settings-heading">
+            <UiIcon name="dosing" className="heading-icon" />
+            <span>Configuración de Hardware</span>
+          </h3>
+          
+          <div className="setting-item">
+            <label className="setting-label">
+              Caudal de la Bomba Dosificadora
+              <span className="setting-description">
+                Litros por hora que inyecta tu bomba (consultar especificaciones del fabricante)
+              </span>
+            </label>
+            <div className="setting-control-slider">
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="200"
+                  step="0.1"
+                  value={localPumpFlowRate}
+                  onChange={(e) => setLocalPumpFlowRate(parseFloat(e.target.value))}
+                  className="tolerance-slider"
+                />
+                <div className="slider-labels">
+                  <span>0.1 L/h</span>
+                  <span>200 L/h</span>
+                </div>
+              </div>
+              <div className="slider-value">
+                <input
+                  type="number"
+                  min="0.1"
+                  max="1000"
+                  step="0.1"
+                  value={localPumpFlowRate}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value > 0) {
+                      setLocalPumpFlowRate(value);
+                    }
+                  }}
+                  className="setting-input-small"
+                />
+                <span className="setting-unit">L/h</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="ph-preview">
+            <div className="ph-range">
+              <span className="range-label">Ejemplo:</span>
+              <span className="range-value">
+                En 1 minuto inyecta {(localPumpFlowRate / 60).toFixed(3)} L
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="settings-section scale-in account-settings-section">
           <h3>Cuenta</h3>
 

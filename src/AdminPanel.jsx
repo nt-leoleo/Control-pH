@@ -16,7 +16,6 @@ const DEFAULT_ADMIN_CONFIG = {
   minPH: 0.0,
   maxPH: 14.0,
   maxPHChange: 2.0,
-  pumpFlowRate: 3.0, // L/h - Caudal de tu bomba dosificadora (ajustar según tu modelo)
 };
 
 const CLOUD_FUNCTIONS_BASE =
@@ -344,22 +343,6 @@ const AdminPanel = ({ onClose }) => {
                   step="0.1"
                 />
                 <span className="field-unit">pH</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="admin-section">
-            <h3>Configuracion de Hardware</h3>
-
-            <div className="admin-grid">
-              <div className="admin-field">
-                <label>Caudal de la bomba</label>
-                <input
-                  type="number"
-                  value={adminConfig.pumpFlowRate}
-                  onChange={(e) => handleConfigChange('pumpFlowRate', e.target.value)}
-                />
-                <span className="field-unit">L/h</span>
               </div>
             </div>
           </div>
