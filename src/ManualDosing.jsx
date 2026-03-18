@@ -8,6 +8,7 @@ import { db } from './firebase';
 import { getConfiguredProducts, getChemicalName } from './chemicalLabels';
 import { CONFIG } from './config';
 import InfoHint from './InfoHint';
+import NumericInput from './NumericInput';
 import './ManualDosing.css';
 
 const DEFAULT_MAX_MANUAL_DOSING_SECONDS = 300;
@@ -395,24 +396,24 @@ const ManualDosing = () => {
                     />
                 </label>
                 <div className="timeInputs">
-                    <div className="timeGroup">
-                        <input
-                            type="number"
-                            value={manualDosingConfig.minutes}
-                            onChange={(event) => handleTimeChange('minutes', event.target.value)}
-                            disabled={isDosing}
-                        />
-                        <span>minutos</span>
-                    </div>
-                    <div className="timeGroup">
-                        <input
-                            type="number"
-                            value={manualDosingConfig.seconds}
-                            onChange={(event) => handleTimeChange('seconds', event.target.value)}
-                            disabled={isDosing}
-                        />
-                        <span>segundos</span>
-                    </div>
+                    <NumericInput
+                        value={manualDosingConfig.minutes}
+                        onChange={(value) => handleTimeChange('minutes', value)}
+                        min={0}
+                        max={59}
+                        step={1}
+                        unit="min"
+                        disabled={isDosing}
+                    />
+                    <NumericInput
+                        value={manualDosingConfig.seconds}
+                        onChange={(value) => handleTimeChange('seconds', value)}
+                        min={0}
+                        max={59}
+                        step={1}
+                        unit="seg"
+                        disabled={isDosing}
+                    />
                 </div>
             </div>
 

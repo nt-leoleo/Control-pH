@@ -6,6 +6,7 @@ import DeviceRegistration from './DeviceRegistration';
 import ErrorNotification from './ErrorNotification';
 import ConfirmDialog from './ConfirmDialog';
 import ScheduledDosing from './ScheduledDosing';
+import NumericInput from './NumericInput';
 import { useAuth } from './useAuth';
 import './SettingsPage.css';
 
@@ -486,18 +487,14 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                   </div>
                 </div>
               </div>
-              <div className="slider-value">
-                <input
-                  type="number"
-                  min="0"
-                  max="14"
-                  step="0.1"
-                  value={localPhTolerance}
-                  onChange={handleToleranceChange}
-                  className="setting-input-small"
-                />
-                <span className="setting-unit">pH</span>
-              </div>
+              <NumericInput
+                value={localPhTolerance}
+                onChange={(value) => setLocalPhTolerance(value)}
+                min={0}
+                max={14}
+                step={0.1}
+                unit="pH"
+              />
             </div>
           </div>
 
@@ -522,18 +519,14 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                   <span>Flexible</span>
                 </div>
               </div>
-              <div className="slider-value">
-                <input
-                  type="number"
-                  min="0.1"
-                  max="5"
-                  step="0.1"
-                  value={localPhToleranceRange}
-                  onChange={handleRangeChange}
-                  className="setting-input-small"
-                />
-                <span className="setting-unit">±</span>
-              </div>
+              <NumericInput
+                value={localPhToleranceRange}
+                onChange={(value) => setLocalPhToleranceRange(value)}
+                min={0.1}
+                max={5}
+                step={0.1}
+                unit="±"
+              />
             </div>
           </div>
 
@@ -708,23 +701,14 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
                   <span>200 L/h</span>
                 </div>
               </div>
-              <div className="slider-value">
-                <input
-                  type="number"
-                  min="0.1"
-                  max="1000"
-                  step="0.1"
-                  value={localPumpFlowRate}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value > 0) {
-                      setLocalPumpFlowRate(value);
-                    }
-                  }}
-                  className="setting-input-small"
-                />
-                <span className="setting-unit">L/h</span>
-              </div>
+              <NumericInput
+                value={localPumpFlowRate}
+                onChange={(value) => setLocalPumpFlowRate(value)}
+                min={0.1}
+                max={1000}
+                step={0.1}
+                unit="L/h"
+              />
             </div>
           </div>
 

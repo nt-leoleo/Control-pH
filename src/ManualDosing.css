@@ -84,6 +84,11 @@
     justify-content: center;
 }
 
+.timeInputs .numeric-input {
+    flex: 1;
+    max-width: 200px;
+}
+
 .timeGroup {
     display: flex;
     flex-direction: column;
