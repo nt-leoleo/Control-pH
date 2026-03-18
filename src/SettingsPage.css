@@ -312,15 +312,37 @@
   color: var(--text-secondary);
 }
 
+.system-info .info-value,
+.account-info-list .info-value {
+  font-weight: 600;
+  color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  padding: 0.35rem 0.75rem !important;
+  border-radius: 0.5rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  display: inline-block;
+}
+
+[data-theme="light"] .system-info .info-value,
+[data-theme="light"] .account-info-list .info-value {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: var(--text-primary) !important;
+}
+
 .info-value {
   font-weight: 600;
   color: var(--text-primary);
+  background: transparent !important;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
 }
 
 .info-value-with-icon {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  background: transparent !important;
 }
 
 .status-icon {
