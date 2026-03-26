@@ -747,7 +747,7 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
           <div className="system-info">
             <div className="info-item">
               <span className="info-label">Versión:</span>
-              <span className="info-value">4.3.0</span>
+              <span className="info-value">5.0.0</span>
             </div>
             <div className="info-item">
               <span className="info-label">Última actualización:</span>
