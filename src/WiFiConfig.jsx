@@ -1,17 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Network } from '@capacitor/network';
 import './WiFiConfig.css';
 
 const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
-    const [ssid, setSsid] = useState('');
+    const [networks, setNetworks] = useState([]);
+    const [selectedNetwork, setSelectedNetwork] = useState('');
+    const [customSsid, setCustomSsid] = useState('');
+    const [useCustom, setUseCustom] = useState(false);
     const [password, setPassword] = useState('');
+    const [isScanning, setIsScanning] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [step, setStep] = useState(1);
 
+    // Escanear redes WiFi disponibles en el dispositivo
+    const scanNetworks = async () => {
+        setIsScanning(true);
+        setError('');
+        setNetworks([]);
+
+        try {
+            if (Capacitor.isNativePlatform()) {
+                // En móvil (Android/iOS), intentar obtener info de la red actual
+                const status = await Network.getStatus();
+                if (status.connected && status.connectionType !== 'none') {
+                    // Obtener SSID actual si está disponible
+                    // En Android, esta información puede estar limitada por permisos
+                    console.log('Estado de red:', status);
+                    
+                    // Para Android, mostrar la red actual conectada
+                    if (status.ssid) {
+                        setNetworks([status.ssid]);
+                    } else {
+                        // Si no podemos obtener el SSID por Capacitor, mostrar mensaje
+                        setError('Para acceder a la lista de redes disponibles, asegúrate de tener los permisos de ubicación habilitados en el dispositivo.');
+                    }
+                }
+            } else {
+                // En web, no hay acceso directo a redes WiFi disponibles
+                // Se debe ingresar manualmente
+                setError('En navegador web, debes ingresar manualmente el nombre de tu red. Busca el SSID disponible en tu PC o conecta el celular a la red deseada.');
+            }
+        } catch (err) {
+            setError('No se pudo obtener la lista de redes. Ingresa manualmente el nombre de tu red WiFi.');
+            console.error('Error escaneando redes:', err);
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    // Escanear redes al abrir el modal
+    useEffect(() => {
+        if (isOpen && !networks.length) {
+            scanNetworks();
+        }
+    }, [isOpen]);
+
     const handleConfigure = async () => {
-        if (!ssid.trim()) {
-            setError('Por favor, ingresa el nombre de tu red WiFi');
+        const ssid = useCustom ? customSsid : selectedNetwork;
+        if (!ssid || !ssid.trim()) {
+            setError('Por favor, selecciona o ingresa el nombre de tu red WiFi');
             return;
         }
 
@@ -46,9 +96,11 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                     onSuccess(ssid);
                     onClose();
                     // Reset para próxima vez
-                    setSsid('');
+                    setSelectedNetwork('');
+                    setCustomSsid('');
                     setPassword('');
                     setStep(1);
+                    setNetworks([]);
                 }, 2000);
             } else {
                 throw new Error(`Error del servidor: ${response.status}`);
@@ -70,11 +122,13 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
     };
 
     const handleClose = () => {
-        setSsid('');
+        setSelectedNetwork('');
+        setCustomSsid('');
         setPassword('');
         setError('');
         setStep(1);
         setShowPassword(false);
+        setNetworks([]);
         onClose();
     };
 
@@ -107,21 +161,62 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
                                 </ol>
                             </div>
 
-                            <div className="form-section">
-                                <label htmlFor="wifi-ssid">
-                                    <strong>Red WiFi a conectar</strong>
+                            <div className="scan-section">
+                                <button
+                                    onClick={scanNetworks}
+                                    disabled={isScanning}
+                                    className="scan-btn"
+                                >
+                                    {isScanning ? '🔄 Escaneando...' : '🔍 Buscar redes disponibles'}
+                                </button>
+                            </div>
+
+                            {networks.length > 0 && (
+                                <div className="networks-list">
+                                    <h3>Redes disponibles:</h3>
+                                    {networks.map((network, index) => (
+                                        <label key={index} className="network-option">
+                                            <input
+                                                type="radio"
+                                                name="network"
+                                                value={network}
+                                                checked={selectedNetwork === network && !useCustom}
+                                                onChange={(e) => {
+                                                    setSelectedNetwork(e.target.value);
+                                                    setUseCustom(false);
+                                                }}
+                                            />
+                                            <span className="network-name">📶 {network}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="custom-network">
+                                <label className="network-option">
+                                    <input
+                                        type="radio"
+                                        name="network"
+                                        checked={useCustom}
+                                        onChange={() => setUseCustom(true)}
+                                    />
+                                    <span>Ingresar red manualmente</span>
                                 </label>
-                                <input
-                                    id="wifi-ssid"
-                                    type="text"
-                                    placeholder="Ej: MiWiFi-2.4G"
-                                    value={ssid}
-                                    onChange={(e) => setSsid(e.target.value)}
-                                    className="wifi-input"
-                                    disabled={isConnecting}
-                                    autoFocus
-                                />
-                                <small>Escribe el nombre exacto de tu red WiFi</small>
+
+                                {useCustom && (
+                                    <div className="form-section">
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: MiWiFi-2.4G"
+                                            value={customSsid}
+                                            onChange={(e) => setCustomSsid(e.target.value)}
+                                            className="wifi-input"
+                                            disabled={isConnecting}
+                                            autoFocus
+                                        />
+                                        <small>Escribe el nombre exacto de tu red WiFi</small>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="form-section">
@@ -151,7 +246,7 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
 
                             <button
                                 onClick={handleConfigure}
-                                disabled={isConnecting || !ssid.trim()}
+                                disabled={isConnecting || (!selectedNetwork && !customSsid.trim())}
                                 className="configure-btn"
                             >
                                 {isConnecting ? '⏳ Configurando...' : '💾 Enviar configuración al ESP32'}
