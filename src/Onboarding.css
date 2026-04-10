@@ -330,3 +330,42 @@
     flex: 1;
   }
 }
+
+.onboarding-setup-summary {
+  text-align: center;
+}
+
+.setup-qr-container {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.setup-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.setup-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(20, 184, 166, 0.13);
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  border-radius: 8px;
+}
+
+.setup-label {
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.setup-value {
+  font-weight: 700;
+  color: var(--success-light);
+  font-size: 0.95rem;
+}
