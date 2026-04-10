@@ -9,6 +9,8 @@ import {
 } from './deviceLinking';
 import ConfirmDialog from './ConfirmDialog';
 import QRScanner from './QRScanner';
+import WiFiConfig from './WiFiConfig';
+import { QRCodeSVG } from 'qrcode.react';
 import './Onboarding.css';
 
 const TOTAL_STEPS = 3;
@@ -42,6 +44,9 @@ const Onboarding = () => {
   const [showManualInput, setShowManualInput] = useState(false);
   const [pendingDeviceId, setPendingDeviceId] = useState('');
   const [showDetectedDeviceModal, setShowDetectedDeviceModal] = useState(false);
+  const [showWiFiConfigModal, setShowWiFiConfigModal] = useState(false);
+  const [configuredSsid, setConfiguredSsid] = useState('');
+  const [showSetupSummary, setShowSetupSummary] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -230,6 +235,12 @@ const Onboarding = () => {
       return;
     }
 
+    // En step 3, si hay deviceId pero no está configurado WiFi, mostrar modal
+    if (step === TOTAL_STEPS && deviceId && !showSetupSummary) {
+      setShowWiFiConfigModal(true);
+      return;
+    }
+
     await finishOnboarding(false);
   };
 
@@ -251,6 +262,8 @@ const Onboarding = () => {
       setShowQRScanner(false);
       setShowManualInput(false);
       setError({ type: 'success', message: 'Device ID escaneado correctamente' });
+      // Mostrar modal de configuración WiFi
+      setShowWiFiConfigModal(true);
     } else {
       setError({ type: 'error', message: 'El código QR no contiene un Device ID válido' });
       setShowQRScanner(false);
@@ -271,6 +284,12 @@ const Onboarding = () => {
     setShowDetectedDeviceModal(false);
     localStorage.removeItem('pending_device_id');
     setPendingDeviceId('');
+  };
+
+  const handleWiFiConfigSuccess = (ssid) => {
+    setConfiguredSsid(ssid);
+    setShowWiFiConfigModal(false);
+    setShowSetupSummary(true);
   };
 
   return (
@@ -410,59 +429,80 @@ const Onboarding = () => {
                 placeholder="Crea un nombre para tu piscina"
               />
 
-              <div className="onboarding-device-instructions">
-                <p className="onboarding-instruction-main">
-                  Escanea el código QR
-                </p>
-                <p className="onboarding-instruction-detail">
-                  (El código QR está en la parte de abajo de la caja del dispositivo)
-                </p>
-                
-                <button
-                  type="button"
-                  className="onboarding-qr-btn-large"
-                  onClick={() => setShowQRScanner(true)}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                    <circle cx="12" cy="13" r="4"></circle>
-                  </svg>
-                  Escanear código QR
-                </button>
-
-                {deviceId && (
-                  <div className="onboarding-scanned-id">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
+              {!showSetupSummary ? (
+                <div className="onboarding-device-instructions">
+                  <p className="onboarding-instruction-main">
+                    Escanea el código QR
+                  </p>
+                  <p className="onboarding-instruction-detail">
+                    (El código QR está en la parte de abajo de la caja del dispositivo)
+                  </p>
+                  
+                  <button
+                    type="button"
+                    className="onboarding-qr-btn-large"
+                    onClick={() => setShowQRScanner(true)}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                      <circle cx="12" cy="13" r="4"></circle>
                     </svg>
-                    <span>ID: {deviceId}</span>
-                  </div>
-                )}
+                    Escanear código QR
+                  </button>
 
-                <div className="onboarding-divider">
-                  <span>O</span>
-                </div>
-
-                <button
-                  type="button"
-                  className="onboarding-manual-btn"
-                  onClick={() => setShowManualInput(!showManualInput)}
-                >
-                  {showManualInput ? (
-                    <>
+                  {deviceId && (
+                    <div className="onboarding-scanned-id">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
-                      Cancelar ingreso manual
-                    </>
-                  ) : (
-                    'Pon el código ID manualmente'
+                      <span>ID: {deviceId}</span>
+                    </div>
                   )}
-                </button>
-              </div>
 
-              {showManualInput && (
+                  <div className="onboarding-divider">
+                    <span>O</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="onboarding-manual-btn"
+                    onClick={() => setShowManualInput(!showManualInput)}
+                  >
+                    {showManualInput ? (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        Cancelar ingreso manual
+                      </>
+                    ) : (
+                      'Pon el código ID manualmente'
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="onboarding-setup-summary">
+                  <p className="onboarding-instruction-main">
+                    ¡Configuración completada!
+                  </p>
+                  <div className="setup-qr-container">
+                    <QRCodeSVG value={`Device ID: ${deviceId}\nNetwork: ${configuredSsid}`} size={150} />
+                  </div>
+                  <div className="setup-info">
+                    <div className="setup-info-item">
+                      <span className="setup-label">ID del dispositivo:</span>
+                      <span className="setup-value">{deviceId}</span>
+                    </div>
+                    <div className="setup-info-item">
+                      <span className="setup-label">Red conectada:</span>
+                      <span className="setup-value">{configuredSsid}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showManualInput && !showSetupSummary && (
                 <div className="onboarding-manual-input-section">
                   <label className="onboarding-label" htmlFor="deviceIdInput">
                     Código ID del dispositivo
@@ -510,6 +550,12 @@ const Onboarding = () => {
           onClose={() => setShowQRScanner(false)}
         />
       )}
+
+      <WiFiConfig
+        isOpen={showWiFiConfigModal}
+        onClose={() => setShowWiFiConfigModal(false)}
+        onSuccess={handleWiFiConfigSuccess}
+      />
 
       <ConfirmDialog
         isOpen={showDetectedDeviceModal}

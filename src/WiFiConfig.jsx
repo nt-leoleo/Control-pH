@@ -72,7 +72,7 @@ const WiFiConfig = ({ isOpen, onClose, onSuccess }) => {
             if (response.ok) {
                 // ConfiguraciÃ³n exitosa
                 setTimeout(() => {
-                    onSuccess();
+                    onSuccess(ssid);
                     onClose();
                 }, 3000); // Dar tiempo para que el ESP32 se reinicie
             } else {

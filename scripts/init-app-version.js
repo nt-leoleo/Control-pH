@@ -25,10 +25,10 @@ const db = admin.firestore();
 async function initAppVersion() {
   try {
     const versionData = {
-      version: '4.11.7',
+      version: '5.0.0',
       updateUrl: 'https://controlpileta.vercel.app',
       forceUpdate: false,
-      releaseNotes: 'Mejoras en el sistema de actualizaciones y ajustes visuales',
+      releaseNotes: 'Versión 5.0.0 - Lanzamiento al mercado: Optimizaciones de rendimiento, mejoras en UI/UX, y estabilidad del sistema',
       updatedAt: new Date().toISOString(),
     };
 
