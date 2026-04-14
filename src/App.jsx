@@ -7,6 +7,7 @@ import PHChart from './PHChart';
 import ManualDosing from './ManualDosing';
 import AutomaticDosing from './AutomaticDosing';
 import Onboarding from './Onboarding';
+import MobileAppDownloadScreen from './MobileAppDownloadScreen';
 import SettingsPage from './SettingsPage';
 import PoolManager from './PoolManager';
 import ErrorNotification from './ErrorNotification';
@@ -17,10 +18,12 @@ import AppTutorial from './AppTutorial';
 import InfoHint from './InfoHint';
 import ConfirmDialog from './ConfirmDialog';
 import UpdateNotification from './UpdateNotification';
+import UpdateAvailableNotification from './UpdateAvailableNotification';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { useAppUpdater } from './useAppUpdater';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
+import { initPlatformDetection, isNative } from './platformDetection';
 import './App.css';
 
 export default function App() {
@@ -41,7 +44,7 @@ export default function App() {
     ensureDeviceConfigured
   } = useContext(PHContext);
   const { user, loading, userConfig, updateUserConfig } = useAuth();
-  const { updateAvailable, updateInfo, applyUpdate, dismissUpdate } = useAppUpdater();
+  const { updateAvailable, updateInfo, applyUpdate, dismissUpdate, isChecking } = useAppUpdater();
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(true);
@@ -59,6 +62,8 @@ export default function App() {
   const [systemEvents, setSystemEvents] = useState([]);
   const [isSystemStatusExpanded, setIsSystemStatusExpanded] = useState(false);
   const [isSystemEventsExpanded, setIsSystemEventsExpanded] = useState(false);
+  const [shouldShowAppDownloadScreen, setShouldShowAppDownloadScreen] = useState(false);
+  const [isOnNativeApp, setIsOnNativeApp] = useState(false);
 
   const displayedPh = typeof tutorialDemoPh === 'number' ? tutorialDemoPh : ph;
   const phDeviation = displayedPh - phTolerance;
@@ -89,6 +94,21 @@ export default function App() {
   const handleSplashFinish = () => {
     setShowSplash(false);
   };
+
+  // Initialize platform detection on app startup
+  useEffect(() => {
+    const checkPlatform = async () => {
+      try {
+        await initPlatformDetection();
+        const isNativeApp = await isNative();
+        setIsOnNativeApp(isNativeApp);
+      } catch (error) {
+        console.warn('Error detecting platform:', error);
+        setIsOnNativeApp(false);
+      }
+    };
+    checkPlatform();
+  }, []);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -135,6 +155,18 @@ export default function App() {
     hasBootEventRef.current = false;
     setSystemEvents([]);
   }, [user?.uid]);
+
+  useEffect(() => {
+    // Never show download screen if already on native app
+    if (isOnNativeApp || !user?.uid || isConfigured) {
+      setShouldShowAppDownloadScreen(false);
+      return;
+    }
+
+    // Mostrar pantalla de descarga de app si el usuario no ha configurado y no ha visto la pantalla
+    const hasSeenScreen = userConfig?.hasSeenAppDownloadScreen === true;
+    setShouldShowAppDownloadScreen(!hasSeenScreen);
+  }, [user?.uid, isConfigured, userConfig?.hasSeenAppDownloadScreen, isOnNativeApp]);
 
   const openTutorial = useCallback(() => {
     setShowDeviceRegistrationModal(false);
@@ -411,7 +443,7 @@ export default function App() {
   }, [addSystemEvent, error?.message, error?.type]);
 
   if (showSplash) {
-    return <SplashScreen onFinish={handleSplashFinish} />;
+    return <SplashScreen onFinish={handleSplashFinish} isCheckingUpdates={isChecking} />;
   }
 
   if (loading) {
@@ -428,6 +460,14 @@ export default function App() {
 
   if (!user) {
     return <LoginScreen />;
+  }
+
+  if (shouldShowAppDownloadScreen) {
+    return (
+      <MobileAppDownloadScreen
+        onContinue={() => setShouldShowAppDownloadScreen(false)}
+      />
+    );
   }
 
   if (!isConfigured) {
@@ -476,6 +516,8 @@ export default function App() {
           onDismiss={dismissUpdate}
         />
       )}
+
+      <UpdateAvailableNotification />
 
       {!showTutorial && (
         <Header

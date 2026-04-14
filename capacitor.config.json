@@ -1,5 +1,5 @@
 {
-  "appId": "com.controlpileta.ph",
+  "appId": "com.controlpileta.app",
   "appName": "control-pileta",
   "webDir": "dist",
   "plugins": {

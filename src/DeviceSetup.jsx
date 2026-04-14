@@ -8,7 +8,7 @@ export default function DeviceSetup() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const [step, setStep] = useState(1); // 1: conectar AP, 2: escanear redes, 3: configurar, 4: registrar, 5: éxito
+  const [step, setStep] = useState(0); // 0: verificar, 1: instrucciones, 2: escanear, 3: contraseña, 4: configurando, 5: éxito
   const [networks, setNetworks] = useState([]);
   const [selectedSsid, setSelectedSsid] = useState('');
   const [password, setPassword] = useState('');
