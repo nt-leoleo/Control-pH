@@ -18,7 +18,7 @@ function createRaindrops() {
     return drops;
 }
 
-const SplashScreen = ({ onFinish }) => {
+const SplashScreen = ({ onFinish, isCheckingUpdates = false }) => {
     const [isVisible, setIsVisible] = useState(true);
     const [raindrops] = useState(() => createRaindrops());
 
@@ -77,7 +77,9 @@ const SplashScreen = ({ onFinish }) => {
                     <div className="loading-bar">
                         <div className="loading-progress"></div>
                     </div>
-                    <p className="loading-text">Iniciando...</p>
+                    <p className="loading-text">
+                        {isCheckingUpdates ? 'Chequeando actualizaciones...' : 'Iniciando...'}
+                    </p>
                 </div>
             </div>
         </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const CURRENT_VERSION = '5.0.0';
+const CURRENT_VERSION = '5.0.2';
 
 export const useAppUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -11,30 +11,24 @@ export const useAppUpdater = () => {
 
   const checkForUpdates = async () => {
     try {
-      // Solo verificar en Capacitor (app móvil)
-      if (!window.Capacitor) {
-        console.log('[Updater] No es app móvil, saltando verificación');
-        return;
-      }
-
       console.log('[Updater] Iniciando verificación de actualizaciones...');
       console.log('[Updater] Versión actual:', CURRENT_VERSION);
       setIsChecking(true);
 
-      // Obtener info de actualización desde Firebase
-      const updateDoc = await getDoc(doc(db, 'appConfig', 'version'));
+      // Obtener info de versión desde Firestore (app-versions/latest)
+      const versionDoc = await getDoc(doc(db, 'app-versions', 'latest'));
       
-      if (!updateDoc.exists()) {
-        console.log('[Updater] No se encontró documento de versión');
+      if (!versionDoc.exists()) {
+        console.log('[Updater] No se encontró documento "latest" en app-versions');
         setIsChecking(false);
         return;
       }
 
-      const data = updateDoc.data();
+      const data = versionDoc.data();
       const latestVersion = data.version;
-      const updateUrl = data.updateUrl;
-      const forceUpdate = data.forceUpdate || false;
-      const releaseNotes = data.releaseNotes || '';
+      const downloadUrl = data.url;
+      const changelog = data.changelog || 'Nueva versión disponible';
+      const isMandatory = data.mandatory || false;
 
       console.log('[Updater] Versión en Firebase:', latestVersion);
       console.log('[Updater] Comparando versiones...');
@@ -44,13 +38,14 @@ export const useAppUpdater = () => {
       console.log('[Updater] Resultado comparación:', comparison);
       
       if (comparison > 0) {
-        console.log('[Updater] ¡Actualización disponible!');
+        console.log('[Updater] ¡Actualización disponible:', latestVersion);
         setUpdateAvailable(true);
         setUpdateInfo({
           version: latestVersion,
-          url: updateUrl,
-          forceUpdate,
-          releaseNotes,
+          url: downloadUrl,
+          changelog,
+          mandatory: isMandatory,
+          releaseDate: data.releaseDate
         });
       } else {
         console.log('[Updater] Ya estás en la última versión');
@@ -77,14 +72,20 @@ export const useAppUpdater = () => {
   };
 
   const dismissUpdate = () => {
-    if (updateInfo?.forceUpdate) {
-      return; // No permitir cerrar si es actualización forzada
+    if (updateInfo?.mandatory) {
+      return; // No permitir cerrar si es actualización obligatoria
     }
     setUpdateAvailable(false);
   };
 
   useEffect(() => {
+    // Verificar actualizaciones al iniciar la app (durante splash screen)
     checkForUpdates();
+
+    // Verificar cada 60 minutos
+    const intervalId = setInterval(checkForUpdates, 60 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   return {

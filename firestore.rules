@@ -15,7 +15,28 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Permitir lectura pública de configuración de versión de la app
+    // Permitir lectura pública de versiones de la app (para OTA updates)
+    match /app-versions/{document=**} {
+      allow read: if true;  // Todos pueden leer versiones
+      allow write: if request.auth != null && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Permitir lectura pública de configuración de app
+    match /app-config/{document=**} {
+      allow read: if true;  // Todos pueden leer configuración
+      allow write: if request.auth != null && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Registrar logs de actualizaciones (puede escribir cualquiera autenticado)
+    match /update-logs/{documentId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;  // Permitir crear logs
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Permitir lectura pública de versión antigua (compatibilidad)
     match /appConfig/version {
       allow read: if true;
       allow write: if request.auth != null && 

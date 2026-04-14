@@ -10,6 +10,7 @@ import {
 import ConfirmDialog from './ConfirmDialog';
 import QRScanner from './QRScanner';
 import WiFiConfig from './WiFiConfig';
+import BluetoothDeviceConfigModal from './BluetoothDeviceConfigModal';
 import { QRCodeSVG } from 'qrcode.react';
 import './Onboarding.css';
 
@@ -45,6 +46,8 @@ const Onboarding = () => {
   const [pendingDeviceId, setPendingDeviceId] = useState('');
   const [showDetectedDeviceModal, setShowDetectedDeviceModal] = useState(false);
   const [showWiFiConfigModal, setShowWiFiConfigModal] = useState(false);
+  const [showBluetoothConfigModal, setShowBluetoothConfigModal] = useState(false);
+  const [pendingWifiConfig, setPendingWifiConfig] = useState(null);
   const [configuredSsid, setConfiguredSsid] = useState('');
   const [showSetupSummary, setShowSetupSummary] = useState(false);
 
@@ -286,9 +289,16 @@ const Onboarding = () => {
     setPendingDeviceId('');
   };
 
+  const handleWiFiConfigContinue = ({ ssid, password }) => {
+    setPendingWifiConfig({ ssid, password });
+    setShowWiFiConfigModal(false);
+    setShowBluetoothConfigModal(true);
+  };
+
   const handleWiFiConfigSuccess = (ssid) => {
     setConfiguredSsid(ssid);
-    setShowWiFiConfigModal(false);
+    setShowBluetoothConfigModal(false);
+    setPendingWifiConfig(null);
     setShowSetupSummary(true);
   };
 
@@ -437,6 +447,9 @@ const Onboarding = () => {
                   <p className="onboarding-instruction-detail">
                     (El código QR está en la parte de abajo de la caja del dispositivo)
                   </p>
+                  <p className="onboarding-instruction-detail">
+                    La app te guiara por Bluetooth, sin conectarte manualmente a redes del dispositivo.
+                  </p>
                   
                   <button
                     type="button"
@@ -554,6 +567,14 @@ const Onboarding = () => {
       <WiFiConfig
         isOpen={showWiFiConfigModal}
         onClose={() => setShowWiFiConfigModal(false)}
+        onContinue={handleWiFiConfigContinue}
+      />
+
+      <BluetoothDeviceConfigModal
+        isOpen={showBluetoothConfigModal}
+        onClose={() => setShowBluetoothConfigModal(false)}
+        ssid={pendingWifiConfig?.ssid || ''}
+        password={pendingWifiConfig?.password || ''}
         onSuccess={handleWiFiConfigSuccess}
       />
 

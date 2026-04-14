@@ -42,7 +42,17 @@ const QRScanner = ({ onScan, onClose }) => {
       );
     } catch (err) {
       console.error('Error iniciando escáner:', err);
-      setError('No se pudo acceder a la cámara. Verifica los permisos.');
+      
+      // Detectar tipo de error y proporcionar mensaje apropiado
+      let errorMsg = 'No se pudo acceder a la cámara. Verifica los permisos.';
+      
+      if (err.message?.includes('Permission denied') || err.message?.includes('NotAllowedError') || err.name === 'NotAllowedError') {
+        errorMsg = 'Permiso denegado.\n\nEn Android:\n1. Ve a Configuración > Aplicaciones > Control Pileta pH\n2. Permisos > Cámara\n3. Selecciona "Permitir"\n\nLuego intenta de nuevo.';
+      } else if (err.message?.includes('No camera')) {
+        errorMsg = 'No se encontró cámara en este dispositivo.';
+      }
+      
+      setError(errorMsg);
       setIsScanning(false);
     }
   };
