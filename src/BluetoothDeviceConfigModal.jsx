@@ -65,8 +65,8 @@ const BluetoothDeviceConfigModal = ({ isOpen, onClose, ssid, password, onSuccess
           <div className="connection-info">
             <p><strong>Paso 2 de 2:</strong></p>
             <ol>
-              <li>Busca dispositivos Bluetooth</li>
-              <li>Selecciona tu ESP32</li>
+              <li>Busca dispositivos Bluetooth cercanos</li>
+              <li>Selecciona tu ESP32 de la lista</li>
               <li>Envía la configuración</li>
             </ol>
             <p><strong>Red elegida:</strong> {ssid}</p>

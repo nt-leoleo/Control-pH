@@ -23,61 +23,92 @@ const WiFiConfig = ({ isOpen, onClose, onContinue }) => {
 
         try {
             if (Capacitor.isNativePlatform()) {
-                // En móvil (Android/iOS), solicitar permisos de ubicación primero
+                console.log('Iniciando escaneo de redes WiFi en Android...');
+                
+                // En móvil (Android/iOS), solicitar permisos necesarios
                 try {
+                    // Verificar permisos de ubicación
                     const permissionStatus = await Geolocation.checkPermissions();
+                    console.log('Estado de permisos de ubicación:', permissionStatus);
+                    
                     if (permissionStatus.location !== 'granted') {
-                        // Solicitar permisos de ubicación
+                        console.log('Solicitando permisos de ubicación...');
                         const requestResult = await Geolocation.requestPermissions();
+                        console.log('Resultado de solicitud de permisos:', requestResult);
+                        
                         if (requestResult.location !== 'granted') {
-                            setError('Se requieren permisos de ubicación para escanear redes WiFi. Ve a Ajustes > Aplicaciones > Control Pileta > Permisos y habilita "Ubicación".');
+                            setError('Se requieren permisos de ubicación. Ve a Ajustes > Aplicaciones > Control Pileta > Permisos > Ubicación y selecciona "Permitir solo mientras usas la app" o "Permitir siempre".');
                             setIsScanning(false);
                             return;
                         }
                     }
                 } catch (permError) {
-                    console.warn('Error con permisos de ubicación:', permError);
-                    setError('No se pudieron verificar los permisos de ubicación. Asegúrate de tener permisos de ubicación habilitados.');
-                    setIsScanning(false);
-                    return;
+                    console.warn('Error verificando permisos:', permError);
                 }
 
-                // Escanear redes WiFi disponibles usando el plugin
+                // Verificar si WiFi está habilitado
                 try {
-                    // Iniciar escaneo
+                    const wifiEnabled = await CapacitorWifi.isEnabled();
+                    console.log('WiFi habilitado:', wifiEnabled);
+                    
+                    if (!wifiEnabled.enabled) {
+                        setError('WiFi no está habilitado en tu dispositivo. Ve a Ajustes y activa WiFi.');
+                        setIsScanning(false);
+                        return;
+                    }
+                } catch (wifiCheckError) {
+                    console.warn('No se pudo verificar estado de WiFi:', wifiCheckError);
+                }
+
+                // Escanear redes WiFi disponibles
+                try {
+                    console.log('Iniciando escaneo...');
                     await CapacitorWifi.startScan();
+                    console.log('Escaneo iniciado');
                     
-                    // Pequeña pausa para que el escaneo se complete
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Esperar a que se complete el escaneo
+                    await new Promise(resolve => setTimeout(resolve, 3000));
                     
-                    // Obtener redes disponibles
+                    console.log('Obteniendo redes disponibles...');
                     const result = await CapacitorWifi.getAvailableNetworks();
+                    console.log('Resultado del escaneo:', result);
                     
-                    if (result.networks && result.networks.length > 0) {
-                        // Filtrar y mostrar redes disponibles
+                    if (result && result.networks && result.networks.length > 0) {
+                        // Filtrar redes válidas
                         const availableNetworks = result.networks
-                            .filter(network => network.ssid && network.ssid.trim() !== '')
+                            .filter(network => network && network.ssid && network.ssid.trim() !== '')
                             .map(network => network.ssid);
                         
-                        // Remover duplicados
-                        const uniqueNetworks = [...new Set(availableNetworks)];
+                        // Remover duplicados y ordenar
+                        const uniqueNetworks = [...new Set(availableNetworks)].sort();
                         
+                        console.log('Redes encontradas:', uniqueNetworks);
                         setNetworks(uniqueNetworks);
-                        setError(''); // Limpiar error si se encontraron redes
+                        
+                        if (uniqueNetworks.length === 0) {
+                            setError('No se encontraron redes WiFi. Asegúrate de que WiFi esté habilitado y haya redes disponibles.');
+                        }
                     } else {
-                        setError('No se encontraron redes WiFi disponibles. Asegúrate de que el WiFi esté activado.');
+                        console.warn('No hay redes en el resultado:', result);
+                        setError('No se encontraron redes disponibles. Verifica que WiFi esté activado en tu dispositivo.');
                     }
                 } catch (wifiError) {
-                    console.error('Error escaneando WiFi:', wifiError);
-                    setError('No se pudo escanear la lista de redes del telefono. Verifica permisos de ubicacion y "Dispositivos cercanos", o ingresa la red manualmente.');
+                    console.error('Error en escaneo de WiFi:', wifiError);
+                    console.error('Detalles del error:', {
+                        message: wifiError.message,
+                        code: wifiError.code,
+                        stack: wifiError.stack
+                    });
+                    
+                    setError('No se pudo escanear redes WiFi (Error: ' + (wifiError.message || 'desconocido') + '). Verifica que hayas dado permisos de "Ubicación" y "Dispositivos cercanos" en Ajustes > Aplicaciones > Control Pileta > Permisos.');
                 }
             } else {
                 // En web, no hay acceso directo a redes WiFi disponibles
-                setError('En navegador web, debes ingresar manualmente el nombre de tu red. Busca el SSID disponible en tu PC o conecta el celular a la red deseada.');
+                setError('En navegador web, debes ingresar manualmente el nombre de tu red WiFi.');
             }
         } catch (err) {
-            console.error('Error escaneando redes:', err);
-            setError('No se pudo acceder a la información de WiFi. Ingresa manualmente el nombre de tu red WiFi.');
+            console.error('Error general:', err);
+            setError('Error al acceder a redes WiFi. Ingresa manualmente el nombre de tu red.');
         } finally {
             setIsScanning(false);
         }

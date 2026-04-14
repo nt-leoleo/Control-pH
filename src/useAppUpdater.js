@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const CURRENT_VERSION = '5.0.2';
+const CURRENT_VERSION = '5.0.5';
 
 export const useAppUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -113,3 +113,4 @@ function compareVersions(v1, v2) {
 
   return 0;
 }
+

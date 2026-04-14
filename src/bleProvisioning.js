@@ -82,17 +82,21 @@ export const bleProvisioning = {
     const found = new Map();
 
     await BleClient.requestLEScan(
-      {
-        services: [BLE_PROVISION_SERVICE_UUID]
-      },
+      {},
       (result) => {
-        const localName = result.localName || '';
-        if (!localName.startsWith(DEVICE_NAME_PREFIX)) {
+        const deviceId = result.device.deviceId;
+        if (!deviceId) {
           return;
         }
-        found.set(result.device.deviceId, {
+
+        const localName = (result.localName || '').trim();
+        const fallbackName = `Dispositivo ${deviceId.slice(-5)}`;
+        const nextName = localName || fallbackName;
+
+        const previous = found.get(deviceId);
+        found.set(deviceId, {
           deviceId: result.device.deviceId,
-          name: localName
+          name: previous?.name && previous.name !== fallbackName ? previous.name : nextName
         });
       }
     );

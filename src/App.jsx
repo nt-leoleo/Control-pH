@@ -17,11 +17,8 @@ import DeviceRegistration from './DeviceRegistration';
 import AppTutorial from './AppTutorial';
 import InfoHint from './InfoHint';
 import ConfirmDialog from './ConfirmDialog';
-import UpdateNotification from './UpdateNotification';
-import UpdateAvailableNotification from './UpdateAvailableNotification';
 import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
-import { useAppUpdater } from './useAppUpdater';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
 import { initPlatformDetection, isNative } from './platformDetection';
 import './App.css';
@@ -44,7 +41,6 @@ export default function App() {
     ensureDeviceConfigured
   } = useContext(PHContext);
   const { user, loading, userConfig, updateUserConfig } = useAuth();
-  const { updateAvailable, updateInfo, applyUpdate, dismissUpdate, isChecking } = useAppUpdater();
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(true);
@@ -443,30 +439,42 @@ export default function App() {
   }, [addSystemEvent, error?.message, error?.type]);
 
   if (showSplash) {
-    return <SplashScreen onFinish={handleSplashFinish} isCheckingUpdates={isChecking} />;
+    return (
+      <>
+        <SplashScreen onFinish={handleSplashFinish} isCheckingUpdates={false} />
+      </>
+    );
   }
 
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="loading-container">
-          <h1>Control Pileta pH</h1>
-          <div className="loading-spinner"></div>
-          <p>Cargando...</p>
+      <>
+        <div className="loading-screen">
+          <div className="loading-container">
+            <h1>Control Pileta pH</h1>
+            <div className="loading-spinner"></div>
+            <p>Cargando...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!user) {
-    return <LoginScreen />;
+    return (
+      <>
+        <LoginScreen />
+      </>
+    );
   }
 
   if (shouldShowAppDownloadScreen) {
     return (
-      <MobileAppDownloadScreen
-        onContinue={() => setShouldShowAppDownloadScreen(false)}
-      />
+      <>
+        <MobileAppDownloadScreen
+          onContinue={() => setShouldShowAppDownloadScreen(false)}
+        />
+      </>
     );
   }
 
@@ -509,16 +517,6 @@ export default function App() {
 
   return (
     <>
-      {updateAvailable && (
-        <UpdateNotification
-          updateInfo={updateInfo}
-          onUpdate={applyUpdate}
-          onDismiss={dismissUpdate}
-        />
-      )}
-
-      <UpdateAvailableNotification />
-
       {!showTutorial && (
         <Header
           onConfigClick={() => {
