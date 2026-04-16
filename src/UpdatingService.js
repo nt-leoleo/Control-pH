@@ -2,7 +2,7 @@ import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const APP_VERSION = '5.0.5';
+const APP_VERSION = '5.0.6';
 const VERSION_CHECK_INTERVAL = 60 * 60 * 1000; // Cada hora
 
 /**
