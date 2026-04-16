@@ -50,6 +50,7 @@ export const PHProvider = ({ children }) => {
     const [esp32Connected, setEsp32Connected] = useState(false);
     const [lastDataReceived, setLastDataReceived] = useState(null);
     const [hasConfiguredDevice, setHasConfiguredDevice] = useState(false);
+    const [sensorConnected, setSensorConnected] = useState(true);
 
     useEffect(() => {
         if (userConfig) {
@@ -325,18 +326,28 @@ export const PHProvider = ({ children }) => {
     const handleDataReceived = useCallback(
         (phData) => {
             try {
-                if (!phData || !Number.isFinite(Number(phData.ph))) {
+                if (!phData) {
                     return;
                 }
 
+                // ESP32 is online (heartbeat received)
+                setLastDataReceived(new Date(phData.timestamp));
+                setEsp32Connected(Boolean(phData.isRecent));
+
+                // Check if sensor is disconnected
+                if (phData.sensorDisconnected || !Number.isFinite(Number(phData.ph))) {
+                    setSensorConnected(false);
+                    // Don't update pH value, keep showing last valid reading or default
+                    return;
+                }
+
+                setSensorConnected(true);
                 const safePh = Number(phData.ph);
                 const wasUpdated = safePHSet(safePh, { trackHistory: false });
                 if (!wasUpdated) {
                     return;
                 }
 
-                setLastDataReceived(new Date(phData.timestamp));
-                setEsp32Connected(Boolean(phData.isRecent));
                 updatePhHistory(safePh);
             } catch (receivedError) {
                 logError('ESP32_DATA_ERROR', receivedError.message, phData);
@@ -372,6 +383,8 @@ export const PHProvider = ({ children }) => {
             setAcidType,
             esp32Connected,
             setEsp32Connected,
+            sensorConnected,
+            setSensorConnected,
             lastDataReceived,
             setLastDataReceived,
             ph,
@@ -407,6 +420,7 @@ export const PHProvider = ({ children }) => {
             ensureDeviceConfigured,
             error,
             esp32Connected,
+            sensorConnected,
             hasConfiguredDevice,
             isConfigured,
             lastDataReceived,
