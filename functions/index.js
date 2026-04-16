@@ -681,3 +681,61 @@ exports.deleteUserCompletely = functions.https.onRequest(async (req, res) => {
     res.status(500).json({ error: error.message || 'Unexpected error' });
   }
 });
+
+/**
+ * Función que escucha cambios en sharedSensorData y los copia a cada usuario
+ * Se activa automáticamente cuando el ESP32 escribe datos
+ * Version: 1.0
+ */
+exports.propagateSensorData = functions.database
+  .ref('/sharedSensorData/{deviceId}')
+  .onWrite(async (change, context) => {
+    const deviceId = context.params.deviceId;
+    const sensorData = change.after.val();
+    
+    if (!sensorData) {
+      console.log(`📡 [SENSOR] Datos eliminados para device ${deviceId}`);
+      return null;
+    }
+    
+    console.log(`📡 [SENSOR] Nuevos datos de device ${deviceId}: pH ${sensorData.ph}`);
+    
+    try {
+      // Buscar todos los usuarios que tienen este dispositivo vinculado
+      const devicesSnapshot = await admin.firestore()
+        .collection('devices')
+        .where('deviceId', '==', deviceId)
+        .get();
+      
+      if (devicesSnapshot.empty) {
+        console.log(`⚠️ [SENSOR] No hay usuarios vinculados al device ${deviceId}`);
+        // Aún así, guardar en una ubicación por defecto para que la app pueda leerlo
+        await admin.database().ref(`users/sensorData`).set(sensorData);
+        return null;
+      }
+      
+      // Copiar datos a cada usuario vinculado
+      const updates = {};
+      devicesSnapshot.forEach(doc => {
+        const deviceData = doc.data();
+        const userIds = deviceData.userIds || [deviceData.userId];
+        
+        userIds.forEach(userId => {
+          if (userId) {
+            updates[`users/${userId}/sensorData`] = sensorData;
+            console.log(`✅ [SENSOR] Copiando datos a usuario ${userId}`);
+          }
+        });
+      });
+      
+      // Aplicar todas las actualizaciones de una vez
+      await admin.database().ref().update(updates);
+      
+      console.log(`✅ [SENSOR] Datos propagados a ${Object.keys(updates).length} ubicaciones`);
+      return null;
+      
+    } catch (error) {
+      console.error(`❌ [SENSOR] Error propagando datos:`, error);
+      return null;
+    }
+  });
