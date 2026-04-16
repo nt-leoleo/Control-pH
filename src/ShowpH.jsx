@@ -32,7 +32,7 @@ const valueToAngle = (value) => {
 };
 
 const ShowpH = ({ phValue }) => {
-  const { ph, phTolerance, phToleranceRange } = useContext(PHContext);
+  const { ph, phTolerance, phToleranceRange, sensorConnected } = useContext(PHContext);
   const currentPh = typeof phValue === 'number' ? phValue : ph;
   const [slideIndex, setSlideIndex] = useState(0);
   const touchStartX = useRef(0);
@@ -132,12 +132,25 @@ const ShowpH = ({ phValue }) => {
                 text="Es el valor que el sensor esta midiendo ahora mismo. Se actualiza automaticamente cuando llega un dato nuevo."
               />
             </p>
-            <p className="ph-value" data-tutorial="ph-meter-value">
-              {currentPh.toFixed(2)}
-            </p>
-            <p className="ph-status" data-tutorial="ph-meter-status">
-              {status.text}
-            </p>
+            {sensorConnected ? (
+              <>
+                <p className="ph-value" data-tutorial="ph-meter-value">
+                  {currentPh.toFixed(2)}
+                </p>
+                <p className="ph-status" data-tutorial="ph-meter-status">
+                  {status.text}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="ph-value" data-tutorial="ph-meter-value" style={{ fontSize: '1.5rem', color: '#ff9800' }}>
+                  Sensor desconectado
+                </p>
+                <p className="ph-status" data-tutorial="ph-meter-status" style={{ fontSize: '0.9rem' }}>
+                  Verifica la conexión del sensor de pH
+                </p>
+              </>
+            )}
             <div className="ph-meta" data-tutorial="ph-meter-target">
               <span>Objetivo: {phTolerance.toFixed(1)}</span>
               <span>Ideal: {minIdeal} - {maxIdeal}</span>
@@ -145,98 +158,108 @@ const ShowpH = ({ phValue }) => {
           </div>
 
           <div className="ph-slide ph-slide-gauge" data-tutorial="ph-meter-gauge">
-            <div className="ph-gauge-wrap">
-              <svg
-                viewBox="0 0 200 150"
-                className="ph-gauge"
-                role="img"
-                aria-label={`Medidor de pH ${currentPh.toFixed(2)}`}
-              >
-                <defs>
-                  <linearGradient id="gaugeBezelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="var(--gauge-bezel-top)" />
-                    <stop offset="50%" stopColor="var(--gauge-bezel-mid)" />
-                    <stop offset="100%" stopColor="var(--gauge-bezel-bottom)" />
-                  </linearGradient>
-                  <radialGradient id="gaugeDialGradient" cx="50%" cy="35%" r="65%">
-                    <stop offset="0%" stopColor="var(--gauge-dial-top)" />
-                    <stop offset="60%" stopColor="var(--gauge-dial-mid)" />
-                    <stop offset="100%" stopColor="var(--gauge-dial-bottom)" />
-                  </radialGradient>
-                  <linearGradient id="needleGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="var(--gauge-needle-top)" />
-                    <stop offset="100%" stopColor="var(--gauge-needle-bottom)" />
-                  </linearGradient>
-                  <linearGradient id="valuePanelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="var(--gauge-panel-top)" />
-                    <stop offset="100%" stopColor="var(--gauge-panel-bottom)" />
-                  </linearGradient>
-                  <filter id="needleGlow">
-                    <feGaussianBlur stdDeviation="1.8" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                  <filter id="cyanGlow">
-                    <feGaussianBlur stdDeviation="2.2" result="glow" />
-                    <feMerge>
-                      <feMergeNode in="glow" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
+            {sensorConnected ? (
+              <div className="ph-gauge-wrap">
+                <svg
+                  viewBox="0 0 200 150"
+                  className="ph-gauge"
+                  role="img"
+                  aria-label={`Medidor de pH ${currentPh.toFixed(2)}`}
+                >
+                  <defs>
+                    <linearGradient id="gaugeBezelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="var(--gauge-bezel-top)" />
+                      <stop offset="50%" stopColor="var(--gauge-bezel-mid)" />
+                      <stop offset="100%" stopColor="var(--gauge-bezel-bottom)" />
+                    </linearGradient>
+                    <radialGradient id="gaugeDialGradient" cx="50%" cy="35%" r="65%">
+                      <stop offset="0%" stopColor="var(--gauge-dial-top)" />
+                      <stop offset="60%" stopColor="var(--gauge-dial-mid)" />
+                      <stop offset="100%" stopColor="var(--gauge-dial-bottom)" />
+                    </radialGradient>
+                    <linearGradient id="needleGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="var(--gauge-needle-top)" />
+                      <stop offset="100%" stopColor="var(--gauge-needle-bottom)" />
+                    </linearGradient>
+                    <linearGradient id="valuePanelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="var(--gauge-panel-top)" />
+                      <stop offset="100%" stopColor="var(--gauge-panel-bottom)" />
+                    </linearGradient>
+                    <filter id="needleGlow">
+                      <feGaussianBlur stdDeviation="1.8" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                    <filter id="cyanGlow">
+                      <feGaussianBlur stdDeviation="2.2" result="glow" />
+                      <feMerge>
+                        <feMergeNode in="glow" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
 
-                <circle cx="100" cy="120" r="99" className="gauge-rim-outer" />
-                <circle cx="100" cy="120" r="92" className="gauge-rim-inner" />
-                <circle cx="100" cy="120" r="85" className="gauge-dial-surface" />
-                <path d={describeArc(100, 120, 98, 215, 325)} className="gauge-neon-base" filter="url(#cyanGlow)" />
-                <path d={describeArc(100, 120, 92, GAUGE_START_ANGLE, GAUGE_END_ANGLE)} className="gauge-base-arc" />
+                  <circle cx="100" cy="120" r="99" className="gauge-rim-outer" />
+                  <circle cx="100" cy="120" r="92" className="gauge-rim-inner" />
+                  <circle cx="100" cy="120" r="85" className="gauge-dial-surface" />
+                  <path d={describeArc(100, 120, 98, 215, 325)} className="gauge-neon-base" filter="url(#cyanGlow)" />
+                  <path d={describeArc(100, 120, 92, GAUGE_START_ANGLE, GAUGE_END_ANGLE)} className="gauge-base-arc" />
 
-                {gaugeArcs.map((arc, index) => (
-                  <path key={index} d={arc.path} className={`gauge-color-arc ${arc.className}`} />
-                ))}
+                  {gaugeArcs.map((arc, index) => (
+                    <path key={index} d={arc.path} className={`gauge-color-arc ${arc.className}`} />
+                  ))}
 
-                {gaugeTicks.map((tick, index) => (
-                  <line
-                    key={index}
-                    x1={tick.x1}
-                    y1={tick.y1}
-                    x2={tick.x2}
-                    y2={tick.y2}
-                    className={`gauge-tick ${tick.major ? 'major' : ''}`}
-                  />
-                ))}
+                  {gaugeTicks.map((tick, index) => (
+                    <line
+                      key={index}
+                      x1={tick.x1}
+                      y1={tick.y1}
+                      x2={tick.x2}
+                      y2={tick.y2}
+                      className={`gauge-tick ${tick.major ? 'major' : ''}`}
+                    />
+                  ))}
 
-                <text x="100" y="24" className="gauge-ideal-label">
-                  IDEAL
-                </text>
+                  <text x="100" y="24" className="gauge-ideal-label">
+                    IDEAL
+                  </text>
 
-                <text x="25" y="98" className="gauge-limit-label">
-                  {minIdeal}
-                </text>
-                <text x="175" y="98" className="gauge-limit-label" textAnchor="end">
-                  {maxIdeal}
-                </text>
+                  <text x="25" y="98" className="gauge-limit-label">
+                    {minIdeal}
+                  </text>
+                  <text x="175" y="98" className="gauge-limit-label" textAnchor="end">
+                    {maxIdeal}
+                  </text>
 
-                <g transform={`rotate(${needleAngle} 100 120)`} filter="url(#needleGlow)">
-                  <path d="M 100 44 L 104 120 L 96 120 Z" className="gauge-needle" />
-                  <circle cx="100" cy="52" r="2.5" className="gauge-needle-tip" />
-                </g>
+                  <g transform={`rotate(${needleAngle} 100 120)`} filter="url(#needleGlow)">
+                    <path d="M 100 44 L 104 120 L 96 120 Z" className="gauge-needle" />
+                    <circle cx="100" cy="52" r="2.5" className="gauge-needle-tip" />
+                  </g>
 
-                <circle cx="100" cy="120" r="12" className="gauge-center-outer" />
-                <circle cx="100" cy="120" r="7" className="gauge-center-inner" />
-                <circle cx="100" cy="120" r="3" className="gauge-center-dot" />
+                  <circle cx="100" cy="120" r="12" className="gauge-center-outer" />
+                  <circle cx="100" cy="120" r="7" className="gauge-center-inner" />
+                  <circle cx="100" cy="120" r="3" className="gauge-center-dot" />
 
-                <rect x="66" y="94" width="68" height="24" rx="7" className="gauge-value-panel" />
-                <text x="100" y="110" className="gauge-value">
-                  {currentPh.toFixed(2)}
-                </text>
-                <text x="100" y="130" className="gauge-unit">
-                  pH
-                </text>
-              </svg>
-            </div>
+                  <rect x="66" y="94" width="68" height="24" rx="7" className="gauge-value-panel" />
+                  <text x="100" y="110" className="gauge-value">
+                    {currentPh.toFixed(2)}
+                  </text>
+                  <text x="100" y="130" className="gauge-unit">
+                    pH
+                  </text>
+                </svg>
+              </div>
+            ) : (
+              <div className="ph-gauge-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <p style={{ fontSize: '1.5rem', color: '#ff9800', marginBottom: '1rem' }}>⚠️</p>
+                  <p style={{ fontSize: '1.2rem', color: '#ff9800', marginBottom: '0.5rem' }}>Sensor desconectado</p>
+                  <p style={{ fontSize: '0.9rem', color: '#999' }}>Verifica la conexión del sensor de pH</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -277,6 +277,202 @@ async function logEvent(userId, type, message) {
 }
 
 /**
+ * Recibe datos del sensor desde ESP32
+ * URL: https://us-central1-control-ph-82951.cloudfunctions.net/receiveSensorData
+ * POST JSON: { deviceId, ph, voltage, wifiRSSI, uptime, offline }
+ */
+exports.receiveSensorData = functions.https.onRequest(async (req, res) => {
+  // CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+  
+  try {
+    const { deviceId, ph, voltage, wifiRSSI, uptime, offline } = req.body;
+    
+    if (!deviceId) {
+      res.status(400).json({ error: 'deviceId required' });
+      return;
+    }
+    
+    console.log(`📡 [SENSOR] Datos recibidos - Device: ${deviceId}, pH: ${ph}, Voltage: ${voltage}V`);
+    
+    // Enviar a ThingSpeak
+    if (ph !== undefined && voltage !== undefined) {
+      const thingspeakUrl = `https://api.thingspeak.com/update?api_key=${THINGSPEAK_WRITE_API_KEY}&field1=${ph}&field2=${voltage}&field3=${wifiRSSI || 0}&field4=${uptime || 0}`;
+      
+      try {
+        await fetch(thingspeakUrl);
+        console.log('✅ Datos enviados a ThingSpeak');
+      } catch (error) {
+        console.warn('⚠️ Error enviando a ThingSpeak:', error.message);
+      }
+    }
+    
+    // Almacenar última medición en Realtime DB
+    await admin.database().ref(`devices/${deviceId}/lastSensorData`).set({
+      timestamp: Date.now(),
+      ph: ph,
+      voltage: voltage,
+      wifiRSSI: wifiRSSI,
+      uptime: uptime,
+      offline: offline || false
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Datos recibidos correctamente',
+      timestamp: Date.now()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en receiveSensorData:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Obtiene comandos pendientes para ESP32
+ * URL: https://us-central1-control-ph-82951.cloudfunctions.net/getCommand?deviceId=XXX
+ */
+exports.getCommand = functions.https.onRequest(async (req, res) => {
+  // CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+  
+  try {
+    const deviceId = req.query.deviceId;
+    
+    if (!deviceId) {
+      res.status(400).json({ error: 'deviceId required' });
+      return;
+    }
+    
+    console.log(`🔍 [COMMAND] ESP32 verificando comandos - Device: ${deviceId}`);
+    
+    // Buscar comandos pendientes
+    const commandsRef = admin.database().ref(`devices/${deviceId}/commands`);
+    const snapshot = await commandsRef.orderByChild('status').equalTo('pending').limitToFirst(1).once('value');
+    
+    if (snapshot.exists()) {
+      const commands = snapshot.val();
+      const commandId = Object.keys(commands)[0];
+      const command = commands[commandId];
+      
+      console.log(`📝 [COMMAND] Comando encontrado: ${command.product} (${command.duration}s)`);
+      
+      // Marcar como enviado
+      await commandsRef.child(commandId).update({ 
+        status: 'sent',
+        sentAt: Date.now()
+      });
+      
+      res.json({
+        success: true,
+        command: {
+          id: commandId,
+          product: command.product,
+          duration: command.duration,
+          source: command.source || 'cloud'
+        }
+      });
+    } else {
+      // Sin comandos pendientes
+      res.json({
+        success: true,
+        command: null
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en getCommand:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Confirma la ejecución de un comando desde ESP32
+ * URL: https://us-central1-control-ph-82951.cloudfunctions.net/confirmCommand
+ * POST JSON: { commandId, deviceId, userId, status }
+ */
+exports.confirmCommand = functions.https.onRequest(async (req, res) => {
+  // CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+  
+  try {
+    const { commandId, deviceId, userId, status } = req.body;
+    
+    if (!commandId || !deviceId || !status) {
+      res.status(400).json({ error: 'commandId, deviceId, and status required' });
+      return;
+    }
+    
+    console.log(`✅ [CONFIRM] Comando ${commandId} - Status: ${status} - Device: ${deviceId}`);
+    
+    // Actualizar estado del comando
+    const commandRef = admin.database().ref(`devices/${deviceId}/commands/${commandId}`);
+    await commandRef.update({
+      status: status,
+      completedAt: Date.now()
+    });
+    
+    // Si hay userId, registrar en historial del usuario
+    if (userId) {
+      await logDosingEvent(userId, {
+        timestamp: Date.now(),
+        commandId: commandId,
+        deviceId: deviceId,
+        status: status,
+        source: 'esp32-confirmation'
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Confirmación recibida',
+      timestamp: Date.now()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en confirmCommand:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Función HTTP para verificar estado del sistema
  * URL: https://us-central1-control-ph-82951.cloudfunctions.net/getSystemStatus
  */

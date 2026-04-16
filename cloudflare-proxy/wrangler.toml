@@ -1,0 +1,6 @@
+name = "esp32-firebase-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Configuración para Cloudflare Workers
+# Deploy: npx wrangler deploy

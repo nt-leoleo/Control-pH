@@ -41,17 +41,36 @@ const resolveTimestampMs = (data) => {
 };
 
 const buildProcessedSensorData = (data) => {
-    const phValue = resolvePHValue(data);
-    if (phValue === null || phValue < ESP32_CONFIG.MIN_PH || phValue > ESP32_CONFIG.MAX_PH) {
-        return null;
-    }
-
     const timestampMs = resolveTimestampMs(data);
     const dataAgeMs = Math.max(0, Date.now() - timestampMs);
     const isRecent = dataAgeMs < ESP32_CONFIG.MAX_DATA_AGE;
     const voltage = toFiniteNumber(data?.voltage) ?? 0;
     const wifiRSSI = toFiniteNumber(data?.wifiRSSI) ?? -50;
     const uptime = toFiniteNumber(data?.uptime) ?? 0;
+
+    // Check if sensor is explicitly marked as disconnected
+    const sensorConnected = data?.sensorConnected !== false;
+    const phValue = resolvePHValue(data);
+    
+    // If sensor is disconnected but ESP32 is online (heartbeat)
+    if (!sensorConnected || phValue === null || phValue < ESP32_CONFIG.MIN_PH || phValue > ESP32_CONFIG.MAX_PH) {
+        return {
+            ph: null,
+            voltage,
+            wifi_rssi: wifiRSSI,
+            uptime,
+            timestamp: new Date(timestampMs),
+            device_id: data?.deviceId || 'esp32-firebase',
+            location: 'piscina_principal',
+            source: 'firebase-realtime',
+            isRecent,
+            dataAge: Math.round(dataAgeMs / 1000),
+            sensorDisconnected: true,
+            lastUpdate: new Date(timestampMs).toLocaleString(),
+            connectionQuality: getConnectionQuality(wifiRSSI),
+            systemHealth: { status: 'warning', label: 'Sensor desconectado', issues: ['Sensor de pH no conectado'] },
+        };
+    }
 
     return {
         ph: phValue,
@@ -64,6 +83,7 @@ const buildProcessedSensorData = (data) => {
         source: 'firebase-realtime',
         isRecent,
         dataAge: Math.round(dataAgeMs / 1000),
+        sensorDisconnected: false,
         phStatus: getPHStatus(phValue),
         lastUpdate: new Date(timestampMs).toLocaleString(),
         connectionQuality: getConnectionQuality(wifiRSSI),
@@ -104,6 +124,7 @@ export const subscribeToPHData = (userId, callback) => {
             }
 
             const processedData = buildProcessedSensorData(snapshot.val());
+            // Always call callback, even if sensor is disconnected (processedData will have sensorDisconnected flag)
             if (processedData) {
                 callback(processedData);
             }

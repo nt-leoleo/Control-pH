@@ -28,6 +28,34 @@
     ],
     "rewrites": [
       {
+        "source": "/api/receiveSensorData",
+        "function": {
+          "functionId": "receiveSensorData",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/getCommand",
+        "function": {
+          "functionId": "getCommand",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/confirmCommand",
+        "function": {
+          "functionId": "confirmCommand",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/getSystemStatus",
+        "function": {
+          "functionId": "getSystemStatus",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
