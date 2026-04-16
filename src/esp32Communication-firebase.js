@@ -112,29 +112,41 @@ export const getPHDataFromFirebase = async (userId) => {
 
 export const subscribeToPHData = (userId, callback) => {
     if (!userId) {
+        console.warn('[subscribeToPHData] No userId provided');
         return () => {};
     }
 
+    console.log('[subscribeToPHData] Subscribing for userId:', userId);
     const sensorDataRef = ref(database, `users/${userId}/sensorData`);
     const unsubscribe = onValue(
         sensorDataRef,
         (snapshot) => {
+            console.log('[subscribeToPHData] Snapshot received, exists:', snapshot.exists());
             if (!snapshot.exists()) {
+                console.warn('[subscribeToPHData] No data in snapshot');
                 return;
             }
 
-            const processedData = buildProcessedSensorData(snapshot.val());
+            const rawData = snapshot.val();
+            console.log('[subscribeToPHData] Raw data:', rawData);
+            
+            const processedData = buildProcessedSensorData(rawData);
+            console.log('[subscribeToPHData] Processed data:', processedData);
+            
             // Always call callback, even if sensor is disconnected (processedData will have sensorDisconnected flag)
             if (processedData) {
                 callback(processedData);
+            } else {
+                console.warn('[subscribeToPHData] processedData is null/undefined');
             }
         },
         (error) => {
-            console.error('Error en suscripcion de sensorData:', error);
+            console.error('[subscribeToPHData] Error en suscripcion de sensorData:', error);
         }
     );
 
     return () => {
+        console.log('[subscribeToPHData] Unsubscribing');
         unsubscribe();
         off(sensorDataRef);
     };

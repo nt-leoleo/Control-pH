@@ -325,31 +325,39 @@ export const PHProvider = ({ children }) => {
 
     const handleDataReceived = useCallback(
         (phData) => {
+            console.log('[PHContext] handleDataReceived called with:', phData);
             try {
                 if (!phData) {
+                    console.warn('[PHContext] No phData received');
                     return;
                 }
 
                 // ESP32 is online (heartbeat received)
                 setLastDataReceived(new Date(phData.timestamp));
                 setEsp32Connected(Boolean(phData.isRecent));
+                console.log('[PHContext] ESP32 connected:', phData.isRecent, 'Sensor connected:', !phData.sensorDisconnected);
 
                 // Check if sensor is disconnected
                 if (phData.sensorDisconnected || !Number.isFinite(Number(phData.ph))) {
+                    console.log('[PHContext] Sensor disconnected or invalid pH');
                     setSensorConnected(false);
                     // Don't update pH value, keep showing last valid reading or default
                     return;
                 }
 
+                console.log('[PHContext] Updating pH to:', phData.ph);
                 setSensorConnected(true);
                 const safePh = Number(phData.ph);
                 const wasUpdated = safePHSet(safePh, { trackHistory: false });
                 if (!wasUpdated) {
+                    console.warn('[PHContext] pH update failed validation');
                     return;
                 }
 
                 updatePhHistory(safePh);
+                console.log('[PHContext] pH updated successfully');
             } catch (receivedError) {
+                console.error('[PHContext] Error in handleDataReceived:', receivedError);
                 logError('ESP32_DATA_ERROR', receivedError.message, phData);
             }
         },
