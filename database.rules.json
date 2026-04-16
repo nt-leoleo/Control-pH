@@ -2,8 +2,20 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".read": "$uid === auth.uid || auth == null",
+        ".write": "$uid === auth.uid || auth == null"
+      }
+    },
+    "sharedSensorData": {
+      "$deviceId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "devices": {
+      "$deviceId": {
+        ".read": true,
+        ".write": true
       }
     }
   }
