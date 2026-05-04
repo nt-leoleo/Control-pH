@@ -73,8 +73,8 @@ const Header = ({ onConfigClick }) => {
   const isWeb = !Capacitor.isNativePlatform();
 
   const handleDownloadApp = () => {
-    // Descargar desde carpeta public del frontend
-    window.location.href = '/control-pileta-v4.11.20.apk';
+    // Siempre apunta al último release de GitHub
+    window.open('https://github.com/nt-leoleo/Control-pH/releases/latest/download/app-release-v5.0.7.apk', '_blank');
   };
 
   return (
