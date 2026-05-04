@@ -19,19 +19,7 @@ const MobileAppDownloadScreen = ({ onContinue }) => {
   };
 
   const handleDownloadApp = () => {
-    // Abrir link de descarga de la app - ajustar según necesidad
-    // Podría ser Apple App Store, Google Play, o un link a un APK en Firebase Storage
-    // Por ahora usamos Google Play como ejemplo
-    const playStoreLink = 'https://play.google.com/store/apps/details?id=com.controlpileta';
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      // Si está en mobile, abrir directamente
-      window.location.href = playStoreLink;
-    } else {
-      // Si está en desktop, abrir en nueva ventana
-      window.open(playStoreLink, '_blank');
-    }
+    window.open('https://github.com/nt-leoleo/Control-pH/releases/latest/download/app-release-v5.0.7.apk', '_blank');
   };
 
   return (
