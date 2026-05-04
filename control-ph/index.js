@@ -19,6 +19,14 @@ const { calculateAutomaticDosing } = require("./dosageCalculations");
 
 admin.initializeApp();
 
+// Importar funciones v1 para ESP32
+const esp32Functions = require("./esp32-functions");
+
+exports.esp32_receiveSensorData = esp32Functions.esp32_receiveSensorData;
+exports.esp32_getCommand = esp32Functions.esp32_getCommand;
+exports.esp32_confirmCommand = esp32Functions.esp32_confirmCommand;
+exports.syncSharedSensorData = esp32Functions.syncSharedSensorData;
+
 // Configuración global
 setGlobalOptions({ maxInstances: 10 });
 
@@ -1410,3 +1418,4 @@ exports.deleteUserCompletely = onRequest(async (req, res) => {
     res.status(500).json({ error: error.message || 'Unexpected error' });
   }
 });
+

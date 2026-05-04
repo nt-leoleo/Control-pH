@@ -2,7 +2,7 @@ import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const APP_VERSION = '5.0.6';
+const APP_VERSION = '5.0.7';
 const VERSION_CHECK_INTERVAL = 60 * 60 * 1000; // Cada hora
 
 /**
@@ -134,13 +134,14 @@ export const UpdatingService = {
   /**
    * Descargar e instalar actualización
    */
-  async downloadAndInstall(downloadUrl, remoteVersion) {
+  async downloadAndInstall(downloadUrl, remoteVersion, onProgress) {
     try {
       console.log('📥 Iniciando descarga desde:', downloadUrl);
 
-      // Descargar la actualización
+      // Descargar la actualización con callback de progreso
       const downloadResult = await CapacitorUpdater.download({
-        url: downloadUrl
+        url: downloadUrl,
+        version: remoteVersion
       });
 
       if (!downloadResult || !downloadResult.id) {
@@ -149,8 +150,13 @@ export const UpdatingService = {
 
       console.log('✅ Actualización descargada:', downloadResult.id);
 
+      // Simular progreso de instalación
+      if (onProgress) onProgress(90);
+
       // Registrar descarga en Firestore (analytics)
       await this.logUpdateDownloaded(remoteVersion, downloadResult.id);
+
+      if (onProgress) onProgress(95);
 
       // Instalar la actualización
       await CapacitorUpdater.set({
@@ -159,10 +165,12 @@ export const UpdatingService = {
 
       console.log('⚙️ Actualización instalada, recargando app');
 
+      if (onProgress) onProgress(100);
+
       // Recargar la app para aplicar cambios
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
+      }, 1000);
 
       return true;
     } catch (error) {

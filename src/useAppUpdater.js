@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const CURRENT_VERSION = '5.0.5';
+const CURRENT_VERSION = '5.0.7';
 
 export const useAppUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -59,15 +59,43 @@ export const useAppUpdater = () => {
   };
 
   const applyUpdate = async () => {
-    if (!updateInfo || !window.Capacitor) {
+    if (!updateInfo) {
       return;
     }
 
     try {
-      // Recargar la app para obtener los nuevos archivos
-      window.location.reload();
+      console.log('[Updater] Aplicando actualización OTA...');
+      
+      // Mostrar pantalla de descarga
+      setIsChecking(true);
+      
+      // Si es Capacitor (app nativa), limpiar cache y recargar
+      if (window.Capacitor) {
+        console.log('[Updater] Limpiando cache de Capacitor...');
+        
+        // Limpiar cache del navegador
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(
+            cacheNames.map(cacheName => caches.delete(cacheName))
+          );
+          console.log('[Updater] Cache limpiado');
+        }
+        
+        // Esperar un momento para que el usuario vea el mensaje
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Recargar desde el servidor (forzar descarga)
+        console.log('[Updater] Recargando app desde servidor...');
+        window.location.href = window.location.origin + '?v=' + updateInfo.version + '&t=' + Date.now();
+      } else {
+        // En web, simplemente recargar
+        window.location.reload(true);
+      }
     } catch (error) {
       console.error('[Updater] Error al aplicar actualización:', error);
+      setIsChecking(false);
+      alert('Error al actualizar. Por favor, intenta de nuevo.');
     }
   };
 

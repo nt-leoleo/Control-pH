@@ -372,8 +372,14 @@ export const PHProvider = ({ children }) => {
         const unsubscribe = subscribeToPHData(user.uid, handleDataReceived);
         checkConnection();
 
+        // Chequear conexión cada 20 segundos
+        const connectionCheckInterval = setInterval(() => {
+            checkConnection();
+        }, 20000);
+
         return () => {
             unsubscribe();
+            clearInterval(connectionCheckInterval);
         };
     }, [checkConnection, handleDataReceived, user?.uid]);
 
