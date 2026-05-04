@@ -1,7 +1,31 @@
+import { useState } from 'react';
 import './UpdateNotification.css';
 
-const UpdateNotification = ({ updateInfo, onUpdate, onDismiss }) => {
+const UpdateNotification = ({ updateInfo, onUpdate, onDismiss, isUpdating }) => {
   if (!updateInfo) return null;
+
+  if (isUpdating) {
+    return (
+      <div className="update-overlay">
+        <div className="update-modal">
+          <div className="update-header">
+            <svg className="update-icon update-icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <h2>Actualizando...</h2>
+          </div>
+
+          <div className="update-body">
+            <p className="update-version">Descargando versión {updateInfo.version}</p>
+            <div className="update-progress">
+              <div className="update-progress-bar"></div>
+            </div>
+            <p className="update-status">Por favor espera, esto tomará unos segundos...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="update-overlay">

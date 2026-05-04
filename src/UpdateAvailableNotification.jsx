@@ -41,12 +41,22 @@ const UpdateAvailableNotification = () => {
     }
 
     setIsDownloading(true);
+    setDownloadProgress(0);
+    
     try {
-      await UpdatingService.downloadAndInstall(updateInfo.url, updateInfo.version);
+      // Simular progreso inicial
+      setDownloadProgress(10);
+      
+      await UpdatingService.downloadAndInstall(
+        updateInfo.url, 
+        updateInfo.version,
+        (progress) => setDownloadProgress(progress)
+      );
       // No llegará aquí porque la app se recarga
     } catch (error) {
       console.error('Error installing update:', error);
       setIsDownloading(false);
+      setDownloadProgress(0);
       // Mostrar error al usuario
       alert(`Error descargando actualización: ${error.message}`);
     }

@@ -29,24 +29,15 @@
     "rewrites": [
       {
         "source": "/api/receiveSensorData",
-        "function": {
-          "functionId": "receiveSensorData",
-          "region": "us-central1"
-        }
+        "function": "esp32_receiveSensorData"
       },
       {
         "source": "/api/getCommand",
-        "function": {
-          "functionId": "getCommand",
-          "region": "us-central1"
-        }
+        "function": "esp32_getCommand"
       },
       {
         "source": "/api/confirmCommand",
-        "function": {
-          "functionId": "confirmCommand",
-          "region": "us-central1"
-        }
+        "function": "esp32_confirmCommand"
       },
       {
         "source": "/api/getSystemStatus",
