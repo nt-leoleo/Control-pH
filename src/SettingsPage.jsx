@@ -1,6 +1,7 @@
 import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
 import WiFiConfig from './WiFiConfig';
+import WiFiChangeModal from './WiFiChangeModal';
 import BluetoothDeviceConfigModal from './BluetoothDeviceConfigModal';
 import AdminPanel from './AdminPanel';
 import DeviceRegistration from './DeviceRegistration';
@@ -888,10 +889,9 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
       </div>
 
-      <WiFiConfig
+      <WiFiChangeModal
         isOpen={showWiFiConfig}
         onClose={() => setShowWiFiConfig(false)}
-        onContinue={handleWiFiConfigContinue}
       />
 
       <BluetoothDeviceConfigModal

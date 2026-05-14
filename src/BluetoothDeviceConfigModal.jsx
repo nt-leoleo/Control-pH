@@ -40,6 +40,7 @@ const BluetoothDeviceConfigModal = ({ isOpen, onClose, ssid, password, onSuccess
     try {
       const status = await bleProvisioning.provisionDevice(selectedDeviceId, ssid, password || '');
       if (status?.status === 'ok' || status?.status === 'wifi_connecting') {
+        onClose();
         onSuccess(ssid);
         return;
       }
