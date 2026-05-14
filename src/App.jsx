@@ -21,7 +21,6 @@ import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
 import { initPlatformDetection, isNative } from './platformDetection';
-import { App as CapacitorApp } from '@capacitor/app';
 import UpdateAvailableNotification from './UpdateAvailableNotification';
 import './App.css';
 
