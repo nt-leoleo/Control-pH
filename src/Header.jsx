@@ -74,8 +74,8 @@ const Header = ({ onConfigClick }) => {
 
   const handleDownloadApp = () => {
     const link = document.createElement('a');
-    link.href = '/app-release-v5.0.7.apk';
-    link.download = 'control-pileta-v5.0.7.apk';
+    link.href = '/app-release-v5.1.0.apk';
+    link.download = 'control-pileta-v5.1.0.apk';
     link.click();
   };
 

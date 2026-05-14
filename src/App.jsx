@@ -21,6 +21,8 @@ import { PHContext } from './PHContext';
 import { useAuth } from './useAuth';
 import { sendEmergencyStopCommand } from './esp32Communication-firebase';
 import { initPlatformDetection, isNative } from './platformDetection';
+import { App as CapacitorApp } from '@capacitor/app';
+import UpdateAvailableNotification from './UpdateAvailableNotification';
 import './App.css';
 
 export default function App() {
@@ -44,7 +46,9 @@ export default function App() {
   const [currentView, setCurrentView] = useState('main');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(true);
+  const [pendingUpdateInfo, setPendingUpdateInfo] = useState(null);
   const [isSendingEmergencyStop, setIsSendingEmergencyStop] = useState(false);
+  const [pendingUpdateInfo, setPendingUpdateInfo] = useState(null);
   const [showDeviceRegistrationModal, setShowDeviceRegistrationModal] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showHeaderDuringTutorial, setShowHeaderDuringTutorial] = useState(false);
@@ -87,8 +91,9 @@ export default function App() {
     [user?.uid]
   );
 
-  const handleSplashFinish = () => {
+  const handleSplashFinish = (updateInfo) => {
     setShowSplash(false);
+    if (updateInfo?.available) setPendingUpdateInfo(updateInfo);
   };
 
   // Initialize platform detection on app startup
@@ -441,7 +446,7 @@ export default function App() {
   if (showSplash) {
     return (
       <>
-        <SplashScreen onFinish={handleSplashFinish} isCheckingUpdates={false} />
+        <SplashScreen onFinish={handleSplashFinish} />
       </>
     );
   }
@@ -834,6 +839,8 @@ export default function App() {
         onCancel={() => setShowEmergencyStopConfirm(false)}
         onConfirm={handleEmergencyStop}
       />
+
+      <UpdateAvailableNotification initialUpdateInfo={pendingUpdateInfo} />
     </>
   );
 }

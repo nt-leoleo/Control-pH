@@ -12,6 +12,7 @@ import QRScanner from './QRScanner';
 import WiFiConfig from './WiFiConfig';
 import BluetoothDeviceConfigModal from './BluetoothDeviceConfigModal';
 import { QRCodeSVG } from 'qrcode.react';
+import { subscribeToPHData } from './esp32Communication-firebase';
 import './Onboarding.css';
 
 const TOTAL_STEPS = 3;
@@ -50,6 +51,7 @@ const Onboarding = () => {
   const [pendingWifiConfig, setPendingWifiConfig] = useState(null);
   const [configuredSsid, setConfiguredSsid] = useState('');
   const [showSetupSummary, setShowSetupSummary] = useState(false);
+  const [waitingForHeartbeat, setWaitingForHeartbeat] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -299,7 +301,19 @@ const Onboarding = () => {
     setConfiguredSsid(ssid);
     setShowBluetoothConfigModal(false);
     setPendingWifiConfig(null);
-    setShowSetupSummary(true);
+    setWaitingForHeartbeat(true);
+    const timeout = setTimeout(() => {
+      setWaitingForHeartbeat(false);
+      setShowSetupSummary(true);
+    }, 90000);
+    const unsubscribe = subscribeToPHData(user?.uid, (data) => {
+      if (data?.isRecent) {
+        clearTimeout(timeout);
+        unsubscribe();
+        setWaitingForHeartbeat(false);
+        setShowSetupSummary(true);
+      }
+    });
   };
 
   return (
@@ -439,7 +453,16 @@ const Onboarding = () => {
                 placeholder="Crea un nombre para tu piscina"
               />
 
-              {!showSetupSummary ? (
+              {waitingForHeartbeat ? (
+                <div className="onboarding-waiting-heartbeat">
+                  <div className="onboarding-spinner"></div>
+                  <p className="onboarding-instruction-main">Conectando dispositivo...</p>
+                  <p className="onboarding-instruction-detail">
+                    El ESP32 está reiniciándose y conectándose a <strong>{configuredSsid}</strong>.
+                    Esto puede tomar hasta 30 segundos.
+                  </p>
+                </div>
+              ) : !showSetupSummary ? (
                 <div className="onboarding-device-instructions">
                   <p className="onboarding-instruction-main">
                     Escanea el código QR

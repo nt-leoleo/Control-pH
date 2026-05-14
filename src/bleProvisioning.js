@@ -90,6 +90,11 @@ export const bleProvisioning = {
         }
 
         const localName = (result.localName || '').trim();
+        const isOurDevice =
+          localName.toLowerCase().includes('configurar ph') ||
+          localName.startsWith(DEVICE_NAME_PREFIX);
+        if (!isOurDevice) return;
+
         const fallbackName = `Dispositivo ${deviceId.slice(-5)}`;
         const nextName = localName || fallbackName;
 
