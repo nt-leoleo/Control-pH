@@ -48,7 +48,6 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [pendingUpdateInfo, setPendingUpdateInfo] = useState(null);
   const [isSendingEmergencyStop, setIsSendingEmergencyStop] = useState(false);
-  const [pendingUpdateInfo, setPendingUpdateInfo] = useState(null);
   const [showDeviceRegistrationModal, setShowDeviceRegistrationModal] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showHeaderDuringTutorial, setShowHeaderDuringTutorial] = useState(false);
