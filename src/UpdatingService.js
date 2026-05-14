@@ -1,5 +1,4 @@
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
-import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
@@ -9,6 +8,8 @@ const VERSION_CHECK_INTERVAL = 60 * 60 * 1000;
 async function getNativeAppVersion() {
   try {
     if (Capacitor.isNativePlatform()) {
+      // Import dinámico para evitar error en web/Vercel
+      const { App: CapacitorApp } = await import('@capacitor/app');
       const info = await CapacitorApp.getInfo();
       return info.version || '0.0.0';
     }
