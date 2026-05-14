@@ -5,17 +5,24 @@ import { db } from './firebase';
 
 const VERSION_CHECK_INTERVAL = 60 * 60 * 1000;
 
+// Lee la versión del APK instalado desde el DOM meta tag que Capacitor inyecta,
+// o desde window.__APP_VERSION__ si está definido, o '0.0.0' en web.
 async function getNativeAppVersion() {
   try {
     if (Capacitor.isNativePlatform()) {
-      // Import dinámico para evitar error en web/Vercel
-      const { App: CapacitorApp } = await import('@capacitor/app');
-      const info = await CapacitorApp.getInfo();
-      return info.version || '0.0.0';
+      // En nativo, CapacitorUpdater puede darnos la versión del bundle actual
+      const current = await CapacitorUpdater.current();
+      if (current?.bundle?.version && current.bundle.version !== 'builtin') {
+        return current.bundle.version;
+      }
+      // Fallback: leer del meta tag que Capacitor inyecta en el HTML
+      const meta = document.querySelector('meta[name="app-version"]');
+      if (meta?.content) return meta.content;
     }
   } catch (e) {
     console.warn('[OTA] No se pudo leer versión nativa:', e.message);
   }
+  // En web o si falla, devolver '0.0.0' para que siempre muestre actualización
   return '0.0.0';
 }
 
