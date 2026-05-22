@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { readFileSync } from 'node:fs'
+
+const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
 
 export default defineConfig({
   plugins: [
@@ -19,6 +22,9 @@ export default defineConfig({
     })
   ],
   base: '/',
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version)
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
