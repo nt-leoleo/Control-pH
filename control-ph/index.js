@@ -27,6 +27,48 @@ exports.esp32_getCommand = esp32Functions.esp32_getCommand;
 exports.esp32_confirmCommand = esp32Functions.esp32_confirmCommand;
 exports.syncSharedSensorData = esp32Functions.syncSharedSensorData;
 
+/**
+ * Actualiza el documento latest en app-versions (para OTA)
+ */
+exports.updateAppVersion = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+  const { version, url, apkUrl, zipUrl, changelog, mandatory, secret } = req.body;
+
+  if (secret !== 'controlpileta2026') {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  if (!version) {
+    res.status(400).json({ error: 'version is required' });
+    return;
+  }
+
+  try {
+    const data = {
+      version,
+      url: url || apkUrl || null,
+      apkUrl: apkUrl || url || null,
+      zipUrl: zipUrl || null,
+      changelog: changelog || '',
+      mandatory: mandatory === true,
+      releaseDate: new Date().toISOString(),
+      isActive: true,
+      supportedPlatforms: ['android'],
+    };
+
+    await admin.firestore().collection('app-versions').doc('latest').set(data);
+    await admin.firestore().collection('app-versions').doc(version).set(data);
+
+    res.json({ success: true, version });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Configuración global
 setGlobalOptions({ maxInstances: 10 });
 
