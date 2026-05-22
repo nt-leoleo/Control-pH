@@ -5,6 +5,7 @@ import ConfirmDialog from './ConfirmDialog';
 import ErrorNotification from './ErrorNotification';
 import { useAuth } from './useAuth';
 import { Capacitor } from '@capacitor/core';
+import { getLatestApkDownloadInfo, startFileDownload } from './appVersionService';
 import './header.css';
 
 const Header = ({ onConfigClick }) => {
@@ -14,6 +15,7 @@ const Header = ({ onConfigClick }) => {
   const [isHidden, setIsHidden] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [uiMessage, setUiMessage] = useState(null);
+  const [isDownloadingApp, setIsDownloadingApp] = useState(false);
 
   useEffect(() => {
     setAvatarBroken(false);
@@ -72,11 +74,17 @@ const Header = ({ onConfigClick }) => {
   const initials = shortName.slice(0, 1).toUpperCase();
   const isWeb = !Capacitor.isNativePlatform();
 
-  const handleDownloadApp = () => {
-    const link = document.createElement('a');
-    link.href = '/app-release-v5.1.0.apk';
-    link.download = 'control-pileta-v5.1.0.apk';
-    link.click();
+  const handleDownloadApp = async () => {
+    try {
+      setIsDownloadingApp(true);
+      const apkInfo = await getLatestApkDownloadInfo();
+      startFileDownload(apkInfo.url, apkInfo.filename);
+    } catch (error) {
+      console.error('No se pudo descargar la app:', error);
+      notify('error', `No se pudo obtener la ultima app: ${error.message}`);
+    } finally {
+      setIsDownloadingApp(false);
+    }
   };
 
   return (
@@ -89,14 +97,21 @@ const Header = ({ onConfigClick }) => {
 
         <div className="header-actions">
           {isWeb && (
-            <button className="download-app-btn" onClick={handleDownloadApp} title="Descargar app Android">
+            <button
+              className="download-app-btn"
+              onClick={handleDownloadApp}
+              disabled={isDownloadingApp}
+              title="Descargar app Android"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              <span className="download-app-text-desktop">Descargar App</span>
-              <span className="download-app-text-mobile">APP</span>
+              <span className="download-app-text-desktop">
+                {isDownloadingApp ? 'Buscando...' : 'Descargar App'}
+              </span>
+              <span className="download-app-text-mobile">{isDownloadingApp ? '...' : 'APP'}</span>
             </button>
           )}
           {user && (
