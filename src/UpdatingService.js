@@ -1,8 +1,27 @@
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Capacitor } from '@capacitor/core';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { getLatestAppVersion } from './appVersionService';
 
 const BUILD_VERSION = import.meta.env.VITE_APP_VERSION || '0.0.0';
+
+function isUpdaterPluginAvailable() {
+  if (!Capacitor.isNativePlatform()) return false;
+
+  try {
+    return Boolean(Capacitor.getPlugin?.('CapacitorUpdater', { sync: true }));
+  } catch {
+    return false;
+  }
+}
+
+function ensureUpdaterPluginAvailable() {
+  if (!Capacitor.isNativePlatform()) {
+    throw new Error('Las actualizaciones OTA solo están disponibles en la app nativa.');
+  }
+  if (!isUpdaterPluginAvailable()) {
+    throw new Error('El plugin CapacitorUpdater no está disponible en Android.');
+  }
+}
 
 async function getNativeAppVersion() {
   try {
@@ -85,6 +104,8 @@ export const UpdatingService = {
     }
 
     if (onProgress) onProgress(15);
+    ensureUpdaterPluginAvailable();
+
     const downloadResult = await CapacitorUpdater.download({ url: zipUrl, version });
     if (!downloadResult?.id) throw new Error('La descarga fallo: no se recibio ID del paquete.');
 
@@ -97,6 +118,7 @@ export const UpdatingService = {
   },
 
   getCurrentVersion: getNativeAppVersion,
+  isUpdaterPluginAvailable,
 };
 
 export default UpdatingService;
