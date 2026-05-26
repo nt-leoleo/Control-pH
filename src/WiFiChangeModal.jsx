@@ -18,23 +18,59 @@ const WiFiChangeModal = ({ isOpen, onClose, esp32Ip = '192.168.4.1' }) => {
   const targetSsid = (useCustom ? customSsid : selectedNetwork).trim();
 
   const scanNetworks = async () => {
-    setIsScanning(true); setError(''); setNetworks([]);
+    setIsScanning(true);
+    setError('');
+    setNetworks([]);
+
     try {
-      if (Capacitor.isNativePlatform()) {
-        try { const p = await Geolocation.checkPermissions(); if (p.location !== 'granted') await Geolocation.requestPermissions(); } catch {}
-        try { const w = await CapacitorWifi.isEnabled(); if (!w.enabled) { setError('Activá el WiFi en tu dispositivo.'); return; } } catch {}
-        try {
-          await CapacitorWifi.startScan();
-          await new Promise(r => setTimeout(r, 3000));
-          const result = await CapacitorWifi.getAvailableNetworks();
-          if (result?.networks?.length > 0) {
-            const unique = [...new Set(result.networks.filter(n => n?.ssid?.trim()).map(n => n.ssid))].sort();
-            setNetworks(unique);
-            if (!unique.length) setError('No se encontraron redes.');
-          } else setError('No se encontraron redes.');
-        } catch (err) { setError('No se pudo escanear: ' + (err.message || 'error')); }
-      } else setError('En navegador web, ingresá la red manualmente.');
-    } finally { setIsScanning(false); }
+      if (!Capacitor.isNativePlatform()) {
+        setError('En navegador web, ingresá la red manualmente.');
+        return;
+      }
+
+      try {
+        const p = await Geolocation.checkPermissions();
+        if (p.location !== 'granted') {
+          await Geolocation.requestPermissions();
+        }
+      } catch (permissionError) {
+        console.warn('No se pudieron verificar los permisos de ubicación:', permissionError);
+      }
+
+      try {
+        const w = await CapacitorWifi.isEnabled();
+        if (!w.enabled) {
+          setError('Activá el WiFi en tu dispositivo.');
+          return;
+        }
+      } catch (wifiStateError) {
+        console.warn('No se pudo verificar el estado del WiFi:', wifiStateError);
+      }
+
+      try {
+        await CapacitorWifi.removeAllListeners();
+      } catch (cleanupError) {
+        console.warn('No se pudieron limpiar listeners anteriores de WiFi:', cleanupError);
+      }
+
+      try {
+        await CapacitorWifi.startScan();
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+
+        const result = await CapacitorWifi.getAvailableNetworks();
+        if (result?.networks?.length > 0) {
+          const unique = [...new Set(result.networks.filter(n => n?.ssid?.trim()).map(n => n.ssid))].sort();
+          setNetworks(unique);
+          if (!unique.length) setError('No se encontraron redes.');
+        } else {
+          setError('No se encontraron redes.');
+        }
+      } catch (scanError) {
+        setError('No se pudo escanear: ' + (scanError.message || 'error'));
+      }
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   useEffect(() => {

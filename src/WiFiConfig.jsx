@@ -61,46 +61,38 @@ const WiFiConfig = ({ isOpen, onClose, onContinue }) => {
                 }
 
                 // Escanear redes WiFi disponibles
-                try {
-                    console.log('Iniciando escaneo...');
-                    await CapacitorWifi.startScan();
-                    console.log('Escaneo iniciado');
-                    
-                    // Esperar a que se complete el escaneo
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    
-                    console.log('Obteniendo redes disponibles...');
-                    const result = await CapacitorWifi.getAvailableNetworks();
-                    console.log('Resultado del escaneo:', result);
-                    
-                    if (result && result.networks && result.networks.length > 0) {
-                        // Filtrar redes válidas
-                        const availableNetworks = result.networks
-                            .filter(network => network && network.ssid && network.ssid.trim() !== '')
-                            .map(network => network.ssid);
-                        
-                        // Remover duplicados y ordenar
-                        const uniqueNetworks = [...new Set(availableNetworks)].sort();
-                        
-                        console.log('Redes encontradas:', uniqueNetworks);
-                        setNetworks(uniqueNetworks);
-                        
-                        if (uniqueNetworks.length === 0) {
-                            setError('No se encontraron redes WiFi. Asegúrate de que WiFi esté habilitado y haya redes disponibles.');
+                    try {
+                        console.log('Iniciando escaneo...');
+                        await CapacitorWifi.removeAllListeners();
+
+                        await CapacitorWifi.startScan();
+                        console.log('Escaneo iniciado, esperando resultados...');
+                        await new Promise((resolve) => setTimeout(resolve, 4000));
+
+                        const result = await CapacitorWifi.getAvailableNetworks();
+                        console.log('Resultado del escaneo:', result);
+                        if (result?.networks?.length > 0) {
+                            const availableNetworks = result.networks
+                                .filter(network => network?.ssid?.trim())
+                                .map(network => network.ssid);
+                            const uniqueNetworks = [...new Set(availableNetworks)].sort();
+                            console.log('Redes encontradas:', uniqueNetworks);
+                            setNetworks(uniqueNetworks);
+                            if (!uniqueNetworks.length) {
+                                setError('No se encontraron redes WiFi. Asegúrate de que WiFi esté habilitado y haya redes disponibles.');
+                            }
+                        } else {
+                            console.warn('No hay redes en el resultado:', result);
+                            setError('No se encontraron redes disponibles. Verifica que WiFi esté activado en tu dispositivo.');
                         }
-                    } else {
-                        console.warn('No hay redes en el resultado:', result);
-                        setError('No se encontraron redes disponibles. Verifica que WiFi esté activado en tu dispositivo.');
-                    }
                 } catch (wifiError) {
                     console.error('Error en escaneo de WiFi:', wifiError);
                     console.error('Detalles del error:', {
-                        message: wifiError.message,
-                        code: wifiError.code,
-                        stack: wifiError.stack
+                        message: wifiError?.message,
+                        code: wifiError?.code,
+                        stack: wifiError?.stack
                     });
-                    
-                    setError('No se pudo escanear redes WiFi (Error: ' + (wifiError.message || 'desconocido') + '). Verifica que hayas dado permisos de "Ubicación" y "Dispositivos cercanos" en Ajustes > Aplicaciones > Control Pileta > Permisos.');
+                    setError('No se pudo escanear redes WiFi (Error: ' + (wifiError?.message || 'desconocido') + '). Verifica que hayas dado permisos de "Ubicación" y "Dispositivos cercanos" en Ajustes > Aplicaciones > Control Pileta > Permisos.');
                 }
             } else {
                 // En web, no hay acceso directo a redes WiFi disponibles

@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "init-version": "node scripts/init-app-version.js",
-    "update-version": "node scripts/update-firebase-version.js"
+    "update-version": "node scripts/update-firebase-version.js",
+    "upload-update-zip": "node scripts/upload-app-zip.js --file ../update-v5.1.0.zip --version 5.1.0",
+    "upload-update-zip-github": "node scripts/upload-app-zip.js --file ../update-v5.1.2.zip --version 5.1.2 --type github"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.1.3",
