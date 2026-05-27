@@ -34,6 +34,17 @@ async function getNativeAppVersion() {
       return current.bundle.version;
     }
 
+    if (current?.native) {
+      return current.native;
+    }
+
+    if (CapacitorUpdater.getBuiltinVersion) {
+      const builtin = await CapacitorUpdater.getBuiltinVersion();
+      if (builtin?.version) {
+        return builtin.version;
+      }
+    }
+
     const meta = document.querySelector('meta[name="app-version"]');
     if (meta?.content) return meta.content;
   } catch (error) {
