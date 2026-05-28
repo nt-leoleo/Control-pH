@@ -152,6 +152,22 @@ async function resolveDeviceUserIds(deviceId) {
   };
 }
 
+function normalizeTimestamp(rawTimestamp) {
+  const parsed = Number(rawTimestamp);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return Date.now();
+  }
+  if (parsed < 1e12) {
+    return Date.now();
+  }
+  return parsed;
+}
+
+function parseFloatOrNull(value) {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function sortCommandCandidates(a, b) {
   const aStatus = String(a.command?.status || '');
   const bStatus = String(b.command?.status || '');
@@ -189,56 +205,59 @@ exports.receiveSensorData = onRequest({ invoker: 'public' }, async (req, res) =>
   }
   
   try {
-    const { deviceId, ph, voltage, wifiRSSI, uptime, offline } = req.body;
+    const { deviceId, ph, voltage, wifiRSSI, uptime, offline, timestamp } = req.body;
     
-    logger.info('📥 Datos recibidos:', { deviceId, ph, voltage, wifiRSSI, uptime, offline });
+    logger.info('📥 Datos recibidos:', { deviceId, ph, voltage, wifiRSSI, uptime, offline, timestamp });
     
-    // Validar datos
-    if (!deviceId || ph === undefined) {
-      logger.error('❌ Faltan campos requeridos');
-      res.status(400).json({ error: 'Missing required fields' });
+    if (!deviceId) {
+      logger.error('❌ Falta deviceId');
+      res.status(400).json({ error: 'Missing deviceId' });
       return;
     }
     
-    // Resolver cuentas vinculadas por deviceId
     logger.info(`🔍 Buscando dispositivo: ${deviceId}`);
     const { userIds, deviceExists } = await resolveDeviceUserIds(deviceId);
 
-    if (userIds.length === 0) {
-      logger.error(`❌ Dispositivo sin cuentas vinculadas: ${deviceId}`);
-      res.status(404).json({ error: 'Device has no linked users' });
-      return;
-    }
-
-    if (!deviceExists) {
+    if (!deviceExists && userIds.length > 0) {
       logger.warn(`⚠️ Dispositivo sin documento en /devices. Vinculos resueltos desde /users: ${deviceId}`);
     }
-    
-    logger.info(`✅ Dispositivo encontrado. cuentas vinculadas: ${userIds.join(', ')}`);
 
+    const phValue = parseFloatOrNull(ph);
+    const sensorConnected = phValue !== null && phValue >= 0 && phValue <= 14;
     const sensorPayload = {
-      ph: parseFloat(ph),
-      voltage: parseFloat(voltage) || 0,
-      wifiRSSI: parseInt(wifiRSSI) || -50,
-      uptime: parseInt(uptime) || 0,
-      timestamp: Date.now(),
+      ph: phValue,
+      sensorConnected,
+      voltage: parseFloatOrNull(voltage) ?? 0,
+      wifiRSSI: Number.isFinite(Number(wifiRSSI)) ? parseInt(wifiRSSI, 10) : -50,
+      uptime: Number.isFinite(Number(uptime)) ? parseInt(uptime, 10) : 0,
+      timestamp: normalizeTimestamp(timestamp),
       deviceId: deviceId,
-      isRecent: offline !== true  // Si offline=true, marcar como NO reciente
+      isRecent: offline !== true
     };
     
-    // Si el dispositivo está notificando que va offline, registrarlo
     if (offline === true) {
       logger.info(`📴 Dispositivo ${deviceId} notificó que está cambiando a modo offline`);
       sensorPayload.offlineMode = true;
+      sensorPayload.isRecent = false;
     }
 
-    await Promise.all(userIds.map(async (userId) => {
-      const dataPath = `users/${userId}/sensorData`;
-      logger.info(`💾 Guardando en: ${dataPath}`);
-      await realtimeDb.ref(dataPath).set(sensorPayload);
-    }));
-    
-    logger.info(`✅ Datos guardados correctamente para ${userIds.length} cuenta(s)`);
+    await realtimeDb.ref(`devices/${deviceId}/lastSensorData`).set(sensorPayload);
+
+    if (userIds.length > 0) {
+      logger.info(`✅ Dispositivo encontrado. cuentas vinculadas: ${userIds.join(', ')}`);
+      await Promise.all(userIds.map(async (userId) => {
+        const dataPath = `users/${userId}/sensorData`;
+        logger.info(`💾 Guardando en: ${dataPath}`);
+        await realtimeDb.ref(dataPath).set(sensorPayload);
+      }));
+      logger.info(`✅ Datos guardados correctamente para ${userIds.length} cuenta(s)`);
+    } else {
+      logger.warn(`⚠️ No hay cuentas vinculadas para ${deviceId}. Guardando en sharedSensorData de fallback.`);
+      await realtimeDb.ref(`sharedSensorData/${deviceId}`).set({
+        ...sensorPayload,
+        fallback: true
+      });
+    }
     
     res.json({ success: true, message: 'Data received', userIds });
     

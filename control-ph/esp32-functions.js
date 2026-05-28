@@ -39,8 +39,8 @@ async function resolveDeviceUserIds(deviceId) {
   
   userIds = [...new Set(userIds)];
   
-  // Actualizar documento de dispositivo si hay userIds
-  if (userIds.length > 0 && deviceDoc.exists) {
+  // Actualizar o crear documento de dispositivo si hay userIds
+  if (userIds.length > 0) {
     await firestore.collection('devices').doc(deviceId).set({
       userId: userIds[0],
       userIds: userIds,
@@ -53,6 +53,23 @@ async function resolveDeviceUserIds(deviceId) {
     userIds,
     deviceExists: deviceDoc.exists
   };
+}
+
+function normalizeTimestamp(rawTimestamp) {
+  const parsed = Number(rawTimestamp);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return Date.now();
+  }
+  // Si el timestamp es un valor pequeño (milisegundos desde arranque), normalizar a tiempo real
+  if (parsed < 1e12) {
+    return Date.now();
+  }
+  return parsed;
+}
+
+function parseFloatOrNull(value) {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /**
@@ -69,51 +86,60 @@ exports.esp32_receiveSensorData = onRequest({ invoker: 'public' }, async (req, r
   }
   
   try {
-    const { deviceId, ph, voltage, wifiRSSI, uptime, offline } = req.body;
+    const { deviceId, ph, voltage, wifiRSSI, uptime, offline, timestamp } = req.body;
     
-    console.log('📥 [ESP32] Datos recibidos:', { deviceId, ph, voltage, wifiRSSI, uptime, offline });
+    console.log('📥 [ESP32] Datos recibidos:', { deviceId, ph, voltage, wifiRSSI, uptime, offline, timestamp });
     
-    if (!deviceId || ph === undefined) {
-      console.error('❌ [ESP32] Faltan campos requeridos');
+    if (!deviceId) {
+      console.error('❌ [ESP32] Falta deviceId');
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
     
     const { userIds, deviceExists } = await resolveDeviceUserIds(deviceId);
     
-    if (userIds.length === 0) {
-      console.error(`❌ [ESP32] Dispositivo sin cuentas vinculadas: ${deviceId}`);
-      res.status(404).json({ error: 'Device has no linked users' });
-      return;
-    }
-    
     if (!deviceExists) {
       console.warn(`⚠️ [ESP32] Dispositivo sin documento en /devices: ${deviceId}`);
     }
     
-    console.log(`✅ [ESP32] Dispositivo encontrado. Cuentas: ${userIds.join(', ')}`);
-    
+    const phValue = parseFloatOrNull(ph);
     const sensorPayload = {
-      ph: parseFloat(ph),
-      voltage: parseFloat(voltage) || 0,
-      wifiRSSI: parseInt(wifiRSSI) || -50,
-      uptime: parseInt(uptime) || 0,
-      timestamp: Date.now(),
+      ph: phValue,
+      voltage: parseFloatOrNull(voltage) || 0,
+      wifiRSSI: Number.isFinite(Number(wifiRSSI)) ? parseInt(wifiRSSI, 10) : -50,
+      uptime: Number.isFinite(Number(uptime)) ? parseInt(uptime, 10) : 0,
+      timestamp: normalizeTimestamp(timestamp),
       deviceId: deviceId,
-      isRecent: offline !== true
+      isRecent: true
     };
     
     if (offline === true) {
       console.log(`📴 [ESP32] Dispositivo ${deviceId} modo offline`);
       sensorPayload.offlineMode = true;
+      sensorPayload.isRecent = false;
     }
     
-    await Promise.all(userIds.map(async (userId) => {
-      const dataPath = `users/${userId}/sensorData`;
-      await realtimeDb.ref(dataPath).set(sensorPayload);
-    }));
+    if (phValue === null) {
+      console.log(`📥 [ESP32] Heartbeat recibido sin pH valido para ${deviceId}`);
+    }
     
-    console.log(`✅ [ESP32] Datos guardados para ${userIds.length} cuenta(s)`);
+    // Siempre guardar el último sensor en la ruta del dispositivo.
+    await realtimeDb.ref(`devices/${deviceId}/lastSensorData`).set(sensorPayload);
+    
+    if (userIds.length > 0) {
+      console.log(`✅ [ESP32] Dispositivo encontrado. Cuentas: ${userIds.join(', ')}`);
+      await Promise.all(userIds.map(async (userId) => {
+        const dataPath = `users/${userId}/sensorData`;
+        await realtimeDb.ref(dataPath).set(sensorPayload);
+      }));
+      console.log(`✅ [ESP32] Datos guardados para ${userIds.length} cuenta(s)`);
+    } else {
+      console.warn(`⚠️ [ESP32] No hay cuentas vinculadas para ${deviceId}. Guardando en sharedSensorData de fallback.`);
+      await realtimeDb.ref(`sharedSensorData/${deviceId}`).set({
+        ...sensorPayload,
+        fallback: true
+      });
+    }
     
     res.json({ success: true, message: 'Data received', userIds });
     
