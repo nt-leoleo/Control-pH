@@ -1,7 +1,7 @@
 {
   "name": "control-pileta",
   "private": true,
-  "version": "5.0.6",
+  "version": "5.1.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,14 +10,18 @@
     "preview": "vite preview",
     "init-version": "node scripts/init-app-version.js",
     "update-version": "node scripts/update-firebase-version.js",
-    "upload-update-zip": "node scripts/upload-app-zip.js --file ../update-v5.1.0.zip --version 5.1.0",
-    "upload-update-zip-github": "node scripts/upload-app-zip.js --file ../update-v5.1.2.zip --version 5.1.2 --type github"
+    "build-update-zip": "node scripts/build-update-zip.js",
+    "add-local-notifications-dep": "npm install @capacitor/local-notifications --no-audit --no-fund",
+    "upload-update-zip": "node scripts/upload-app-zip.js --file ../update-v5.1.3.zip --version 5.1.3",
+    "upload-apk": "node scripts/upload-apk.js --file ../app-release-v5.1.3.apk --version 5.1.3",
+    "upload-update-zip-github": "node scripts/build-update-zip.js --version 5.1.3 --output ../update-v5.1.3.zip && node scripts/upload-app-zip.js --file ../update-v5.1.3.zip --version 5.1.3 --type github"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.1.3",
     "@capacitor/android": "^8.3.0",
     "@capacitor/core": "^8.3.0",
     "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/network": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
     "@capgo/capacitor-updater": "^8.45.3",
