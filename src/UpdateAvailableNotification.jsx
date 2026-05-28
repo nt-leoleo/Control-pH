@@ -86,17 +86,30 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
 
   const handleUpdate = async () => {
     if (!updateInfo) return;
-    setIsDownloading(true); setDownloadProgress(0); setDownloadError('');
-    try {
-      await UpdatingService.downloadAndInstall(updateInfo, async (p) => {
-        setDownloadProgress(p);
-        await showOrUpdateNotification(p);
-      });
-      await clearNotification();
-    } catch (error) {
-      setIsDownloading(false); setDownloadProgress(0);
-      setDownloadError(error.message || 'Error al descargar.');
-      await clearNotification();
+
+    if (updateInfo.zipUrl && updaterAvailable) {
+      setIsDownloading(true); setDownloadProgress(0); setDownloadError('');
+      try {
+        await UpdatingService.downloadAndInstall(updateInfo, async (p) => {
+          setDownloadProgress(p);
+          await showOrUpdateNotification(p);
+        });
+        await clearNotification();
+      } catch (error) {
+        setIsDownloading(false); setDownloadProgress(0);
+        setDownloadError(error.message || 'Error al descargar.');
+        await clearNotification();
+      }
+      return;
+    }
+
+    if (updateInfo.apkUrl) {
+      startFileDownload(updateInfo.apkUrl);
+      return;
+    }
+
+    if (updateInfo.zipUrl) {
+      startFileDownload(updateInfo.zipUrl);
     }
   };
 
@@ -137,18 +150,24 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
           )}
         </div>
         <div className="update-notification-actions">
-          {updateInfo.zipUrl && (
+          {(updateInfo.zipUrl || updateInfo.apkUrl) && (
             <button
               className="update-btn update-btn--primary"
               onClick={handleUpdate}
               disabled={isDownloading}
             >
-              {isDownloading ? '⏳ Instalando...' : '⬇️ Actualizar ahora'}
+              {isDownloading
+                ? '⏳ Instalando...'
+                : updateInfo.zipUrl && updaterAvailable
+                  ? '⬇️ Actualizar ahora'
+                  : updateInfo.apkUrl
+                    ? '⬇️ Descargar e instalar APK'
+                    : '⬇️ Actualizar'}
             </button>
           )}
-          {updateInfo.apkUrl && (
+          {updateInfo.zipUrl && updateInfo.apkUrl && (
             <button
-              className={updateInfo.zipUrl ? 'update-btn update-btn--secondary' : 'update-btn update-btn--primary'}
+              className="update-btn update-btn--secondary"
               type="button"
               onClick={() => startFileDownload(updateInfo.apkUrl)}
               disabled={isDownloading}
