@@ -8,7 +8,11 @@ function isUpdaterPluginAvailable() {
   if (!Capacitor.isNativePlatform()) return false;
 
   try {
-    return Boolean(Capacitor.getPlugin?.('CapacitorUpdater', { sync: true }));
+    return Boolean(
+      CapacitorUpdater &&
+      typeof CapacitorUpdater.download === 'function' &&
+      typeof CapacitorUpdater.set === 'function'
+    );
   } catch {
     return false;
   }

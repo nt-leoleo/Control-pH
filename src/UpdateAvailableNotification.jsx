@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import UpdatingService from './UpdatingService';
 import { startFileDownload } from './appVersionService';
 import './UpdateAvailableNotification.css';
+
+const NOTIF_ID = 123456;
 
 const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -16,13 +19,54 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
     setUpdaterAvailable(UpdatingService.isUpdaterPluginAvailable?.() ?? false);
   }, []);
 
+  async function showOrUpdateNotification(progress) {
+    try {
+      if (!Capacitor.isNativePlatform()) return;
+      // Cancel previous and schedule new to emulate progress update
+      await LocalNotifications.cancel({ notifications: [{ id: NOTIF_ID }] });
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: NOTIF_ID,
+            title: 'Descargando actualización',
+            body: `${Math.round(progress)}%`,
+            smallIcon: 'ic_stat_notify',
+            // set extra if needed
+          },
+        ],
+      });
+    } catch (e) {
+      // ignore notification errors
+      console.warn('[OTA] LocalNotifications error', e?.message || e);
+    }
+  }
+
+  async function clearNotification() {
+    try {
+      if (!Capacitor.isNativePlatform()) return;
+      await LocalNotifications.cancel({ notifications: [{ id: NOTIF_ID }] });
+    } catch (e) { console.warn('[OTA] clearNotification', e?.message || e); }
+  }
+
   useEffect(() => {
     // Solo verificar en app nativa
     if (!Capacitor.isNativePlatform()) return;
-    if (initialUpdateInfo?.available) {
-      setUpdateInfo(initialUpdateInfo);
-      setUpdateAvailable(true);
-    }
+    // If initialUpdateInfo provided, validate it against local version before showing
+    const validateInitial = async () => {
+      if (!initialUpdateInfo?.available) return;
+      try {
+        const localVersion = await UpdatingService.getCurrentVersion();
+        const remoteVersion = initialUpdateInfo.version;
+        const cmp = compareVersions(remoteVersion, localVersion);
+        if (cmp > 0 && initialUpdateInfo.isActive !== false) {
+          setUpdateInfo(initialUpdateInfo);
+          setUpdateAvailable(true);
+        }
+      } catch (e) {
+        console.warn('[OTA] validateInitial', e?.message || e);
+      }
+    };
+    validateInitial();
   }, [initialUpdateInfo]);
 
   useEffect(() => {
@@ -32,8 +76,10 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
       try {
         const info = await UpdatingService.checkForUpdates();
         if (info?.available) { setUpdateInfo(info); setUpdateAvailable(true); }
+        else { setUpdateAvailable(false); setUpdateInfo(null); }
       } catch (e) { console.warn('[OTA]', e.message); }
     };
+    check();
     const interval = setInterval(check, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -42,10 +88,15 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
     if (!updateInfo) return;
     setIsDownloading(true); setDownloadProgress(0); setDownloadError('');
     try {
-      await UpdatingService.downloadAndInstall(updateInfo, (p) => setDownloadProgress(p));
+      await UpdatingService.downloadAndInstall(updateInfo, async (p) => {
+        setDownloadProgress(p);
+        await showOrUpdateNotification(p);
+      });
+      await clearNotification();
     } catch (error) {
       setIsDownloading(false); setDownloadProgress(0);
       setDownloadError(error.message || 'Error al descargar.');
+      await clearNotification();
     }
   };
 
@@ -86,19 +137,21 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
           )}
         </div>
         <div className="update-notification-actions">
-          {updateInfo.zipUrl ? (
+          {updateInfo.zipUrl && (
             <button
               className="update-btn update-btn--primary"
               onClick={handleUpdate}
-              disabled={isDownloading || !updaterAvailable}
+              disabled={isDownloading}
             >
               {isDownloading ? '⏳ Instalando...' : '⬇️ Actualizar ahora'}
             </button>
-          ) : (
+          )}
+          {updateInfo.apkUrl && (
             <button
-              className="update-btn update-btn--primary"
+              className={updateInfo.zipUrl ? 'update-btn update-btn--secondary' : 'update-btn update-btn--primary'}
               type="button"
               onClick={() => startFileDownload(updateInfo.apkUrl)}
+              disabled={isDownloading}
             >
               ⬇️ Descargar APK
             </button>
@@ -117,5 +170,20 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
     </div>
   );
 };
+
+function compareVersions(v1, v2) {
+  const parts1 = String(v1 || '0').split('.').map(Number);
+  const parts2 = String(v2 || '0').split('.').map(Number);
+
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i += 1) {
+    const part1 = parts1[i] || 0;
+    const part2 = parts2[i] || 0;
+
+    if (part1 > part2) return 1;
+    if (part1 < part2) return -1;
+  }
+
+  return 0;
+}
 
 export default UpdateAvailableNotification;
