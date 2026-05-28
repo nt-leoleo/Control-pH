@@ -4,7 +4,7 @@
   z-index: 100;
   width: 100%;
   padding: 0.65rem 0.9rem 0.75rem;
-  padding-top: calc(0.65rem + env(safe-area-inset-top));
+  padding-top: 0.65rem;
   border-bottom: 1px solid var(--border-color);
   background: rgba(9, 20, 29, 0.86);
   backdrop-filter: blur(10px);
@@ -189,7 +189,7 @@
   .app-header {
     top: 0;
     padding: 0.72rem 0.6rem 0.62rem;
-    padding-top: calc(0.72rem + env(safe-area-inset-top));
+    padding-top: 0.72rem;
   }
 
   .header-title {
@@ -207,7 +207,7 @@
 
   .app-header.is-compact {
     padding: 0.5rem 0.55rem 0.45rem;
-    padding-top: calc(0.5rem + env(safe-area-inset-top));
+    padding-top: 0.5rem;
   }
 
   .user-chip {
