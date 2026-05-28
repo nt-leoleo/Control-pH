@@ -1,8 +1,6 @@
 import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
 import { PHContext } from './PHContext';
-import WiFiConfig from './WiFiConfig';
-import WiFiChangeModal from './WiFiChangeModal';
-import BluetoothDeviceConfigModal from './BluetoothDeviceConfigModal';
+import WiFiProvisioningModal from './WiFiProvisioningModal';
 import AdminPanel from './AdminPanel';
 import DeviceRegistration from './DeviceRegistration';
 import ErrorNotification from './ErrorNotification';
@@ -224,8 +222,6 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
   const { user, deleteAccount } = useAuth();
   
   const [showWiFiConfig, setShowWiFiConfig] = useState(false);
-  const [showBluetoothConfigModal, setShowBluetoothConfigModal] = useState(false);
-  const [pendingWifiConfig, setPendingWifiConfig] = useState(null);
   const [showDeviceRegistration, setShowDeviceRegistration] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -390,18 +386,6 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
   const handleOpenTracking = useCallback(() => {
     setShowTrackingModal(true);
   }, []);
-
-  const handleWiFiConfigContinue = useCallback(({ ssid, password }) => {
-    setPendingWifiConfig({ ssid, password });
-    setShowWiFiConfig(false);
-    setShowBluetoothConfigModal(true);
-  }, []);
-
-  const handleWiFiConfigSuccess = useCallback((ssid) => {
-    setShowBluetoothConfigModal(false);
-    setPendingWifiConfig(null);
-    notify('success', `Configuracion WiFi enviada al ESP32 (${ssid}).`);
-  }, [notify]);
 
   const handleReplayTutorial = useCallback(() => {
     if (typeof window.startControlPiletaTutorial === 'function') {
@@ -889,17 +873,11 @@ const SettingsPage = ({ onBack, theme, toggleTheme }) => {
 
       </div>
 
-      <WiFiChangeModal
+      <WiFiProvisioningModal
         isOpen={showWiFiConfig}
         onClose={() => setShowWiFiConfig(false)}
-      />
-
-      <BluetoothDeviceConfigModal
-        isOpen={showBluetoothConfigModal}
-        onClose={() => setShowBluetoothConfigModal(false)}
-        ssid={pendingWifiConfig?.ssid || ''}
-        password={pendingWifiConfig?.password || ''}
-        onSuccess={handleWiFiConfigSuccess}
+        onSuccess={(ssid) => notify('success', `Configuracion WiFi enviada al ESP32 (${ssid}).`)}
+        userId={user?.uid}
       />
             {showAdminPanel && (
         <AdminPanel onClose={() => setShowAdminPanel(false)} />
