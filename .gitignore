@@ -34,6 +34,8 @@ dist-ssr
 /*.apk
 android/
 dist/
+.dist/*
+dist/*
 !dist/apk/
 *.zip
 /*.zip
