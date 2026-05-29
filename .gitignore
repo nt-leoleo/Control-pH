@@ -7,10 +7,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependency directories
 node_modules
-# dist should not be versioned (rebuilt on each deploy)
+
+# Build output directories
 dist
 dist-ssr
+
+# Capacitor / Android generated files
+android/
+
+# Local development files
 *.local
 
 # Editor directories and files
@@ -24,21 +31,14 @@ dist-ssr
 *.sln
 *.sw?
 
-# Env files
+# Environment files
 .env
 .env.*
 !.env.example
 
-# APK files and Android build folder (too large for git)
+# Generated binary artifacts
 *.apk
-/*.apk
-android/
-dist/
-.dist/*
-dist/*
-!dist/apk/
 *.zip
-/*.zip
 
 # Firebase Admin SDK private key
 scripts/firebase-admin-key.json
