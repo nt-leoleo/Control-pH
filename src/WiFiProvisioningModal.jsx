@@ -185,6 +185,13 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
     setInfo('Selecciona la red WiFi y envía las credenciales por Bluetooth.');
   };
 
+  const handleWifiAlreadyReset = () => {
+    setError('');
+    setInfo('Si ya reseteaste el ESP32, conéctate al AP SensorPH_Config y luego selecciona el dispositivo Bluetooth para continuar.');
+    setStep('wifi');
+    setIsScanReady(true);
+  };
+
   const scanWifiNetworks = async () => {
     setError('');
     setInfo('Escaneando redes WiFi...');
@@ -312,6 +319,16 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
               <button className="configure-btn" onClick={handleResetWiFi} disabled={isResetting}>
                 {isResetting ? '⏳ Reseteando...' : 'Resetear WiFi'}
               </button>
+              <div className="config-actions">
+                <button
+                  type="button"
+                  className="small-btn"
+                  onClick={handleWifiAlreadyReset}
+                  disabled={isResetting || isSending}
+                >
+                  ¿Wifi Ya Reseteado?
+                </button>
+              </div>
               {canUseRemoteReset ? (
                 <div className="info-message">
                   En producción, el reset de WiFi se envía como comando remoto vía Firebase. Asegúrate de tener el ESP32 vinculado a tu cuenta.
