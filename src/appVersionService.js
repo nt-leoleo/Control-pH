@@ -4,6 +4,16 @@ import { db } from './firebase';
 const APP_VERSION_COLLECTION = 'app-versions';
 const LATEST_VERSION_DOCUMENT = 'latest';
 
+const normalizeVersionString = (version) => {
+  return String(version || '0')
+    .trim()
+    .replace(/^[vV]/, '')
+    .split(/[+-]/)[0]
+    .split(/[^0-9.]/g)
+    .filter(Boolean)
+    .join('.') || '0.0.0';
+};
+
 const normalizeVersionForFilename = (version) => {
   const cleanVersion = String(version || 'latest')
     .replace(/^v/i, '')
@@ -20,11 +30,12 @@ export const getLatestAppVersion = async () => {
   }
 
   const data = versionDoc.data() || {};
+  const version = normalizeVersionString(data.version || '');
 
   return {
-    version: data.version || '',
+    version,
     apkUrl: data.apkUrl || data.url || '',
-    zipUrl: data.zipUrl || '',
+    zipUrl: data.zipUrl || data.updateUrl || data.url || '',
     changelog: data.changelog || data.releaseNotes || 'Nueva version disponible',
     mandatory: data.mandatory || data.forceUpdate || false,
     releaseDate: data.releaseDate || data.updatedAt || null,

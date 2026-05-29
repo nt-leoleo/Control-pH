@@ -35,17 +35,17 @@ async function getNativeAppVersion() {
 
     const current = await CapacitorUpdater.current();
     if (current?.bundle?.version && current.bundle.version !== 'builtin') {
-      return current.bundle.version;
+      return normalizeVersionString(current.bundle.version);
     }
 
     if (current?.native) {
-      return current.native;
+      return normalizeVersionString(current.native);
     }
 
     if (CapacitorUpdater.getBuiltinVersion) {
       const builtin = await CapacitorUpdater.getBuiltinVersion();
       if (builtin?.version) {
-        return builtin.version;
+        return normalizeVersionString(builtin.version);
       }
     }
 
@@ -58,8 +58,18 @@ async function getNativeAppVersion() {
   return BUILD_VERSION;
 }
 
+function normalizeVersionString(version) {
+  return String(version || '0')
+    .trim()
+    .replace(/^[vV]/, '')
+    .split(/[+-]/)[0]
+    .split(/[^0-9.]/g)
+    .filter(Boolean)
+    .join('.') || '0.0.0';
+}
+
 function compareVersions(v1, v2) {
-  const parse = (version) => String(version || '0').split('.').map((part) => parseInt(part, 10) || 0);
+  const parse = (version) => normalizeVersionString(version).split('.').map((part) => parseInt(part, 10) || 0);
   const [a1, a2, a3] = parse(v1);
   const [b1, b2, b3] = parse(v2);
 

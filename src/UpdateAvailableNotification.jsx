@@ -190,9 +190,19 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
   );
 };
 
+function normalizeVersionString(version) {
+  return String(version || '0')
+    .trim()
+    .replace(/^[vV]/, '')
+    .split(/[+-]/)[0]
+    .split(/[^0-9.]/g)
+    .filter(Boolean)
+    .join('.') || '0.0.0';
+}
+
 function compareVersions(v1, v2) {
-  const parts1 = String(v1 || '0').split('.').map(Number);
-  const parts2 = String(v2 || '0').split('.').map(Number);
+  const parts1 = normalizeVersionString(v1).split('.').map(Number);
+  const parts2 = normalizeVersionString(v2).split('.').map(Number);
 
   for (let i = 0; i < Math.max(parts1.length, parts2.length); i += 1) {
     const part1 = parts1[i] || 0;
