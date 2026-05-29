@@ -40,5 +40,11 @@ android/
 *.apk
 *.zip
 
+# Git filter-branch / filter-repo temporary artifacts
+.git-rewrite/
+
+# Firebase local cache
+.firebase/
+
 # Firebase Admin SDK private key
 scripts/firebase-admin-key.json
