@@ -78,7 +78,7 @@ const Header = ({ onConfigClick }) => {
     try {
       setIsDownloadingApp(true);
       const apkInfo = await getLatestApkDownloadInfo();
-      startFileDownload(apkInfo.url, apkInfo.filename);
+      await startFileDownload(apkInfo.url, apkInfo.filename);
     } catch (error) {
       console.error('No se pudo descargar la app:', error);
       notify('error', `No se pudo obtener la ultima app: ${error.message}`);

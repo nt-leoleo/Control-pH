@@ -104,12 +104,12 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
     }
 
     if (updateInfo.apkUrl) {
-      startFileDownload(updateInfo.apkUrl);
+      await startFileDownload(updateInfo.apkUrl);
       return;
     }
 
     if (updateInfo.zipUrl) {
-      startFileDownload(updateInfo.zipUrl);
+      await startFileDownload(updateInfo.zipUrl);
     }
   };
 
@@ -169,7 +169,7 @@ const UpdateAvailableNotification = ({ initialUpdateInfo = null }) => {
             <button
               className="update-btn update-btn--secondary"
               type="button"
-              onClick={() => startFileDownload(updateInfo.apkUrl)}
+              onClick={async () => await startFileDownload(updateInfo.apkUrl)}
               disabled={isDownloading}
             >
               ⬇️ Descargar APK

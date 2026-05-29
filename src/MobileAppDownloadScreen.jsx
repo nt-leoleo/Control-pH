@@ -26,7 +26,7 @@ const MobileAppDownloadScreen = ({ onContinue }) => {
       setDownloadError(null);
       setIsDownloading(true);
       const apkInfo = await getLatestApkDownloadInfo();
-      startFileDownload(apkInfo.url, apkInfo.filename);
+      await startFileDownload(apkInfo.url, apkInfo.filename);
     } catch (error) {
       console.error('Error descargando APK:', error);
       setDownloadError(`No se pudo obtener la ultima app: ${error.message}`);

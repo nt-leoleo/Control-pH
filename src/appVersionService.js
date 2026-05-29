@@ -50,12 +50,38 @@ export const getLatestApkDownloadInfo = async () => {
   };
 };
 
-export const startFileDownload = (url, filename) => {
-  const link = document.createElement('a');
-  link.href = url;
-  if (filename) link.download = filename;
-  link.rel = 'noopener';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+export const startFileDownload = async (url, filename) => {
+  try {
+    // Fetch el archivo como blob
+    const response = await fetch(url, { 
+      mode: 'cors',
+      credentials: 'omit'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error descargando: ${response.status}`);
+    }
+    
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // Crear y disparar descarga
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename || 'download';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Liberar memoria
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+  } catch (error) {
+    console.error('Error al descargar:', error);
+    // Fallback: intentar descarga directa
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'download';
+    link.click();
+  }
 };
