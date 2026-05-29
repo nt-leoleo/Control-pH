@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# dist excluded but allow dist/apk for Firebase Hosting deployment
 dist-ssr
 *.local
 

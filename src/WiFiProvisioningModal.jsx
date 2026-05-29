@@ -3,7 +3,6 @@ import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { CapacitorWifi } from '@capgo/capacitor-wifi';
 import { bleProvisioning } from './bleProvisioning';
-import { sendWifiResetCommand } from './esp32Communication-firebase';
 import './WiFiConfig.css';
 
 const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
@@ -75,28 +74,34 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
   };
 
   const handleResetWiFi = async () => {
-    if (!userId) {
-      setError('No se encontró el usuario autenticado.');
-      return;
-    }
-
     setError('');
-    setInfo('Enviando señal de reset al ESP32...');
+    setInfo('Buscando ESP32 cerca de ti...');
     setIsResetting(true);
 
     try {
-      const result = await sendWifiResetCommand(userId);
-      if (!result.success) {
-        throw new Error(result.message || 'No se pudo resetear WiFi.');
+      // Buscar dispositivo BLE sin necesidad de WiFi
+      const device = await bleProvisioning.findDevice(15000);
+      if (!device) {
+        throw new Error('No se encontró el ESP32. Asegúrate de que esté cerca y con Bluetooth activado.');
       }
 
-      setInfo('Se envió el reset. El ESP32 debería reiniciarse y activar Bluetooth en unos segundos.');
-      setStep('bluetooth');
-      setResetCountdown(12);
-      setTimeout(() => {
-        setIsScanReady(true);
-        setInfo('Busca el dispositivo Bluetooth del ESP32.');
-      }, 12000);
+      setInfo('Conectando al ESP32...');
+      await bleProvisioning.connect(device.deviceId);
+
+      try {
+        setInfo('Enviando comando de reset...');
+        await bleProvisioning.sendWiFiReset(device.deviceId);
+
+        setInfo('✅ Reset enviado. El ESP32 se reiniciará en modo Bluetooth en unos segundos.');
+        setStep('bluetooth');
+        setResetCountdown(12);
+        setTimeout(() => {
+          setIsScanReady(true);
+          setInfo('Busca el dispositivo Bluetooth del ESP32.');
+        }, 12000);
+      } finally {
+        await bleProvisioning.disconnect(device.deviceId);
+      }
     } catch (err) {
       console.error('[WiFiProvisioningModal] Error reset wifi:', err);
       setError(err?.message || 'No se pudo enviar el reset de WiFi.');

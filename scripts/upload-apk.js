@@ -39,6 +39,8 @@ admin.initializeApp({
   projectId: 'control-ph-82951',
 });
 
+console.log(`📍 Usando bucket de Storage: ${storageBucket}`);
+
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
 

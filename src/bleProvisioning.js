@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 export const BLE_PROVISION_SERVICE_UUID = '7f36b130-9d9f-4a9d-a2d8-14f6b32a1001';
 export const BLE_PROVISION_WRITE_UUID = '7f36b131-9d9f-4a9d-a2d8-14f6b32a1001';
 export const BLE_PROVISION_STATUS_UUID = '7f36b132-9d9f-4a9d-a2d8-14f6b32a1001';
+export const BLE_COMMAND_WRITE_UUID = '7f36b131-9d9f-4a9d-a2d8-14f6b32a1001';
 
 const DEVICE_NAME_PREFIX = 'SensorPH_';
 
@@ -199,6 +200,16 @@ export const bleProvisioning = {
     } finally {
       await this.disconnect(deviceId);
     }
+  },
+
+  async sendWiFiReset(deviceId) {
+    const resetCommand = 'wifi_reset';
+    await BleClient.write(
+      deviceId,
+      BLE_PROVISION_SERVICE_UUID,
+      BLE_COMMAND_WRITE_UUID,
+      textToDataView(resetCommand)
+    );
   }
 };
 

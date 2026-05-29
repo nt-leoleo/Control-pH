@@ -18,7 +18,7 @@ const typeArgIndex = args.indexOf('--type');
 const filePath = fileArgIndex >= 0 && args[fileArgIndex + 1] ? args[fileArgIndex + 1] : '../update-v5.1.0.zip';
 const version = versionArgIndex >= 0 && args[versionArgIndex + 1] ? args[versionArgIndex + 1] : null;
 const customDestination = destinationArgIndex >= 0 && args[destinationArgIndex + 1] ? args[destinationArgIndex + 1] : null;
-const storageBucket = bucketArgIndex >= 0 && args[bucketArgIndex + 1] ? args[bucketArgIndex + 1] : process.env.FIREBASE_STORAGE_BUCKET || 'control-ph-82951.appspot.com';
+const storageBucket = bucketArgIndex >= 0 && args[bucketArgIndex + 1] ? args[bucketArgIndex + 1] : process.env.FIREBASE_STORAGE_BUCKET || 'control-ph-82951.firebasestorage.app';
 const publishType = typeArgIndex >= 0 && args[typeArgIndex + 1] ? args[typeArgIndex + 1] : 'hosting';
 const githubToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const githubRepository = process.env.GITHUB_REPOSITORY || 'nt-leoleo/Control-pH';
@@ -47,6 +47,8 @@ admin.initializeApp({
   storageBucket,
   projectId: 'control-ph-82951',
 });
+
+console.log(`📍 Usando bucket de Storage: ${storageBucket}`);
 
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
