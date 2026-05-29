@@ -75,36 +75,36 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
 
   const handleResetWiFi = async () => {
     setError('');
-    setInfo('Buscando ESP32 cerca de ti...');
+    setInfo('Reseteando credenciales WiFi del ESP32...');
     setIsResetting(true);
 
     try {
-      // Buscar dispositivo BLE sin necesidad de WiFi
-      const device = await bleProvisioning.findDevice(15000);
-      if (!device) {
-        throw new Error('No se encontró el ESP32. Asegúrate de que esté cerca y con Bluetooth activado.');
+      // POST al endpoint local del ESP32 para resetear WiFi
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch('http://192.168.100.134/wifi/reset', {
+        method: 'POST',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: No se pudo resetear el WiFi.`);
       }
 
-      setInfo('Conectando al ESP32...');
-      await bleProvisioning.connect(device.deviceId);
-
-      try {
-        setInfo('Enviando comando de reset...');
-        await bleProvisioning.sendWiFiReset(device.deviceId);
-
-        setInfo('✅ Reset enviado. El ESP32 se reiniciará en modo Bluetooth en unos segundos.');
-        setStep('bluetooth');
-        setResetCountdown(12);
-        setTimeout(() => {
-          setIsScanReady(true);
-          setInfo('Busca el dispositivo Bluetooth del ESP32.');
-        }, 12000);
-      } finally {
-        await bleProvisioning.disconnect(device.deviceId);
-      }
+      setInfo('✅ Credenciales reseteadas. Ahora elige la red WiFi para enviar.');
+      setStep('wifi');
+      setIsScanReady(true);
     } catch (err) {
       console.error('[WiFiProvisioningModal] Error reset wifi:', err);
-      setError(err?.message || 'No se pudo enviar el reset de WiFi.');
+      
+      if (err.name === 'AbortError') {
+        setError('Timeout: El ESP32 no responde en 192.168.100.134. Intenta nuevamente.');
+      } else {
+        setError(err?.message || 'No se pudo conectar con el ESP32 en 192.168.100.134. Asegúrate de estar en la misma red.');
+      }
       setInfo('');
     } finally {
       setIsResetting(false);
@@ -270,22 +270,16 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
           {step === 'start' && (
             <>
               <div className="connection-info">
-                <p><strong>Paso 1 de 3:</strong></p>
+                <p><strong>Paso 1 de 2:</strong></p>
                 <ol>
                   <li>Resetear WiFi del ESP32</li>
-                  <li>Seleccionar el Bluetooth del ESP32</li>
-                  <li>Enviar nuevas credenciales WiFi</li>
+                  <li>Seleccionar y enviar nueva red WiFi por Bluetooth</li>
                 </ol>
               </div>
-              <p>Al resetear WiFi, el ESP32 borrará sus credenciales y reiniciará en modo Bluetooth.</p>
+              <p>Al resetear WiFi, el ESP32 borrará sus credenciales WiFi almacenadas.</p>
               <button className="configure-btn" onClick={handleResetWiFi} disabled={isResetting}>
-                {isResetting ? '⏳ Enviando reset...' : 'Resetear WiFi'}
+                {isResetting ? '⏳ Reseteando...' : 'Resetear WiFi'}
               </button>
-              {resetCountdown > 0 && (
-                <p style={{ marginTop: '1rem', color: '#cbd5e1' }}>
-                  Espera {resetCountdown} segundos para que el ESP32 pase a modo Bluetooth.
-                </p>
-              )}
             </>
           )}
 
