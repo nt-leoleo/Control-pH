@@ -8,7 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-# dist excluded but allow dist/apk for Firebase Hosting deployment
+# dist should not be versioned (rebuilt on each deploy)
+dist
 dist-ssr
 *.local
 
@@ -28,12 +29,14 @@ dist-ssr
 .env.*
 !.env.example
 
-# APK files (too large for git)
+# APK files and Android build folder (too large for git)
 *.apk
 /*.apk
-android/**/*.apk
-!dist/*.apk
-android/*
+android/
+dist/
+!dist/apk/
+*.zip
+/*.zip
 
 # Firebase Admin SDK private key
 scripts/firebase-admin-key.json
