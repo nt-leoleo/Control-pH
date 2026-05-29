@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "start-local-esp32-proxy": "node local-esp32-proxy.js",
     "init-version": "node scripts/init-app-version.js",
     "update-version": "node scripts/update-firebase-version.js",
     "build-update-zip": "node scripts/build-update-zip.js",

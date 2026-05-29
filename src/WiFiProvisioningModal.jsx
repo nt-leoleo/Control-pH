@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { CapacitorWifi } from '@capgo/capacitor-wifi';
 import { bleProvisioning } from './bleProvisioning';
+import { sendWifiResetCommand, waitForCommandConfirmation } from './esp32Communication-firebase';
 import './WiFiConfig.css';
 
 const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
@@ -17,7 +18,6 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [selectedDeviceName, setSelectedDeviceName] = useState('');
   const [isScanning, setIsScanning] = useState(false);
-  const [isDeviceSelected, setIsDeviceSelected] = useState(false);
 
   const [networks, setNetworks] = useState([]);
   const [selectedNetwork, setSelectedNetwork] = useState('');
@@ -31,6 +31,18 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
 
   const targetSsid = (useCustom ? customSsid : selectedNetwork).trim();
 
+  const isHttpsRemote = typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1';
+
+  const canUseRemoteReset = Boolean(userId);
+  const getEsp32ResetUrl = () => {
+    return isHttpsRemote && !canUseRemoteReset
+      ? 'http://localhost:3000/wifi/reset'
+      : 'http://192.168.100.134/wifi/reset';
+  };
+
   const resetState = useCallback(() => {
     setStep('start');
     setError('');
@@ -42,7 +54,6 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
     setSelectedDeviceId('');
     setSelectedDeviceName('');
     setIsScanning(false);
-    setIsDeviceSelected(false);
     setNetworks([]);
     setSelectedNetwork('');
     setCustomSsid('');
@@ -75,22 +86,34 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
 
   const handleResetWiFi = async () => {
     setError('');
-    setInfo('Reseteando credenciales WiFi del ESP32...');
+    setInfo('Iniciando reset de WiFi...');
     setIsResetting(true);
 
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      setError('El navegador bloquea contenido mixto. No se puede acceder a http://192.168.100.134 desde esta página HTTPS. Abre la app en HTTP local o usa un proxy/HTTPS seguro.');
-      setInfo('');
-      setIsResetting(false);
-      return;
-    }
-
     try {
-      // POST al endpoint local del ESP32 para resetear WiFi
+      if (canUseRemoteReset) {
+        setInfo('Enviando comando de reset WiFi al ESP32 vía Firebase...');
+        const result = await sendWifiResetCommand(userId);
+        if (!result.success) {
+          throw new Error(result.message || 'No se pudo enviar el comando de reset de WiFi.');
+        }
+
+        const confirmed = await waitForCommandConfirmation(userId, result.commandId, 45000);
+        if (confirmed) {
+          setInfo('✅ Comando de reset de WiFi enviado. El ESP32 empezará el reinicio y levantará el AP SensorPH_Config.');
+          setStep('wifi');
+          setIsScanReady(true);
+        } else {
+          setInfo('Comando enviado, pero no se confirmó. Si el ESP32 ya se reinició, conéctate al AP SensorPH_Config para continuar.');
+        }
+        return;
+      }
+
+      setInfo(isHttpsRemote ? 'Reseteando credenciales WiFi a través del proxy local...' : 'Reseteando credenciales WiFi del ESP32...');
+      const resetUrl = getEsp32ResetUrl();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch('http://192.168.100.134/wifi/reset', {
+      const response = await fetch(resetUrl, {
         method: 'POST',
         signal: controller.signal,
       });
@@ -108,7 +131,11 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
       console.error('[WiFiProvisioningModal] Error reset wifi:', err);
       
       if (err.name === 'AbortError') {
-        setError('Timeout: El ESP32 no responde en 192.168.100.134. Intenta nuevamente.');
+        setError('Timeout: el ESP32 no responde. Verifica la conexión local o tu enlace con Firebase.');
+      } else if (canUseRemoteReset) {
+        setError(err?.message || 'No se pudo enviar el reset de WiFi vía Firebase. Verifica tu sesión y la vinculación del dispositivo.');
+      } else if (isHttpsRemote) {
+        setError('No se pudo conectar al proxy local en http://localhost:3000. Si quieres más rapidez, usa la función de reset remoto vía Firebase desde el módulo de registro de dispositivo.');
       } else {
         setError(err?.message || 'No se pudo conectar con el ESP32 en 192.168.100.134. Asegúrate de estar en la misma red.');
       }
@@ -124,7 +151,6 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
     setDevices([]);
     setSelectedDeviceId('');
     setSelectedDeviceName('');
-    setIsDeviceSelected(false);
     setIsScanning(true);
 
     try {
@@ -147,7 +173,6 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
   const handleSelectDevice = (deviceId, deviceName) => {
     setSelectedDeviceId(deviceId);
     setSelectedDeviceName(deviceName);
-    setIsDeviceSelected(true);
     setError('');
   };
 
@@ -287,6 +312,16 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
               <button className="configure-btn" onClick={handleResetWiFi} disabled={isResetting}>
                 {isResetting ? '⏳ Reseteando...' : 'Resetear WiFi'}
               </button>
+              {canUseRemoteReset ? (
+                <div className="info-message">
+                  En producción, el reset de WiFi se envía como comando remoto vía Firebase. Asegúrate de tener el ESP32 vinculado a tu cuenta.
+                </div>
+              ) : isHttpsRemote ? (
+                <div className="info-message">
+                  Estás en HTTPS y no hay userId disponible. El reset local usa un proxy en <code>http://localhost:3000</code>.
+                  Ejecuta <code>node local-esp32-proxy.js</code> en tu PC y vuelve a intentarlo.
+                </div>
+              ) : null}
             </>
           )}
 
