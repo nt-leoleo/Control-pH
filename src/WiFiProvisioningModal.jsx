@@ -78,6 +78,13 @@ const WiFiProvisioningModal = ({ isOpen, onClose, onSuccess, userId }) => {
     setInfo('Reseteando credenciales WiFi del ESP32...');
     setIsResetting(true);
 
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      setError('El navegador bloquea contenido mixto. No se puede acceder a http://192.168.100.134 desde esta página HTTPS. Abre la app en HTTP local o usa un proxy/HTTPS seguro.');
+      setInfo('');
+      setIsResetting(false);
+      return;
+    }
+
     try {
       // POST al endpoint local del ESP32 para resetear WiFi
       const controller = new AbortController();
